@@ -4,7 +4,11 @@
  */
 
 import { StateGraph, START, END } from "@langchain/langgraph";
-import { ChatOpenAI } from "@langchain/openai";
+import { searchResourcesNode } from "./nodes/search-resources";
+import { searchGitHubExamplesNode } from "./nodes/search-github-examples";
+import { loadLatestStateNode } from "./nodes/load-latest-state";
+import { evaluateQualityNode } from "./nodes/evaluate-quality";
+import { synthesizeRecommendationsNode } from "./nodes/synthesize-recommendations";
 
 // State interface for the research agent
 export interface ResearchState {
@@ -161,56 +165,17 @@ function buildResearchGraph() {
     },
   });
 
-  // Placeholder node - will be implemented in Issue #3
-  workflow.addNode("search", async (state: ResearchState) => {
-    console.log(`🔍 Searching for: ${state.skillGap}`);
-    return {
-      searchQuery: `Learn ${state.skillGap} ${state.detectedLanguage}`,
-      searchResults: [
-        {
-          title: "Placeholder Resource",
-          url: "https://example.com",
-          description: "This will be replaced with real search in Issue #3",
-        },
-      ],
-    };
-  });
+  // Web search node (Issue #3)
+  workflow.addNode("search", searchResourcesNode);
 
-  // Import the GitHub examples search node
-  const { searchGitHubExamplesNode } = require("./nodes/search-github-examples");
-
-  // Add GitHub examples search node
+  // GitHub examples search node (Issue #5b)
   workflow.addNode("search_github", searchGitHubExamplesNode);
 
-  // Placeholder node - will be implemented in Issue #4
-  workflow.addNode("evaluate", async (state: ResearchState) => {
-    console.log("⚖️  Evaluating search results...");
-    return {
-      evaluatedResults: state.searchResults?.map((r) => ({
-        ...r,
-        score: 0.8,
-      })),
-      confidence: 0.8,
-    };
-  });
+  // Evaluate quality node (Issue #4)
+  workflow.addNode("evaluate", evaluateQualityNode);
 
-  // Placeholder node - will be implemented in Issue #7
-  workflow.addNode("synthesize", async (state: ResearchState) => {
-    console.log("🎯 Synthesizing recommendations...");
-    return {
-      recommendations: [
-        {
-          type: "resource" as const,
-          title: "Placeholder Recommendation",
-          description: "This will be replaced with real synthesis in Issue #7",
-          priority: "high" as const,
-        },
-      ],
-    };
-  });
-
-  // Import state loader node
-  const { loadLatestStateNode } = require("./nodes/load-latest-state");
+  // Synthesize recommendations node (Issue #7)
+  workflow.addNode("synthesize", synthesizeRecommendationsNode);
 
   // Add state loader node
   workflow.addNode("load_state", loadLatestStateNode);
