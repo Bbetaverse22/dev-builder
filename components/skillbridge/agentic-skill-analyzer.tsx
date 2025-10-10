@@ -164,6 +164,11 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
         setProgress(30);
       }
 
+      // Ensure we have a repository before proceeding
+      if (!repoUrl) {
+        throw new Error('Unable to determine a repository to analyze. Please provide a direct repo URL or ensure the profile has public repositories.');
+      }
+
       // Use REAL GitHub analysis
       const githubAnalysis = await gapAnalyzer.analyzeGitHubRepository(repoUrl);
       
@@ -231,16 +236,48 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
       setSkillGaps(topGaps);
       setProgress(60);
 
-      // Phase 2: Market Research (SIMULATED - to be implemented)
+      // Phase 2: REAL Research Agent (LangGraph)
       setAgentStatus('RESEARCHING');
-      addLog('info', 'Starting deep market research...', <Brain className="h-4 w-4" />);
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      addLog('info', 'Activating LangGraph Research Agent...', <Brain className="h-4 w-4" />);
+      setProgress(60);
 
-      addLog('info', 'Scraping LinkedIn for relevant roles...', <TrendingUp className="h-4 w-4" />);
-      setProgress(65);
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      try {
+        // Run research agent for each skill gap
+        addLog('info', `Researching ${topGaps.length} skill gaps...`, <Search className="h-4 w-4" />);
 
-      addLog('success', 'Analyzed 150+ job postings (simulated)', <CheckCircle2 className="h-4 w-4" />);
+        const researchResponse = await fetch('/api/research', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: 'user_123',
+            skillGap: topGaps[0]?.name || gapAnalysis.skillGaps[0]?.skill.name,
+            detectedLanguage: githubAnalysis.languages[0] || 'unknown',
+            userContext: professionalGoals || `Learning ${topGaps[0]?.name || 'new skills'}`,
+            targetRole,
+            targetIndustry,
+            focusSkills: topGaps.map(g => ({
+              name: g.name,
+              gap: g.gap,
+              priority: g.priority
+            })),
+            learningObjectives: gapAnalysis.recommendations?.slice(0, 3) || [],
+          }),
+        });
+
+        if (researchResponse.ok) {
+          const researchData = await researchResponse.json();
+          addLog('success', `Found ${researchData.resources?.length || 0} learning resources`, <CheckCircle2 className="h-4 w-4" />);
+          addLog('success', `Found ${researchData.examples?.length || 0} GitHub examples`, <CheckCircle2 className="h-4 w-4" />);
+          addLog('success', `Generated ${researchData.recommendations?.length || 0} personalized recommendations`, <CheckCircle2 className="h-4 w-4" />);
+          setProgress(65);
+        } else {
+          addLog('warning', 'Research agent returned no results, continuing...', <AlertCircle className="h-4 w-4" />);
+        }
+      } catch (researchError) {
+        addLog('warning', 'Research agent failed, using fallback data', <AlertCircle className="h-4 w-4" />);
+        console.error('Research error:', researchError);
+      }
+
       setProgress(70);
 
       // Phase 3: Portfolio Analysis & Planning
