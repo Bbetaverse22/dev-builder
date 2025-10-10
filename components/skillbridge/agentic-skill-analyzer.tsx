@@ -9,6 +9,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
@@ -55,7 +56,11 @@ interface PortfolioTask {
   priority: 'high' | 'medium' | 'low';
 }
 
-export function AgenticSkillAnalyzer() {
+interface AgenticSkillAnalyzerProps {
+  showMarketing?: boolean;
+}
+
+export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnalyzerProps) {
   const [githubUsername, setGithubUsername] = useState('');
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('IDLE');
   const [progress, setProgress] = useState(0);
@@ -64,6 +69,10 @@ export function AgenticSkillAnalyzer() {
   const [portfolioTasks, setPortfolioTasks] = useState<PortfolioTask[]>([]);
   const [careerInsights, setCareerInsights] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [targetRole, setTargetRole] = useState('');
+  const [targetIndustry, setTargetIndustry] = useState('');
+  const [professionalGoals, setProfessionalGoals] = useState('');
+  const [domainKeywords, setDomainKeywords] = useState('');
   
   const gapAnalyzer = useMemo(() => new GapAnalyzerAgent(), []);
 
@@ -99,8 +108,9 @@ export function AgenticSkillAnalyzer() {
   };
 
   const runAgenticWorkflow = async () => {
-    if (!githubUsername.trim()) {
-      setError('Please enter a GitHub username');
+    const input = githubUsername.trim();
+    if (!input) {
+      setError('Please enter a GitHub username or repository URL');
       return;
     }
 
@@ -114,37 +124,45 @@ export function AgenticSkillAnalyzer() {
 
     try {
       // Phase 1: REAL GitHub Analysis (using existing tool integrations)
-      addLog('info', 'Starting GitHub profile analysis...', <Github className="h-4 w-4" />);
-      setProgress(10);
+      let repoUrl: string | null = null;
 
-      addLog('info', `Fetching repositories for @${githubUsername}`, <Search className="h-4 w-4" />);
-      setProgress(15);
+      const repoMatch = input.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+?)(?:\/|$)/i);
+      if (repoMatch) {
+        const [, owner, repo] = repoMatch;
+        repoUrl = `https://github.com/${owner}/${repo.replace(/\.git$/, "")}`;
+        addLog('info', `Analyzing repository: ${owner}/${repo}`, <Code className="h-4 w-4" />);
+        setProgress(20);
+      } else {
+        addLog('info', 'Starting GitHub profile analysis...', <Github className="h-4 w-4" />);
+        setProgress(10);
 
-      // Fetch user's most recent repository
-      const username = githubUsername.trim();
-      const reposResponse = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=1`);
-      
-      if (!reposResponse.ok) {
-        if (reposResponse.status === 404) {
-          throw new Error(`GitHub user "${username}" not found`);
-        } else if (reposResponse.status === 403) {
-          throw new Error('GitHub API rate limit exceeded. Please try again in a few minutes.');
-        } else {
-          throw new Error(`Failed to fetch GitHub profile (Status: ${reposResponse.status})`);
+        addLog('info', `Fetching repositories for @${input}`, <Search className="h-4 w-4" />);
+        setProgress(15);
+
+        const reposResponse = await fetch(`https://api.github.com/users/${input}/repos?sort=updated&per_page=1`);
+        
+        if (!reposResponse.ok) {
+          if (reposResponse.status === 404) {
+            throw new Error(`GitHub user "${input}" not found`);
+          } else if (reposResponse.status === 403) {
+            throw new Error('GitHub API rate limit exceeded. Please try again in a few minutes.');
+          } else {
+            throw new Error(`Failed to fetch GitHub profile (Status: ${reposResponse.status})`);
+          }
         }
-      }
-      
-      const repos = await reposResponse.json();
-      if (!repos || repos.length === 0) {
-        throw new Error(`No public repositories found for user "${username}"`);
-      }
+        
+        const repos = await reposResponse.json();
+        if (!repos || repos.length === 0) {
+          throw new Error(`No public repositories found for user "${input}"`);
+        }
 
-      const repoUrl = repos[0].html_url;
-      addLog('success', `Found repository: ${repos[0].name}`, <CheckCircle2 className="h-4 w-4" />);
-      setProgress(25);
+        repoUrl = repos[0].html_url;
+        addLog('success', `Found repository: ${repos[0].name}`, <CheckCircle2 className="h-4 w-4" />);
+        setProgress(25);
 
-      addLog('info', 'Analyzing repository tech stack...', <Code className="h-4 w-4" />);
-      setProgress(30);
+        addLog('info', 'Analyzing repository tech stack...', <Code className="h-4 w-4" />);
+        setProgress(30);
+      }
 
       // Use REAL GitHub analysis
       const githubAnalysis = await gapAnalyzer.analyzeGitHubRepository(repoUrl);
@@ -167,6 +185,26 @@ export function AgenticSkillAnalyzer() {
 
       // Store results on server
       try {
+        const domainKeywordList = domainKeywords
+          .split(',')
+          .map((keyword) => keyword.trim())
+          .filter(Boolean);
+
+        const contextPayload = {
+          targetRole: targetRole || undefined,
+          targetIndustry: targetIndustry || undefined,
+          professionalGoals: professionalGoals || undefined,
+          domainKeywords: domainKeywordList.length ? domainKeywordList : undefined,
+        };
+
+        if (contextPayload.targetRole || contextPayload.targetIndustry || contextPayload.professionalGoals || contextPayload.domainKeywords) {
+          addLog(
+            'info',
+            `Captured career focus${contextPayload.targetRole ? `: ${contextPayload.targetRole}` : ''}${contextPayload.targetIndustry ? ` (${contextPayload.targetIndustry})` : ''}`,
+            <TrendingUp className="h-4 w-4" />
+          );
+        }
+
         await fetch('/api/skill-gaps', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -174,6 +212,7 @@ export function AgenticSkillAnalyzer() {
             userId: 'user_123',
             githubAnalysis: githubAnalysis,
             skillAssessment: gapAnalysis,
+            context: contextPayload,
           }),
         });
         addLog('success', 'Skill analysis stored for future reference', <CheckCircle2 className="h-4 w-4" />);
@@ -244,7 +283,8 @@ export function AgenticSkillAnalyzer() {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       const mockCareerInsights = {
-        targetRole: 'Senior Full-Stack Engineer',
+        targetRole: targetRole || 'Senior Full-Stack Engineer',
+        targetIndustry: targetIndustry || 'Technology',
         avgSalary: '$135,000 - $180,000',
         topCompanies: ['Google', 'Meta', 'Stripe', 'Vercel', 'Netflix'],
         timeToReady: '3-6 months',
@@ -298,6 +338,8 @@ export function AgenticSkillAnalyzer() {
     }
   };
 
+  const canEditInputs = agentStatus === 'IDLE' || agentStatus === 'ERROR' || agentStatus === 'COMPLETE';
+
   return (
     <div className="space-y-6">
       {/* Sticky Agent Status Bar */}
@@ -314,20 +356,24 @@ export function AgenticSkillAnalyzer() {
         }}
       />
 
-      {/* Animated Hero Section */}
-      <AnimatedHero />
+      {showMarketing && (
+        <>
+          {/* Animated Hero Section */}
+          <AnimatedHero />
 
-      {/* Animated Features Section */}
-      <div id="features">
-        <AnimatedFeatures />
-      </div>
+          {/* Animated Features Section */}
+          <div id="features">
+            <AnimatedFeatures />
+          </div>
 
-      {/* Animated How It Works Section */}
-      <AnimatedHowItWorks />
+          {/* Animated How It Works Section */}
+          <AnimatedHowItWorks />
+        </>
+      )}
 
       {/* Analysis Input Section */}
       <div id="demo" className="scroll-mt-20">
-        <Card className="border-2 border-primary/20 bg-gradient-to-br from-background to-primary/5">
+        <Card className="border-2 border-purple-400/40 bg-gradient-to-br from-purple-700/40 via-purple-900/30 to-slate-950/60 shadow-[0_0_40px_rgba(168,85,247,0.25)] backdrop-blur-md">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -335,11 +381,11 @@ export function AgenticSkillAnalyzer() {
                 <Brain className="h-6 w-6 text-white" />
               </div>
               <div>
-                <CardTitle className="text-2xl flex items-center space-x-2">
+                <CardTitle className="text-3xl flex items-center space-x-2">
                   <span className="text-white">Agentic Skill Analyzer</span>
                 </CardTitle>
-                <CardDescription className="text-base text-white">
-                  Deep research + autonomous portfolio improvements powered by AI agents
+                <CardDescription className="text-2xl text-white/90 leading-relaxed">
+                  Drop a GitHub username or repository URL and let autonomous agents audit your work, map skill gaps, and build a market-aligned learning plan.
                 </CardDescription>
               </div>
             </div>
@@ -353,26 +399,26 @@ export function AgenticSkillAnalyzer() {
             </Alert>
           )}
 
-          <div className="flex space-x-2">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:space-x-4 space-y-3 lg:space-y-0">
             <Input
-              placeholder="Enter your GitHub username (e.g., octocat)"
+              placeholder="GitHub username or repository URL"
               value={githubUsername}
               onChange={(e) => setGithubUsername(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && githubUsername.trim() && (agentStatus === 'IDLE' || agentStatus === 'ERROR' || agentStatus === 'COMPLETE')) {
+                if (e.key === 'Enter' && githubUsername.trim() && canEditInputs) {
                   runAgenticWorkflow();
                 }
               }}
-              className="flex-1 h-12 text-base"
-              disabled={agentStatus !== 'IDLE' && agentStatus !== 'ERROR' && agentStatus !== 'COMPLETE'}
+              className="flex-1 h-16 text-2xl bg-purple-200/10 border-purple-300/30 text-white placeholder:text-purple-200/70 focus-visible:ring-purple-200/40 rounded-xl px-6"
+              disabled={!canEditInputs}
             />
             <Button 
               size="lg" 
               onClick={runAgenticWorkflow}
-              disabled={!githubUsername.trim() || (agentStatus !== 'IDLE' && agentStatus !== 'ERROR' && agentStatus !== 'COMPLETE')}
-              className="px-8"
+              disabled={!githubUsername.trim() || !canEditInputs}
+              className="h-16 px-10 text-xl font-semibold rounded-xl bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-600 hover:to-fuchsia-500 text-white shadow-[0_10px_30px_rgba(168,85,247,0.35)] transition-all"
             >
-              {agentStatus !== 'IDLE' && agentStatus !== 'ERROR' && agentStatus !== 'COMPLETE' ? (
+              {!canEditInputs ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
                   Processing...
@@ -386,15 +432,74 @@ export function AgenticSkillAnalyzer() {
             </Button>
           </div>
 
+          <div className="rounded-lg border border-purple-300/20 bg-purple-900/40 p-4 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <div>
+                <p className="text-base font-semibold text-white">Career Goals & Focus</p>
+                <p className="text-sm text-white/75">
+                  Guide the research agent toward the roles and industries you care about.
+                </p>
+              </div>
+              <Badge variant="secondary" className="uppercase text-[11px] tracking-wide">
+                Optional
+              </Badge>
+            </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-xs uppercase text-purple-200/80 tracking-widest">Target Role</label>
+                <Input
+                  value={targetRole}
+                  onChange={(event) => setTargetRole(event.target.value)}
+                  placeholder="e.g. Senior Frontend Engineer"
+                  disabled={!canEditInputs}
+                  className="bg-purple-200/10 border-purple-300/25 text-white placeholder:text-purple-200/60 focus-visible:ring-purple-200/40 text-2xl rounded-lg px-5 py-4"
+                />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs uppercase text-purple-200/80 tracking-widest">Target Industry</label>
+                <Input
+                  value={targetIndustry}
+                  onChange={(event) => setTargetIndustry(event.target.value)}
+                  placeholder="e.g. Healthcare, Fintech, Climate"
+                  disabled={!canEditInputs}
+                  className="bg-purple-200/10 border-purple-300/25 text-white placeholder:text-purple-200/60 focus-visible:ring-purple-200/40 text-2xl rounded-lg px-5 py-4"
+                />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-xs uppercase text-purple-200/80 tracking-widest">Domain Keywords</label>
+                <Input
+                  value={domainKeywords}
+                  onChange={(event) => setDomainKeywords(event.target.value)}
+                  placeholder="Comma separated — e.g. HIPAA, EHR, patient analytics"
+                  disabled={!canEditInputs}
+                  className="bg-purple-200/10 border-purple-300/25 text-white placeholder:text-purple-200/60 focus-visible:ring-purple-200/40 text-2xl rounded-lg px-5 py-4"
+                />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs uppercase text-purple-200/80 tracking-widest">Professional Goals</label>
+                <Textarea
+                  value={professionalGoals}
+                  onChange={(event) => setProfessionalGoals(event.target.value)}
+                  placeholder="Describe what you want to achieve in the next 6-12 months"
+                  rows={3}
+                  disabled={!canEditInputs}
+                  className="bg-purple-200/10 border-purple-300/25 text-white placeholder:text-purple-200/60 focus-visible:ring-purple-200/40 text-2xl rounded-lg px-5 py-4"
+                />
+                </div>
+              </div>
+            </div>
+
           {progress > 0 && (
             <div className="space-y-2">
               <Progress value={progress} className="h-2" />
               <div className="flex items-center justify-between">
-                <div className={`flex items-center space-x-2 text-sm font-medium ${getStatusColor(agentStatus)}`}>
+                <div className={`flex items-center space-x-2 text-base font-semibold ${getStatusColor(agentStatus)}`}>
                   {getStatusIcon(agentStatus)}
                   <span>Agent Status: {agentStatus}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">{progress}%</span>
+                <span className="text-sm text-muted-foreground font-medium">{progress}%</span>
               </div>
             </div>
           )}
@@ -529,47 +634,52 @@ export function AgenticSkillAnalyzer() {
 
       {/* Career Insights Section */}
       {careerInsights && (
-        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background">
+        <Card className="border-purple-400/30 bg-gradient-to-br from-purple-800/50 via-purple-900/40 to-slate-950/70">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5" />
+            <CardTitle className="flex items-center space-x-3 text-white text-3xl">
+              <TrendingUp className="h-7 w-7" />
               <span>Career Intelligence</span>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-white/80 text-lg">
               Market-driven insights based on 150+ job postings
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 bg-background rounded-lg border">
-                <p className="text-sm text-muted-foreground mb-1">Target Role</p>
-                <p className="font-semibold">{careerInsights.targetRole}</p>
+              <div className="p-5 bg-purple-200/10 rounded-lg border border-purple-200/20">
+                <p className="text-sm text-purple-100/80 mb-2 tracking-wide uppercase">Target Role</p>
+                <p className="text-xl font-semibold text-white">{careerInsights.targetRole}</p>
+                {careerInsights.targetIndustry && (
+                  <p className="text-sm text-purple-100/70 mt-2">
+                    Industry Focus: {careerInsights.targetIndustry}
+                  </p>
+                )}
               </div>
-              <div className="p-4 bg-background rounded-lg border">
-                <p className="text-sm text-muted-foreground mb-1">Avg. Salary Range</p>
-                <p className="font-semibold text-green-600">{careerInsights.avgSalary}</p>
+              <div className="p-5 bg-purple-200/10 rounded-lg border border-purple-200/20">
+                <p className="text-sm text-purple-100/80 mb-2 tracking-wide uppercase">Avg. Salary Range</p>
+                <p className="text-xl font-semibold text-emerald-300">{careerInsights.avgSalary}</p>
               </div>
-              <div className="p-4 bg-background rounded-lg border">
-                <p className="text-sm text-muted-foreground mb-1">Time to Ready</p>
-                <p className="font-semibold">{careerInsights.timeToReady}</p>
+              <div className="p-5 bg-purple-200/10 rounded-lg border border-purple-200/20">
+                <p className="text-sm text-purple-100/80 mb-2 tracking-wide uppercase">Time to Ready</p>
+                <p className="text-xl font-semibold text-white">{careerInsights.timeToReady}</p>
               </div>
-              <div className="p-4 bg-background rounded-lg border">
-                <p className="text-sm text-muted-foreground mb-1">Top Companies Hiring</p>
-                <div className="flex flex-wrap gap-1 mt-1">
+              <div className="p-5 bg-purple-200/10 rounded-lg border border-purple-200/20">
+                <p className="text-sm text-purple-100/80 mb-2 tracking-wide uppercase">Top Companies Hiring</p>
+                <div className="flex flex-wrap gap-2 mt-1">
                   {careerInsights.topCompanies.slice(0, 3).map((company: string) => (
-                    <Badge key={company} variant="secondary" className="text-xs">{company}</Badge>
+                    <Badge key={company} variant="secondary" className="text-xs bg-purple-400/30 text-white border-purple-200/30">{company}</Badge>
                   ))}
                 </div>
               </div>
             </div>
             
-            <div className="mt-4 p-4 bg-background rounded-lg border">
-              <p className="text-sm font-medium mb-2">📚 Recommended Learning Path</p>
-              <ul className="space-y-1">
+            <div className="p-5 bg-purple-200/10 rounded-lg border border-purple-200/20">
+              <p className="text-xl font-semibold text-white mb-4">📚 Recommended Learning Path</p>
+              <ul className="space-y-2">
                 {careerInsights.recommendedCourses.map((course: string, index: number) => (
-                  <li key={index} className="text-sm flex items-center space-x-2">
-                    <CheckCircle2 className="h-3 w-3 text-green-600" />
-                    <span>{course}</span>
+                  <li key={index} className="text-base flex items-center space-x-3 text-purple-50">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-300" />
+                    <span className="text-base md:text-lg">{course}</span>
                   </li>
                 ))}
               </ul>
@@ -580,4 +690,3 @@ export function AgenticSkillAnalyzer() {
     </div>
   );
 }
-

@@ -3,9 +3,14 @@
 import { motion } from "framer-motion";
 import { Brain, Sparkles, Zap, Target, TrendingUp, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 
-export function AnimatedHero() {
+interface AnimatedHeroProps {
+  enableCtas?: boolean;
+}
+
+export function AnimatedHero({ enableCtas = true }: AnimatedHeroProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -154,37 +159,38 @@ export function AnimatedHero() {
         </motion.p>
 
         {/* CTA Buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4"
-        >
-          <Button
-            size="lg"
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-6 text-lg rounded-full shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all"
-            onClick={() => {
-              const demoSection = document.getElementById('demo');
-              demoSection?.scrollIntoView({ behavior: 'smooth' });
-            }}
+        {enableCtas && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <Zap className="mr-2 h-5 w-5" />
-            Try Demo Now
-          </Button>
+            <Button
+              asChild
+              size="lg"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-6 text-lg rounded-full shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all"
+            >
+              <Link href="/agentic">
+                <Zap className="mr-2 h-5 w-5" />
+                Try it Now
+              </Link>
+            </Button>
 
-          <Button
-            size="lg"
-            variant="outline"
-            className="border-white/20 bg-white/5 backdrop-blur-sm hover:bg-white/10 text-white px-8 py-6 text-lg rounded-full"
-            onClick={() => {
-              const howSection = document.getElementById('how-it-works');
-              howSection?.scrollIntoView({ behavior: 'smooth' });
-            }}
-          >
-            <Brain className="mr-2 h-5 w-5" />
-            Learn How It Works
-          </Button>
-        </motion.div>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-white/20 bg-white/5 backdrop-blur-sm hover:bg-white/10 text-white px-8 py-6 text-lg rounded-full"
+              onClick={() => {
+                const howSection = document.getElementById('how-it-works');
+                howSection?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              <Brain className="mr-2 h-5 w-5" />
+              Learn How It Works
+            </Button>
+          </motion.div>
+        )}
 
         {/* Stats */}
         <motion.div

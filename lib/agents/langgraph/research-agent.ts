@@ -9,9 +9,17 @@ import { ChatOpenAI } from "@langchain/openai";
 // State interface for the research agent
 export interface ResearchState {
   // Input
+  userId?: string;
   skillGap: string;
   detectedLanguage: string;
   userContext: string;
+  targetRole?: string;
+  targetIndustry?: string;
+  professionalGoals?: string;
+  domainKeywords?: string[];
+  focusSkills?: FocusSkill[];
+  learningObjectives?: string[];
+  queries?: string[];
 
   // Search phase
   searchQuery?: string;
@@ -24,9 +32,12 @@ export interface ResearchState {
   // Decision phase
   confidence?: number;
   iterationCount: number;
+  marketSignals?: MarketSignal[];
 
   // Output
   recommendations?: Recommendation[];
+  actionPlan?: ActionItem[];
+  loadedFromStorage?: boolean;
 }
 
 export interface Resource {
@@ -56,6 +67,27 @@ export interface Recommendation {
   priority: "high" | "medium" | "low";
 }
 
+export interface FocusSkill {
+  name: string;
+  gap: number;
+  priority: number;
+}
+
+export interface MarketSignal {
+  source: string;
+  title: string;
+  snippet: string;
+  url: string;
+  roleMatch?: number;
+}
+
+export interface ActionItem {
+  title: string;
+  description: string;
+  rationale?: string;
+  effort?: "low" | "medium" | "high";
+}
+
 /**
  * Build the research agent graph
  * This will be implemented in Issues #3-#9
@@ -66,11 +98,35 @@ function buildResearchGraph() {
       skillGap: {
         value: (left?: string, right?: string) => right ?? left ?? "",
       },
+      userId: {
+        value: (left?: string, right?: string) => right ?? left ?? "",
+      },
       detectedLanguage: {
         value: (left?: string, right?: string) => right ?? left ?? "",
       },
       userContext: {
         value: (left?: string, right?: string) => right ?? left ?? "",
+      },
+      targetRole: {
+        value: (left?: string, right?: string) => right ?? left ?? "",
+      },
+      targetIndustry: {
+        value: (left?: string, right?: string) => right ?? left ?? "",
+      },
+      professionalGoals: {
+        value: (left?: string, right?: string) => right ?? left ?? "",
+      },
+      domainKeywords: {
+        value: (left?: string[], right?: string[]) => right ?? left ?? [],
+      },
+      focusSkills: {
+        value: (left?: FocusSkill[], right?: FocusSkill[]) => right ?? left ?? [],
+      },
+      learningObjectives: {
+        value: (left?: string[], right?: string[]) => right ?? left ?? [],
+      },
+      queries: {
+        value: (left?: string[], right?: string[]) => right ?? left ?? [],
       },
       searchQuery: {
         value: (left?: string, right?: string) => right ?? left,
@@ -90,8 +146,17 @@ function buildResearchGraph() {
       iterationCount: {
         value: (left?: number, right?: number) => (right ?? 0) + (left ?? 0),
       },
+      marketSignals: {
+        value: (left?: MarketSignal[], right?: MarketSignal[]) => right ?? left ?? [],
+      },
       recommendations: {
         value: (left?: Recommendation[], right?: Recommendation[]) => right ?? left ?? [],
+      },
+      actionPlan: {
+        value: (left?: ActionItem[], right?: ActionItem[]) => right ?? left ?? [],
+      },
+      loadedFromStorage: {
+        value: (left?: boolean, right?: boolean) => right ?? left ?? false,
       },
     },
   });
@@ -144,8 +209,15 @@ function buildResearchGraph() {
     };
   });
 
+  // Import state loader node
+  const { loadLatestStateNode } = require("./nodes/load-latest-state");
+
+  // Add state loader node
+  workflow.addNode("load_state", loadLatestStateNode);
+
   // Connect nodes with conditional flow
-  workflow.addEdge(START, "search" as any);
+  workflow.addEdge(START, "load_state" as any);
+  workflow.addEdge("load_state" as any, "search" as any);
   workflow.addEdge("search" as any, "search_github" as any);
 
   // Conditional edge: Continue searching or evaluate?
@@ -177,3 +249,5 @@ function buildResearchGraph() {
 
 // Export the compiled graph for LangGraph Platform
 export const graph = buildResearchGraph();
+
+export { buildResearchStateSeed } from "./utils/research-state-seed";

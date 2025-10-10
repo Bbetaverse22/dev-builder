@@ -71,6 +71,7 @@ export async function searchGitHubExamplesNode(
 
     return {
       examples: qualityExamples,
+      iterationCount: 1,
     };
   } catch (error) {
     console.error('❌ GitHub search failed:', error);
@@ -78,6 +79,7 @@ export async function searchGitHubExamplesNode(
     // Return empty results on error (don't block the workflow)
     return {
       examples: [],
+      iterationCount: 1,
     };
   }
 }

@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { GitHubAnalysisComponent } from './github-analysis';
 import { AIChatAnalysis } from './ai-chat-analysis';
 import { SkillRadarChart } from './skill-radar-chart';
@@ -38,6 +40,10 @@ export function AutomaticGapAnalysis() {
     'soft',
     'domain',
   ]);
+  const [targetRole, setTargetRole] = useState('');
+  const [targetIndustry, setTargetIndustry] = useState('');
+  const [professionalGoals, setProfessionalGoals] = useState('');
+  const [domainKeywords, setDomainKeywords] = useState('');
   const gapAnalyzer = useMemo(() => new GapAnalyzerAgent(), []);
 
   const normalizeLevel = useCallback((value: number) => {
@@ -99,6 +105,18 @@ export function AutomaticGapAnalysis() {
       if (analysisToStore) {
         const userId = 'user_123';
         try {
+          const domainKeywordList = domainKeywords
+            .split(',')
+            .map((keyword) => keyword.trim())
+            .filter(Boolean);
+
+          const contextPayload = {
+            targetRole: targetRole || undefined,
+            targetIndustry: targetIndustry || undefined,
+            professionalGoals: professionalGoals || undefined,
+            domainKeywords: domainKeywordList.length ? domainKeywordList : undefined,
+          };
+
           // Store on the server via API call
           const response = await fetch('/api/skill-gaps', {
             method: 'POST',
@@ -107,6 +125,7 @@ export function AutomaticGapAnalysis() {
               userId,
               githubAnalysis: analysisToStore,
               skillAssessment: assessment,
+              context: contextPayload,
             }),
           });
 
@@ -127,7 +146,7 @@ export function AutomaticGapAnalysis() {
         }
       }
     },
-    []
+    [domainKeywords, professionalGoals, targetIndustry, targetRole]
   );
 
   const handleGitHubAnalysisComplete = useCallback(async (
@@ -423,6 +442,60 @@ export function AutomaticGapAnalysis() {
                 <BarChart3 className="h-4 w-4" />
                 <span className="text-sm">Skill Assessment</span>
               </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Career Context */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <TrendingUp className="h-5 w-5" />
+            <span>Career Goals & Focus</span>
+          </CardTitle>
+          <CardDescription>
+            Tell the research agent what roles and industries you care about so it can search beyond pure programming topics.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Target Role</label>
+              <Input
+                value={targetRole}
+                onChange={(event) => setTargetRole(event.target.value)}
+                placeholder="e.g. Senior Frontend Engineer"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Target Industry</label>
+              <Input
+                value={targetIndustry}
+                onChange={(event) => setTargetIndustry(event.target.value)}
+                placeholder="e.g. Healthcare, Fintech, Climate"
+              />
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">
+                Domain Keywords (comma separated)
+              </label>
+              <Input
+                value={domainKeywords}
+                onChange={(event) => setDomainKeywords(event.target.value)}
+                placeholder="e.g. HIPAA, EHR, patient analytics"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Professional Goals</label>
+              <Textarea
+                value={professionalGoals}
+                onChange={(event) => setProfessionalGoals(event.target.value)}
+                placeholder="Describe what you want to achieve in the next 6-12 months"
+                rows={4}
+              />
             </div>
           </div>
         </CardContent>

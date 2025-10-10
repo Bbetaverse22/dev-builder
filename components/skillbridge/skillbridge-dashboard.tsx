@@ -1,8 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { AnimatedHero } from "./animated-hero";
+import { AnimatedFeatures } from "./animated-features";
+import { AnimatedHowItWorks } from "./animated-how-it-works";
 import { Brain, Github, Menu, X } from "lucide-react";
-import { AgenticSkillAnalyzer } from "./agentic-skill-analyzer";
+import Link from "next/link";
 import { useState } from "react";
 
 export default function DevBuilderDashboard() {
@@ -37,12 +40,12 @@ export default function DevBuilderDashboard() {
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-6">
-              <button 
-                onClick={() => scrollToSection('demo')}
+              <Link 
+                href="/agentic"
                 className="text-sm text-gray-300 hover:text-white transition-colors"
               >
-                Demo
-              </button>
+                Try It
+              </Link>
               <button 
                 onClick={() => scrollToSection('how-it-works')}
                 className="text-sm text-gray-300 hover:text-white transition-colors"
@@ -95,12 +98,13 @@ export default function DevBuilderDashboard() {
           {/* Mobile Menu */}
           {mobileMenuOpen && (
             <div className="md:hidden mt-4 pb-4 space-y-3 border-t border-white/10 pt-4">
-              <button 
-                onClick={() => scrollToSection('demo')}
+              <Link 
+                href="/agentic"
+                onClick={() => setMobileMenuOpen(false)}
                 className="block w-full text-left text-sm text-gray-300 hover:text-white py-2"
               >
-                Demo
-              </button>
+                Try It
+              </Link>
               <button 
                 onClick={() => scrollToSection('how-it-works')}
                 className="block w-full text-left text-sm text-gray-300 hover:text-white py-2"
@@ -135,9 +139,13 @@ export default function DevBuilderDashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
-        {/* V1 Main Component (includes LandingExplanation) */}
-        <AgenticSkillAnalyzer />
+      <main className="container mx-auto px-4 py-10 space-y-16">
+        <AnimatedHero />
+        <section id="features">
+          <AnimatedFeatures />
+        </section>
+
+        <AnimatedHowItWorks />
       </main>
     </div>
   );

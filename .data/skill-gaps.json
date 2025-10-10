@@ -1,60 +1,346 @@
 {
-  "skillgap_1759979821061_ot0jtxum0": {
-    "id": "skillgap_1759979821061_ot0jtxum0",
+  "skillgap_1760068615572_vxur3tqkw": {
+    "id": "skillgap_1760068615572_vxur3tqkw",
     "userId": "user_123",
     "githubAnalysis": {
-      "repository": "https://github.com/facebook/react-native",
+      "repository": "https://github.com/langchain-ai/open_deep_research",
       "technologies": [
-        "C++",
-        "Kotlin",
-        "JavaScript",
-        "Objective-C++",
-        "Objective-C",
-        "react"
+        "Python",
+        "Jupyter Notebook"
       ],
       "frameworks": [
-        "Node.js",
-        "TypeScript",
-        "React",
-        "Gradle"
+        "Python"
       ],
       "languages": [
-        "C++",
-        "Kotlin",
-        "JavaScript",
-        "Objective-C++",
-        "Objective-C",
-        "Java",
-        "Ruby",
-        "CMake",
-        "TypeScript",
-        "Shell",
-        "C",
-        "Swift",
-        "Assembly",
-        "HTML",
-        "Smarty"
+        "Python",
+        "Jupyter Notebook"
       ],
       "tools": [
-        "GitHub Actions",
-        "Jest/Vitest"
+        "GitHub Actions"
       ],
       "skillLevel": "advanced",
       "recommendations": [
-        "Master Spring Boot and Spring Security for enterprise development",
-        "Learn Maven or Gradle for dependency management",
-        "Practice design patterns and SOLID principles",
-        "Master modern ES6+ features and async programming",
-        "Learn a frontend framework like React, Vue, or Angular"
+        "Explore Django or FastAPI for web development",
+        "Learn pandas and numpy for data science",
+        "Practice with virtual environments and pip"
       ]
     },
     "skillAssessment": {
-      "overallScore": 97,
+      "overallScore": 67,
       "skillGaps": [
         {
           "skill": {
             "id": "programming",
             "name": "Programming Languages",
+            "currentLevel": 2,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 3,
+          "priority": 15,
+          "recommendations": [
+            "Practice coding daily with platforms like LeetCode or HackerRank",
+            "Build personal projects to apply programming concepts",
+            "Contribute to open source projects"
+          ]
+        },
+        {
+          "skill": {
+            "id": "frameworks",
+            "name": "Frameworks & Libraries",
+            "currentLevel": 3,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 2,
+          "priority": 10,
+          "recommendations": [
+            "Follow official documentation and tutorials",
+            "Build a complete project using the framework",
+            "Join community forums and attend meetups"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-python",
+            "name": "Python",
+            "currentLevel": 5,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 0,
+          "priority": 0,
+          "recommendations": []
+        }
+      ],
+      "categories": [
+        {
+          "id": "technical",
+          "name": "Technical Skills",
+          "skills": [
+            {
+              "id": "programming",
+              "name": "Programming Languages",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "frameworks",
+              "name": "Frameworks & Libraries",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "databases",
+              "name": "Database Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "cloud",
+              "name": "Cloud Platforms",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "devops",
+              "name": "DevOps & CI/CD",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            },
+            {
+              "id": "testing",
+              "name": "Testing & QA",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "prompt-engineering",
+              "name": "Prompt Engineering",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "context-engineering",
+              "name": "Context & Retrieval Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            }
+          ]
+        },
+        {
+          "id": "soft",
+          "name": "Soft Skills",
+          "skills": [
+            {
+              "id": "communication",
+              "name": "Communication",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "leadership",
+              "name": "Leadership",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "problem-solving",
+              "name": "Problem Solving",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "teamwork",
+              "name": "Teamwork",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "time-management",
+              "name": "Time Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            }
+          ]
+        },
+        {
+          "id": "domain",
+          "name": "Domain Knowledge",
+          "skills": [
+            {
+              "id": "industry",
+              "name": "Industry Knowledge",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "business",
+              "name": "Business Acumen",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "domain"
+            },
+            {
+              "id": "architecture",
+              "name": "System Architecture",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "security",
+              "name": "Security Best Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            }
+          ]
+        }
+      ],
+      "recommendations": [
+        "Focus on your top 3 skill gaps: Programming Languages, Frameworks & Libraries",
+        "Invest time in advanced technical training or certifications",
+        "Create a project roadmap to apply the targeted technologies",
+        "Set a focused learning plan with milestones for the identified gaps",
+        "Share your knowledge by mentoring others or writing technical content",
+        "Consider exploring emerging technologies and architectural patterns"
+      ],
+      "learningPath": [
+        "Phase 1: Foundation (Weeks 1-4)",
+        "- Focus on Programming Languages: Practice coding daily with platforms like LeetCode or HackerRank",
+        "Phase 4: Application (Ongoing)",
+        "- Apply skills in real-world projects",
+        "- Seek feedback and continue learning"
+      ],
+      "githubAnalysis": {
+        "repository": "https://github.com/langchain-ai/open_deep_research",
+        "technologies": [
+          "Python",
+          "Jupyter Notebook"
+        ],
+        "frameworks": [
+          "Python"
+        ],
+        "languages": [
+          "Python",
+          "Jupyter Notebook"
+        ],
+        "tools": [
+          "GitHub Actions"
+        ],
+        "skillLevel": "advanced",
+        "recommendations": [
+          "Explore Django or FastAPI for web development",
+          "Learn pandas and numpy for data science",
+          "Practice with virtual environments and pip"
+        ]
+      }
+    },
+    "context": {
+      "targetRole": "AI Engineer"
+    },
+    "createdAt": "2025-10-10T03:56:55.572Z",
+    "lastAccessed": "2025-10-10T03:56:55.572Z"
+  },
+  "skillgap_1760068829824_2jehz5tdk": {
+    "id": "skillgap_1760068829824_2jehz5tdk",
+    "userId": "user_123",
+    "githubAnalysis": {
+      "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+      "technologies": [
+        "Python"
+      ],
+      "frameworks": [
+        "Python",
+        "pip"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "tools": [],
+      "skillLevel": "beginner",
+      "recommendations": [
+        "Explore Django or FastAPI for web development",
+        "Learn pandas and numpy for data science",
+        "Practice with virtual environments and pip"
+      ]
+    },
+    "skillAssessment": {
+      "overallScore": 57,
+      "skillGaps": [
+        {
+          "skill": {
+            "id": "programming",
+            "name": "Programming Languages",
+            "currentLevel": 2,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 3,
+          "priority": 15,
+          "recommendations": [
+            "Practice coding daily with platforms like LeetCode or HackerRank",
+            "Build personal projects to apply programming concepts",
+            "Contribute to open source projects"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-python",
+            "name": "Python",
+            "currentLevel": 2.6,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 2.4,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Python",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "frameworks",
+            "name": "Frameworks & Libraries",
             "currentLevel": 4,
             "targetLevel": 5,
             "importance": 5,
@@ -63,9 +349,2402 @@
           "gap": 1,
           "priority": 5,
           "recommendations": [
+            "Follow official documentation and tutorials",
+            "Build a complete project using the framework",
+            "Join community forums and attend meetups"
+          ]
+        }
+      ],
+      "categories": [
+        {
+          "id": "technical",
+          "name": "Technical Skills",
+          "skills": [
+            {
+              "id": "programming",
+              "name": "Programming Languages",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "frameworks",
+              "name": "Frameworks & Libraries",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "databases",
+              "name": "Database Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "cloud",
+              "name": "Cloud Platforms",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "devops",
+              "name": "DevOps & CI/CD",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            },
+            {
+              "id": "testing",
+              "name": "Testing & QA",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "prompt-engineering",
+              "name": "Prompt Engineering",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "context-engineering",
+              "name": "Context & Retrieval Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            }
+          ]
+        },
+        {
+          "id": "soft",
+          "name": "Soft Skills",
+          "skills": [
+            {
+              "id": "communication",
+              "name": "Communication",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "leadership",
+              "name": "Leadership",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "problem-solving",
+              "name": "Problem Solving",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "teamwork",
+              "name": "Teamwork",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "time-management",
+              "name": "Time Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            }
+          ]
+        },
+        {
+          "id": "domain",
+          "name": "Domain Knowledge",
+          "skills": [
+            {
+              "id": "industry",
+              "name": "Industry Knowledge",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "business",
+              "name": "Business Acumen",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "domain"
+            },
+            {
+              "id": "architecture",
+              "name": "System Architecture",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "security",
+              "name": "Security Best Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            }
+          ]
+        }
+      ],
+      "recommendations": [
+        "Focus on your top 3 skill gaps: Programming Languages, Python, Frameworks & Libraries",
+        "Invest time in advanced technical training or certifications",
+        "Create a project roadmap to apply the targeted technologies",
+        "Set a focused learning plan with milestones for the identified gaps",
+        "Focus on mastering the fundamentals of your primary programming language",
+        "Practice with smaller, simpler projects before tackling complex ones"
+      ],
+      "learningPath": [
+        "Phase 1: Foundation (Weeks 1-4)",
+        "- Focus on Programming Languages: Practice coding daily with platforms like LeetCode or HackerRank",
+        "- Focus on Python: Set a focused improvement goal for Python",
+        "Phase 4: Application (Ongoing)",
+        "- Apply skills in real-world projects",
+        "- Seek feedback and continue learning"
+      ],
+      "githubAnalysis": {
+        "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+        "technologies": [
+          "Python"
+        ],
+        "frameworks": [
+          "Python",
+          "pip"
+        ],
+        "languages": [
+          "Python"
+        ],
+        "tools": [],
+        "skillLevel": "beginner",
+        "recommendations": [
+          "Explore Django or FastAPI for web development",
+          "Learn pandas and numpy for data science",
+          "Practice with virtual environments and pip"
+        ]
+      }
+    },
+    "context": {},
+    "createdAt": "2025-10-10T04:00:29.824Z",
+    "lastAccessed": "2025-10-10T04:00:29.824Z"
+  },
+  "skillgap_1760069015878_6qazzvwj6": {
+    "id": "skillgap_1760069015878_6qazzvwj6",
+    "userId": "user_123",
+    "githubAnalysis": {
+      "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+      "technologies": [
+        "Python"
+      ],
+      "frameworks": [
+        "Python",
+        "pip"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "tools": [],
+      "skillLevel": "beginner",
+      "recommendations": [
+        "Explore Django or FastAPI for web development",
+        "Learn pandas and numpy for data science",
+        "Practice with virtual environments and pip"
+      ]
+    },
+    "skillAssessment": {
+      "overallScore": 57,
+      "skillGaps": [
+        {
+          "skill": {
+            "id": "programming",
+            "name": "Programming Languages",
+            "currentLevel": 2,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 3,
+          "priority": 15,
+          "recommendations": [
             "Practice coding daily with platforms like LeetCode or HackerRank",
             "Build personal projects to apply programming concepts",
             "Contribute to open source projects"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-python",
+            "name": "Python",
+            "currentLevel": 2.6,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 2.4,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Python",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "frameworks",
+            "name": "Frameworks & Libraries",
+            "currentLevel": 4,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 1,
+          "priority": 5,
+          "recommendations": [
+            "Follow official documentation and tutorials",
+            "Build a complete project using the framework",
+            "Join community forums and attend meetups"
+          ]
+        }
+      ],
+      "categories": [
+        {
+          "id": "technical",
+          "name": "Technical Skills",
+          "skills": [
+            {
+              "id": "programming",
+              "name": "Programming Languages",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "frameworks",
+              "name": "Frameworks & Libraries",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "databases",
+              "name": "Database Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "cloud",
+              "name": "Cloud Platforms",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "devops",
+              "name": "DevOps & CI/CD",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            },
+            {
+              "id": "testing",
+              "name": "Testing & QA",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "prompt-engineering",
+              "name": "Prompt Engineering",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "context-engineering",
+              "name": "Context & Retrieval Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            }
+          ]
+        },
+        {
+          "id": "soft",
+          "name": "Soft Skills",
+          "skills": [
+            {
+              "id": "communication",
+              "name": "Communication",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "leadership",
+              "name": "Leadership",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "problem-solving",
+              "name": "Problem Solving",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "teamwork",
+              "name": "Teamwork",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "time-management",
+              "name": "Time Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            }
+          ]
+        },
+        {
+          "id": "domain",
+          "name": "Domain Knowledge",
+          "skills": [
+            {
+              "id": "industry",
+              "name": "Industry Knowledge",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "business",
+              "name": "Business Acumen",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "domain"
+            },
+            {
+              "id": "architecture",
+              "name": "System Architecture",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "security",
+              "name": "Security Best Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            }
+          ]
+        }
+      ],
+      "recommendations": [
+        "Focus on your top 3 skill gaps: Programming Languages, Python, Frameworks & Libraries",
+        "Invest time in advanced technical training or certifications",
+        "Create a project roadmap to apply the targeted technologies",
+        "Set a focused learning plan with milestones for the identified gaps",
+        "Focus on mastering the fundamentals of your primary programming language",
+        "Practice with smaller, simpler projects before tackling complex ones"
+      ],
+      "learningPath": [
+        "Phase 1: Foundation (Weeks 1-4)",
+        "- Focus on Programming Languages: Practice coding daily with platforms like LeetCode or HackerRank",
+        "- Focus on Python: Set a focused improvement goal for Python",
+        "Phase 4: Application (Ongoing)",
+        "- Apply skills in real-world projects",
+        "- Seek feedback and continue learning"
+      ],
+      "githubAnalysis": {
+        "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+        "technologies": [
+          "Python"
+        ],
+        "frameworks": [
+          "Python",
+          "pip"
+        ],
+        "languages": [
+          "Python"
+        ],
+        "tools": [],
+        "skillLevel": "beginner",
+        "recommendations": [
+          "Explore Django or FastAPI for web development",
+          "Learn pandas and numpy for data science",
+          "Practice with virtual environments and pip"
+        ]
+      }
+    },
+    "context": {},
+    "createdAt": "2025-10-10T04:03:35.878Z",
+    "lastAccessed": "2025-10-10T04:03:35.878Z"
+  },
+  "skillgap_1760069297515_5nlj7rier": {
+    "id": "skillgap_1760069297515_5nlj7rier",
+    "userId": "user_123",
+    "githubAnalysis": {
+      "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+      "technologies": [
+        "Python"
+      ],
+      "frameworks": [
+        "Python",
+        "pip"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "tools": [],
+      "skillLevel": "beginner",
+      "recommendations": [
+        "Explore Django or FastAPI for web development",
+        "Learn pandas and numpy for data science",
+        "Practice with virtual environments and pip"
+      ]
+    },
+    "skillAssessment": {
+      "overallScore": 57,
+      "skillGaps": [
+        {
+          "skill": {
+            "id": "programming",
+            "name": "Programming Languages",
+            "currentLevel": 2,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 3,
+          "priority": 15,
+          "recommendations": [
+            "Practice coding daily with platforms like LeetCode or HackerRank",
+            "Build personal projects to apply programming concepts",
+            "Contribute to open source projects"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-python",
+            "name": "Python",
+            "currentLevel": 2.6,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 2.4,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Python",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "frameworks",
+            "name": "Frameworks & Libraries",
+            "currentLevel": 4,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 1,
+          "priority": 5,
+          "recommendations": [
+            "Follow official documentation and tutorials",
+            "Build a complete project using the framework",
+            "Join community forums and attend meetups"
+          ]
+        }
+      ],
+      "categories": [
+        {
+          "id": "technical",
+          "name": "Technical Skills",
+          "skills": [
+            {
+              "id": "programming",
+              "name": "Programming Languages",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "frameworks",
+              "name": "Frameworks & Libraries",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "databases",
+              "name": "Database Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "cloud",
+              "name": "Cloud Platforms",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "devops",
+              "name": "DevOps & CI/CD",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            },
+            {
+              "id": "testing",
+              "name": "Testing & QA",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "prompt-engineering",
+              "name": "Prompt Engineering",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "context-engineering",
+              "name": "Context & Retrieval Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            }
+          ]
+        },
+        {
+          "id": "soft",
+          "name": "Soft Skills",
+          "skills": [
+            {
+              "id": "communication",
+              "name": "Communication",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "leadership",
+              "name": "Leadership",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "problem-solving",
+              "name": "Problem Solving",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "teamwork",
+              "name": "Teamwork",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "time-management",
+              "name": "Time Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            }
+          ]
+        },
+        {
+          "id": "domain",
+          "name": "Domain Knowledge",
+          "skills": [
+            {
+              "id": "industry",
+              "name": "Industry Knowledge",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "business",
+              "name": "Business Acumen",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "domain"
+            },
+            {
+              "id": "architecture",
+              "name": "System Architecture",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "security",
+              "name": "Security Best Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            }
+          ]
+        }
+      ],
+      "recommendations": [
+        "Focus on your top 3 skill gaps: Programming Languages, Python, Frameworks & Libraries",
+        "Invest time in advanced technical training or certifications",
+        "Create a project roadmap to apply the targeted technologies",
+        "Set a focused learning plan with milestones for the identified gaps",
+        "Focus on mastering the fundamentals of your primary programming language",
+        "Practice with smaller, simpler projects before tackling complex ones"
+      ],
+      "learningPath": [
+        "Phase 1: Foundation (Weeks 1-4)",
+        "- Focus on Programming Languages: Practice coding daily with platforms like LeetCode or HackerRank",
+        "- Focus on Python: Set a focused improvement goal for Python",
+        "Phase 4: Application (Ongoing)",
+        "- Apply skills in real-world projects",
+        "- Seek feedback and continue learning"
+      ],
+      "githubAnalysis": {
+        "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+        "technologies": [
+          "Python"
+        ],
+        "frameworks": [
+          "Python",
+          "pip"
+        ],
+        "languages": [
+          "Python"
+        ],
+        "tools": [],
+        "skillLevel": "beginner",
+        "recommendations": [
+          "Explore Django or FastAPI for web development",
+          "Learn pandas and numpy for data science",
+          "Practice with virtual environments and pip"
+        ]
+      }
+    },
+    "context": {},
+    "createdAt": "2025-10-10T04:08:17.515Z",
+    "lastAccessed": "2025-10-10T04:08:17.515Z"
+  },
+  "skillgap_1760071152064_cz3mkztcp": {
+    "id": "skillgap_1760071152064_cz3mkztcp",
+    "userId": "user_123",
+    "githubAnalysis": {
+      "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+      "technologies": [
+        "Python"
+      ],
+      "frameworks": [
+        "Python",
+        "pip"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "tools": [],
+      "skillLevel": "beginner",
+      "recommendations": [
+        "Explore Django or FastAPI for web development",
+        "Learn pandas and numpy for data science",
+        "Practice with virtual environments and pip"
+      ]
+    },
+    "skillAssessment": {
+      "overallScore": 48,
+      "skillGaps": [
+        {
+          "skill": {
+            "id": "tooling",
+            "name": "Tooling & Infrastructure",
+            "currentLevel": 1,
+            "targetLevel": 5,
+            "importance": 4,
+            "category": "technical"
+          },
+          "gap": 4,
+          "priority": 16,
+          "recommendations": [
+            "Set a focused improvement goal for Tooling & Infrastructure",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "programming",
+            "name": "Programming Languages",
+            "currentLevel": 2,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 3,
+          "priority": 15,
+          "recommendations": [
+            "Practice coding daily with platforms like LeetCode or HackerRank",
+            "Build personal projects to apply programming concepts",
+            "Contribute to open source projects"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-python",
+            "name": "Python",
+            "currentLevel": 2.6,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 2.4,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Python",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-stack-breadth",
+            "name": "Tech Stack Breadth",
+            "currentLevel": 2,
+            "targetLevel": 5,
+            "importance": 4,
+            "category": "technical"
+          },
+          "gap": 3,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Tech Stack Breadth",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "frameworks",
+            "name": "Frameworks & Libraries",
+            "currentLevel": 4,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 1,
+          "priority": 5,
+          "recommendations": [
+            "Follow official documentation and tutorials",
+            "Build a complete project using the framework",
+            "Join community forums and attend meetups"
+          ]
+        }
+      ],
+      "categories": [
+        {
+          "id": "technical",
+          "name": "Technical Skills",
+          "skills": [
+            {
+              "id": "programming",
+              "name": "Programming Languages",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "frameworks",
+              "name": "Frameworks & Libraries",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "databases",
+              "name": "Database Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "cloud",
+              "name": "Cloud Platforms",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "devops",
+              "name": "DevOps & CI/CD",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            },
+            {
+              "id": "testing",
+              "name": "Testing & QA",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "prompt-engineering",
+              "name": "Prompt Engineering",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "context-engineering",
+              "name": "Context & Retrieval Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            }
+          ]
+        },
+        {
+          "id": "soft",
+          "name": "Soft Skills",
+          "skills": [
+            {
+              "id": "communication",
+              "name": "Communication",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "leadership",
+              "name": "Leadership",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "problem-solving",
+              "name": "Problem Solving",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "teamwork",
+              "name": "Teamwork",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "time-management",
+              "name": "Time Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            }
+          ]
+        },
+        {
+          "id": "domain",
+          "name": "Domain Knowledge",
+          "skills": [
+            {
+              "id": "industry",
+              "name": "Industry Knowledge",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "business",
+              "name": "Business Acumen",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "domain"
+            },
+            {
+              "id": "architecture",
+              "name": "System Architecture",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "security",
+              "name": "Security Best Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            }
+          ]
+        }
+      ],
+      "recommendations": [
+        "Focus on your top 3 skill gaps: Tooling & Infrastructure, Programming Languages, Python",
+        "Invest time in advanced technical training or certifications",
+        "Create a project roadmap to apply the targeted technologies",
+        "Set a focused learning plan with milestones for the identified gaps",
+        "Focus on mastering the fundamentals of your primary programming language",
+        "Practice with smaller, simpler projects before tackling complex ones"
+      ],
+      "learningPath": [
+        "Phase 1: Foundation (Weeks 1-4)",
+        "- Focus on Tooling & Infrastructure: Set a focused improvement goal for Tooling & Infrastructure",
+        "- Focus on Programming Languages: Practice coding daily with platforms like LeetCode or HackerRank",
+        "Phase 2: Development (Weeks 5-8)",
+        "- Develop Python: Set a focused improvement goal for Python",
+        "- Develop Tech Stack Breadth: Set a focused improvement goal for Tech Stack Breadth",
+        "Phase 4: Application (Ongoing)",
+        "- Apply skills in real-world projects",
+        "- Seek feedback and continue learning"
+      ],
+      "githubAnalysis": {
+        "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+        "technologies": [
+          "Python"
+        ],
+        "frameworks": [
+          "Python",
+          "pip"
+        ],
+        "languages": [
+          "Python"
+        ],
+        "tools": [],
+        "skillLevel": "beginner",
+        "recommendations": [
+          "Explore Django or FastAPI for web development",
+          "Learn pandas and numpy for data science",
+          "Practice with virtual environments and pip"
+        ]
+      }
+    },
+    "context": {},
+    "createdAt": "2025-10-10T04:39:12.064Z",
+    "lastAccessed": "2025-10-10T04:39:12.064Z"
+  },
+  "skillgap_1760071242405_k52rssn9h": {
+    "id": "skillgap_1760071242405_k52rssn9h",
+    "userId": "user_123",
+    "githubAnalysis": {
+      "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+      "technologies": [
+        "Python"
+      ],
+      "frameworks": [
+        "Python",
+        "pip"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "tools": [],
+      "skillLevel": "beginner",
+      "recommendations": [
+        "Explore Django or FastAPI for web development",
+        "Learn pandas and numpy for data science",
+        "Practice with virtual environments and pip"
+      ]
+    },
+    "skillAssessment": {
+      "overallScore": 48,
+      "skillGaps": [
+        {
+          "skill": {
+            "id": "tooling",
+            "name": "Tooling & Infrastructure",
+            "currentLevel": 1,
+            "targetLevel": 5,
+            "importance": 4,
+            "category": "technical"
+          },
+          "gap": 4,
+          "priority": 16,
+          "recommendations": [
+            "Set a focused improvement goal for Tooling & Infrastructure",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "programming",
+            "name": "Programming Languages",
+            "currentLevel": 2,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 3,
+          "priority": 15,
+          "recommendations": [
+            "Practice coding daily with platforms like LeetCode or HackerRank",
+            "Build personal projects to apply programming concepts",
+            "Contribute to open source projects"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-python",
+            "name": "Python",
+            "currentLevel": 2.6,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 2.4,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Python",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-stack-breadth",
+            "name": "Tech Stack Breadth",
+            "currentLevel": 2,
+            "targetLevel": 5,
+            "importance": 4,
+            "category": "technical"
+          },
+          "gap": 3,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Tech Stack Breadth",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "frameworks",
+            "name": "Frameworks & Libraries",
+            "currentLevel": 4,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 1,
+          "priority": 5,
+          "recommendations": [
+            "Follow official documentation and tutorials",
+            "Build a complete project using the framework",
+            "Join community forums and attend meetups"
+          ]
+        }
+      ],
+      "categories": [
+        {
+          "id": "technical",
+          "name": "Technical Skills",
+          "skills": [
+            {
+              "id": "programming",
+              "name": "Programming Languages",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "frameworks",
+              "name": "Frameworks & Libraries",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "databases",
+              "name": "Database Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "cloud",
+              "name": "Cloud Platforms",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "devops",
+              "name": "DevOps & CI/CD",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            },
+            {
+              "id": "testing",
+              "name": "Testing & QA",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "prompt-engineering",
+              "name": "Prompt Engineering",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "context-engineering",
+              "name": "Context & Retrieval Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            }
+          ]
+        },
+        {
+          "id": "soft",
+          "name": "Soft Skills",
+          "skills": [
+            {
+              "id": "communication",
+              "name": "Communication",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "leadership",
+              "name": "Leadership",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "problem-solving",
+              "name": "Problem Solving",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "teamwork",
+              "name": "Teamwork",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "time-management",
+              "name": "Time Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            }
+          ]
+        },
+        {
+          "id": "domain",
+          "name": "Domain Knowledge",
+          "skills": [
+            {
+              "id": "industry",
+              "name": "Industry Knowledge",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "business",
+              "name": "Business Acumen",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "domain"
+            },
+            {
+              "id": "architecture",
+              "name": "System Architecture",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "security",
+              "name": "Security Best Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            }
+          ]
+        }
+      ],
+      "recommendations": [
+        "Focus on your top 3 skill gaps: Tooling & Infrastructure, Programming Languages, Python",
+        "Invest time in advanced technical training or certifications",
+        "Create a project roadmap to apply the targeted technologies",
+        "Set a focused learning plan with milestones for the identified gaps",
+        "Focus on mastering the fundamentals of your primary programming language",
+        "Practice with smaller, simpler projects before tackling complex ones"
+      ],
+      "learningPath": [
+        "Phase 1: Foundation (Weeks 1-4)",
+        "- Focus on Tooling & Infrastructure: Set a focused improvement goal for Tooling & Infrastructure",
+        "- Focus on Programming Languages: Practice coding daily with platforms like LeetCode or HackerRank",
+        "Phase 2: Development (Weeks 5-8)",
+        "- Develop Python: Set a focused improvement goal for Python",
+        "- Develop Tech Stack Breadth: Set a focused improvement goal for Tech Stack Breadth",
+        "Phase 4: Application (Ongoing)",
+        "- Apply skills in real-world projects",
+        "- Seek feedback and continue learning"
+      ],
+      "githubAnalysis": {
+        "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+        "technologies": [
+          "Python"
+        ],
+        "frameworks": [
+          "Python",
+          "pip"
+        ],
+        "languages": [
+          "Python"
+        ],
+        "tools": [],
+        "skillLevel": "beginner",
+        "recommendations": [
+          "Explore Django or FastAPI for web development",
+          "Learn pandas and numpy for data science",
+          "Practice with virtual environments and pip"
+        ]
+      }
+    },
+    "context": {
+      "targetRole": "Senior Ai Engineer",
+      "targetIndustry": "Software",
+      "professionalGoals": "Be ready for AI roles",
+      "domainKeywords": [
+        "Software Engineering",
+        "LLm",
+        "AI",
+        "ML"
+      ]
+    },
+    "createdAt": "2025-10-10T04:40:42.405Z",
+    "lastAccessed": "2025-10-10T04:40:42.405Z"
+  },
+  "skillgap_1760071592576_tgfcv6t5v": {
+    "id": "skillgap_1760071592576_tgfcv6t5v",
+    "userId": "user_123",
+    "githubAnalysis": {
+      "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+      "technologies": [
+        "Python"
+      ],
+      "frameworks": [
+        "Python",
+        "pip"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "tools": [],
+      "skillLevel": "beginner",
+      "recommendations": [
+        "Explore Django or FastAPI for web development",
+        "Learn pandas and numpy for data science",
+        "Practice with virtual environments and pip"
+      ]
+    },
+    "skillAssessment": {
+      "overallScore": 48,
+      "skillGaps": [
+        {
+          "skill": {
+            "id": "tooling",
+            "name": "Tooling & Infrastructure",
+            "currentLevel": 1,
+            "targetLevel": 5,
+            "importance": 4,
+            "category": "technical"
+          },
+          "gap": 4,
+          "priority": 16,
+          "recommendations": [
+            "Set a focused improvement goal for Tooling & Infrastructure",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "programming",
+            "name": "Programming Languages",
+            "currentLevel": 2,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 3,
+          "priority": 15,
+          "recommendations": [
+            "Practice coding daily with platforms like LeetCode or HackerRank",
+            "Build personal projects to apply programming concepts",
+            "Contribute to open source projects"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-python",
+            "name": "Python",
+            "currentLevel": 2.6,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 2.4,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Python",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-stack-breadth",
+            "name": "Tech Stack Breadth",
+            "currentLevel": 2,
+            "targetLevel": 5,
+            "importance": 4,
+            "category": "technical"
+          },
+          "gap": 3,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Tech Stack Breadth",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "frameworks",
+            "name": "Frameworks & Libraries",
+            "currentLevel": 4,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 1,
+          "priority": 5,
+          "recommendations": [
+            "Follow official documentation and tutorials",
+            "Build a complete project using the framework",
+            "Join community forums and attend meetups"
+          ]
+        }
+      ],
+      "categories": [
+        {
+          "id": "technical",
+          "name": "Technical Skills",
+          "skills": [
+            {
+              "id": "programming",
+              "name": "Programming Languages",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "frameworks",
+              "name": "Frameworks & Libraries",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "databases",
+              "name": "Database Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "cloud",
+              "name": "Cloud Platforms",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "devops",
+              "name": "DevOps & CI/CD",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            },
+            {
+              "id": "testing",
+              "name": "Testing & QA",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "prompt-engineering",
+              "name": "Prompt Engineering",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "context-engineering",
+              "name": "Context & Retrieval Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            }
+          ]
+        },
+        {
+          "id": "soft",
+          "name": "Soft Skills",
+          "skills": [
+            {
+              "id": "communication",
+              "name": "Communication",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "leadership",
+              "name": "Leadership",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "problem-solving",
+              "name": "Problem Solving",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "teamwork",
+              "name": "Teamwork",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "time-management",
+              "name": "Time Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            }
+          ]
+        },
+        {
+          "id": "domain",
+          "name": "Domain Knowledge",
+          "skills": [
+            {
+              "id": "industry",
+              "name": "Industry Knowledge",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "business",
+              "name": "Business Acumen",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "domain"
+            },
+            {
+              "id": "architecture",
+              "name": "System Architecture",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "security",
+              "name": "Security Best Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            }
+          ]
+        }
+      ],
+      "recommendations": [
+        "Focus on your top 3 skill gaps: Tooling & Infrastructure, Programming Languages, Python",
+        "Invest time in advanced technical training or certifications",
+        "Create a project roadmap to apply the targeted technologies",
+        "Set a focused learning plan with milestones for the identified gaps",
+        "Focus on mastering the fundamentals of your primary programming language",
+        "Practice with smaller, simpler projects before tackling complex ones"
+      ],
+      "learningPath": [
+        "Phase 1: Foundation (Weeks 1-4)",
+        "- Focus on Tooling & Infrastructure: Set a focused improvement goal for Tooling & Infrastructure",
+        "- Focus on Programming Languages: Practice coding daily with platforms like LeetCode or HackerRank",
+        "Phase 2: Development (Weeks 5-8)",
+        "- Develop Python: Set a focused improvement goal for Python",
+        "- Develop Tech Stack Breadth: Set a focused improvement goal for Tech Stack Breadth",
+        "Phase 4: Application (Ongoing)",
+        "- Apply skills in real-world projects",
+        "- Seek feedback and continue learning"
+      ],
+      "githubAnalysis": {
+        "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+        "technologies": [
+          "Python"
+        ],
+        "frameworks": [
+          "Python",
+          "pip"
+        ],
+        "languages": [
+          "Python"
+        ],
+        "tools": [],
+        "skillLevel": "beginner",
+        "recommendations": [
+          "Explore Django or FastAPI for web development",
+          "Learn pandas and numpy for data science",
+          "Practice with virtual environments and pip"
+        ]
+      }
+    },
+    "context": {
+      "targetRole": "Senior Ai Engineer",
+      "targetIndustry": "Software",
+      "professionalGoals": "Be ready for AI roles",
+      "domainKeywords": [
+        "Software Engineering",
+        "LLm",
+        "AI",
+        "ML"
+      ]
+    },
+    "createdAt": "2025-10-10T04:46:32.576Z",
+    "lastAccessed": "2025-10-10T04:46:32.576Z"
+  },
+  "skillgap_1760071948687_ie45rayke": {
+    "id": "skillgap_1760071948687_ie45rayke",
+    "userId": "user_123",
+    "githubAnalysis": {
+      "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+      "technologies": [
+        "Python"
+      ],
+      "frameworks": [
+        "Python",
+        "pip"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "tools": [],
+      "skillLevel": "beginner",
+      "recommendations": [
+        "Explore Django or FastAPI for web development",
+        "Learn pandas and numpy for data science",
+        "Practice with virtual environments and pip"
+      ]
+    },
+    "skillAssessment": {
+      "overallScore": 50,
+      "skillGaps": [
+        {
+          "skill": {
+            "id": "tooling",
+            "name": "Tooling & Infrastructure",
+            "currentLevel": 1,
+            "targetLevel": 5,
+            "importance": 4,
+            "category": "technical"
+          },
+          "gap": 4,
+          "priority": 16,
+          "recommendations": [
+            "Set a focused improvement goal for Tooling & Infrastructure",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-python",
+            "name": "Python",
+            "currentLevel": 2.6,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 2.4,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Python",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-stack-breadth",
+            "name": "Tech Stack Breadth",
+            "currentLevel": 2,
+            "targetLevel": 5,
+            "importance": 4,
+            "category": "technical"
+          },
+          "gap": 3,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Tech Stack Breadth",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "frameworks",
+            "name": "Frameworks & Libraries",
+            "currentLevel": 4,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 1,
+          "priority": 5,
+          "recommendations": [
+            "Follow official documentation and tutorials",
+            "Build a complete project using the framework",
+            "Join community forums and attend meetups"
+          ]
+        }
+      ],
+      "categories": [
+        {
+          "id": "technical",
+          "name": "Technical Skills",
+          "skills": [
+            {
+              "id": "programming",
+              "name": "Programming Languages",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "frameworks",
+              "name": "Frameworks & Libraries",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "databases",
+              "name": "Database Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "cloud",
+              "name": "Cloud Platforms",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "devops",
+              "name": "DevOps & CI/CD",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            },
+            {
+              "id": "testing",
+              "name": "Testing & QA",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "prompt-engineering",
+              "name": "Prompt Engineering",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "context-engineering",
+              "name": "Context & Retrieval Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            }
+          ]
+        },
+        {
+          "id": "soft",
+          "name": "Soft Skills",
+          "skills": [
+            {
+              "id": "communication",
+              "name": "Communication",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "leadership",
+              "name": "Leadership",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "problem-solving",
+              "name": "Problem Solving",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "teamwork",
+              "name": "Teamwork",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "time-management",
+              "name": "Time Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            }
+          ]
+        },
+        {
+          "id": "domain",
+          "name": "Domain Knowledge",
+          "skills": [
+            {
+              "id": "industry",
+              "name": "Industry Knowledge",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "business",
+              "name": "Business Acumen",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "domain"
+            },
+            {
+              "id": "architecture",
+              "name": "System Architecture",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "security",
+              "name": "Security Best Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            }
+          ]
+        }
+      ],
+      "recommendations": [
+        "Focus on your top 3 skill gaps: Tooling & Infrastructure, Python, Tech Stack Breadth",
+        "Invest time in advanced technical training or certifications",
+        "Create a project roadmap to apply the targeted technologies",
+        "Set a focused learning plan with milestones for the identified gaps",
+        "Focus on mastering the fundamentals of your primary programming language",
+        "Practice with smaller, simpler projects before tackling complex ones"
+      ],
+      "learningPath": [
+        "Phase 1: Foundation (Weeks 1-4)",
+        "- Focus on Tooling & Infrastructure: Set a focused improvement goal for Tooling & Infrastructure",
+        "- Focus on Python: Set a focused improvement goal for Python",
+        "Phase 2: Development (Weeks 5-8)",
+        "- Develop Tech Stack Breadth: Set a focused improvement goal for Tech Stack Breadth",
+        "Phase 4: Application (Ongoing)",
+        "- Apply skills in real-world projects",
+        "- Seek feedback and continue learning"
+      ],
+      "githubAnalysis": {
+        "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+        "technologies": [
+          "Python"
+        ],
+        "frameworks": [
+          "Python",
+          "pip"
+        ],
+        "languages": [
+          "Python"
+        ],
+        "tools": [],
+        "skillLevel": "beginner",
+        "recommendations": [
+          "Explore Django or FastAPI for web development",
+          "Learn pandas and numpy for data science",
+          "Practice with virtual environments and pip"
+        ]
+      }
+    },
+    "context": {
+      "targetRole": "Senior Ai Engineer",
+      "targetIndustry": "Software",
+      "professionalGoals": "Be ready for AI roles",
+      "domainKeywords": [
+        "Software Engineering",
+        "LLm",
+        "AI",
+        "ML"
+      ]
+    },
+    "createdAt": "2025-10-10T04:52:28.687Z",
+    "lastAccessed": "2025-10-10T04:52:28.690Z"
+  },
+  "skillgap_1760072018452_bqcrjtofj": {
+    "id": "skillgap_1760072018452_bqcrjtofj",
+    "userId": "user_123",
+    "githubAnalysis": {
+      "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+      "technologies": [
+        "Python"
+      ],
+      "frameworks": [
+        "Python",
+        "pip"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "tools": [],
+      "skillLevel": "beginner",
+      "recommendations": [
+        "Explore Django or FastAPI for web development",
+        "Learn pandas and numpy for data science",
+        "Practice with virtual environments and pip"
+      ]
+    },
+    "skillAssessment": {
+      "overallScore": 50,
+      "skillGaps": [
+        {
+          "skill": {
+            "id": "tooling",
+            "name": "Tooling & Infrastructure",
+            "currentLevel": 1,
+            "targetLevel": 5,
+            "importance": 4,
+            "category": "technical"
+          },
+          "gap": 4,
+          "priority": 16,
+          "recommendations": [
+            "Set a focused improvement goal for Tooling & Infrastructure",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-python",
+            "name": "Python",
+            "currentLevel": 2.6,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 2.4,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Python",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-stack-breadth",
+            "name": "Tech Stack Breadth",
+            "currentLevel": 2,
+            "targetLevel": 5,
+            "importance": 4,
+            "category": "technical"
+          },
+          "gap": 3,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Tech Stack Breadth",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "frameworks",
+            "name": "Frameworks & Libraries",
+            "currentLevel": 4,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 1,
+          "priority": 5,
+          "recommendations": [
+            "Follow official documentation and tutorials",
+            "Build a complete project using the framework",
+            "Join community forums and attend meetups"
+          ]
+        }
+      ],
+      "categories": [
+        {
+          "id": "technical",
+          "name": "Technical Skills",
+          "skills": [
+            {
+              "id": "programming",
+              "name": "Programming Languages",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "frameworks",
+              "name": "Frameworks & Libraries",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "databases",
+              "name": "Database Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "cloud",
+              "name": "Cloud Platforms",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "devops",
+              "name": "DevOps & CI/CD",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            },
+            {
+              "id": "testing",
+              "name": "Testing & QA",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "prompt-engineering",
+              "name": "Prompt Engineering",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "context-engineering",
+              "name": "Context & Retrieval Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            }
+          ]
+        },
+        {
+          "id": "soft",
+          "name": "Soft Skills",
+          "skills": [
+            {
+              "id": "communication",
+              "name": "Communication",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "leadership",
+              "name": "Leadership",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "problem-solving",
+              "name": "Problem Solving",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "teamwork",
+              "name": "Teamwork",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "time-management",
+              "name": "Time Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            }
+          ]
+        },
+        {
+          "id": "domain",
+          "name": "Domain Knowledge",
+          "skills": [
+            {
+              "id": "industry",
+              "name": "Industry Knowledge",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "business",
+              "name": "Business Acumen",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "domain"
+            },
+            {
+              "id": "architecture",
+              "name": "System Architecture",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "security",
+              "name": "Security Best Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            }
+          ]
+        }
+      ],
+      "recommendations": [
+        "Focus on your top 3 skill gaps: Tooling & Infrastructure, Python, Tech Stack Breadth",
+        "Invest time in advanced technical training or certifications",
+        "Create a project roadmap to apply the targeted technologies",
+        "Set a focused learning plan with milestones for the identified gaps",
+        "Focus on mastering the fundamentals of your primary programming language",
+        "Practice with smaller, simpler projects before tackling complex ones"
+      ],
+      "learningPath": [
+        "Phase 1: Foundation (Weeks 1-4)",
+        "- Focus on Tooling & Infrastructure: Set a focused improvement goal for Tooling & Infrastructure",
+        "- Focus on Python: Set a focused improvement goal for Python",
+        "Phase 2: Development (Weeks 5-8)",
+        "- Develop Tech Stack Breadth: Set a focused improvement goal for Tech Stack Breadth",
+        "Phase 4: Application (Ongoing)",
+        "- Apply skills in real-world projects",
+        "- Seek feedback and continue learning"
+      ],
+      "githubAnalysis": {
+        "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+        "technologies": [
+          "Python"
+        ],
+        "frameworks": [
+          "Python",
+          "pip"
+        ],
+        "languages": [
+          "Python"
+        ],
+        "tools": [],
+        "skillLevel": "beginner",
+        "recommendations": [
+          "Explore Django or FastAPI for web development",
+          "Learn pandas and numpy for data science",
+          "Practice with virtual environments and pip"
+        ]
+      }
+    },
+    "context": {
+      "targetRole": "Senior Ai Engineer",
+      "targetIndustry": "Software",
+      "professionalGoals": "Be ready for AI roles",
+      "domainKeywords": [
+        "Software Engineering",
+        "LLm",
+        "AI",
+        "ML"
+      ]
+    },
+    "createdAt": "2025-10-10T04:53:38.452Z",
+    "lastAccessed": "2025-10-10T04:53:38.452Z"
+  },
+  "skillgap_1760072044428_4x68zb6xk": {
+    "id": "skillgap_1760072044428_4x68zb6xk",
+    "userId": "user_123",
+    "githubAnalysis": {
+      "repository": "https://github.com/facebook/react",
+      "technologies": [
+        "JavaScript",
+        "TypeScript",
+        "HTML",
+        "CSS",
+        "C++",
+        "react",
+        "javascript"
+      ],
+      "frameworks": [
+        "Node.js",
+        "TypeScript",
+        "React",
+        "Python"
+      ],
+      "languages": [
+        "JavaScript",
+        "TypeScript",
+        "HTML",
+        "CSS",
+        "C++",
+        "CoffeeScript",
+        "C",
+        "Shell",
+        "Python",
+        "Makefile"
+      ],
+      "tools": [
+        "github actions"
+      ],
+      "skillLevel": "advanced",
+      "recommendations": [
+        "Explore Django or FastAPI for web development",
+        "Learn pandas and numpy for data science",
+        "Practice with virtual environments and pip",
+        "Master modern ES6+ features and async programming",
+        "Learn a frontend framework like React, Vue, or Angular"
+      ]
+    },
+    "skillAssessment": {
+      "overallScore": 91,
+      "skillGaps": [
+        {
+          "skill": {
+            "id": "tooling",
+            "name": "Tooling & Infrastructure",
+            "currentLevel": 2,
+            "targetLevel": 5,
+            "importance": 4,
+            "category": "technical"
+          },
+          "gap": 3,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Tooling & Infrastructure",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-stack-breadth",
+            "name": "Tech Stack Breadth",
+            "currentLevel": 4,
+            "targetLevel": 5,
+            "importance": 4,
+            "category": "technical"
+          },
+          "gap": 1,
+          "priority": 4,
+          "recommendations": [
+            "Set a focused improvement goal for Tech Stack Breadth",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
           ]
         },
         {
@@ -83,8 +2762,8 @@
         },
         {
           "skill": {
-            "id": "tech-java",
-            "name": "Java",
+            "id": "tech-typescript",
+            "name": "TypeScript",
             "currentLevel": 5,
             "targetLevel": 5,
             "importance": 5,
@@ -96,8 +2775,8 @@
         },
         {
           "skill": {
-            "id": "tech-typescript",
-            "name": "TypeScript",
+            "id": "tech-python",
+            "name": "Python",
             "currentLevel": 5,
             "targetLevel": 5,
             "importance": 5,
@@ -304,7 +2983,7 @@
         }
       ],
       "recommendations": [
-        "Focus on your top 3 skill gaps: Programming Languages",
+        "Focus on your top 3 skill gaps: Tooling & Infrastructure, Tech Stack Breadth",
         "Invest time in advanced technical training or certifications",
         "Create a project roadmap to apply the targeted technologies",
         "Set a focused learning plan with milestones for the identified gaps",
@@ -314,58 +2993,690 @@
       ],
       "learningPath": [
         "Phase 1: Foundation (Weeks 1-4)",
+        "- Focus on Tooling & Infrastructure: Set a focused improvement goal for Tooling & Infrastructure",
         "Phase 4: Application (Ongoing)",
         "- Apply skills in real-world projects",
         "- Seek feedback and continue learning"
       ],
       "githubAnalysis": {
-        "repository": "https://github.com/facebook/react-native",
+        "repository": "https://github.com/facebook/react",
         "technologies": [
-          "C++",
-          "Kotlin",
           "JavaScript",
-          "Objective-C++",
-          "Objective-C",
-          "react"
+          "TypeScript",
+          "HTML",
+          "CSS",
+          "C++",
+          "react",
+          "javascript"
         ],
         "frameworks": [
           "Node.js",
           "TypeScript",
           "React",
-          "Gradle"
+          "Python"
         ],
         "languages": [
-          "C++",
-          "Kotlin",
           "JavaScript",
-          "Objective-C++",
-          "Objective-C",
-          "Java",
-          "Ruby",
-          "CMake",
           "TypeScript",
-          "Shell",
-          "C",
-          "Swift",
-          "Assembly",
           "HTML",
-          "Smarty"
+          "CSS",
+          "C++",
+          "CoffeeScript",
+          "C",
+          "Shell",
+          "Python",
+          "Makefile"
         ],
         "tools": [
-          "GitHub Actions",
-          "Jest/Vitest"
+          "github actions"
         ],
         "skillLevel": "advanced",
         "recommendations": [
-          "Master Spring Boot and Spring Security for enterprise development",
-          "Learn Maven or Gradle for dependency management",
-          "Practice design patterns and SOLID principles",
+          "Explore Django or FastAPI for web development",
+          "Learn pandas and numpy for data science",
+          "Practice with virtual environments and pip",
           "Master modern ES6+ features and async programming",
           "Learn a frontend framework like React, Vue, or Angular"
         ]
       }
     },
-    "createdAt": "2025-10-09T03:17:01.061Z",
-    "lastAccessed": "2025-10-09T03:17:01.061Z"
+    "context": {
+      "targetRole": "Senior Ai Engineer",
+      "targetIndustry": "Software",
+      "professionalGoals": "Be ready for AI roles",
+      "domainKeywords": [
+        "Software Engineering",
+        "LLm",
+        "AI",
+        "ML"
+      ]
+    },
+    "createdAt": "2025-10-10T04:54:04.428Z",
+    "lastAccessed": "2025-10-10T04:54:04.428Z"
+  },
+  "skillgap_1760072084858_7ce0dhkgs": {
+    "id": "skillgap_1760072084858_7ce0dhkgs",
+    "userId": "user_123",
+    "githubAnalysis": {
+      "repository": "https://github.com/langchain-ai/langchain-academy",
+      "technologies": [
+        "Jupyter Notebook",
+        "Python"
+      ],
+      "frameworks": [
+        "Python",
+        "pip"
+      ],
+      "languages": [
+        "Jupyter Notebook",
+        "Python"
+      ],
+      "tools": [],
+      "skillLevel": "advanced",
+      "recommendations": [
+        "Explore Django or FastAPI for web development",
+        "Learn pandas and numpy for data science",
+        "Practice with virtual environments and pip"
+      ]
+    },
+    "skillAssessment": {
+      "overallScore": 63,
+      "skillGaps": [
+        {
+          "skill": {
+            "id": "tooling",
+            "name": "Tooling & Infrastructure",
+            "currentLevel": 1,
+            "targetLevel": 5,
+            "importance": 4,
+            "category": "technical"
+          },
+          "gap": 4,
+          "priority": 16,
+          "recommendations": [
+            "Set a focused improvement goal for Tooling & Infrastructure",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-stack-breadth",
+            "name": "Tech Stack Breadth",
+            "currentLevel": 2,
+            "targetLevel": 5,
+            "importance": 4,
+            "category": "technical"
+          },
+          "gap": 3,
+          "priority": 12,
+          "recommendations": [
+            "Set a focused improvement goal for Tech Stack Breadth",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "frameworks",
+            "name": "Frameworks & Libraries",
+            "currentLevel": 4,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 1,
+          "priority": 5,
+          "recommendations": [
+            "Follow official documentation and tutorials",
+            "Build a complete project using the framework",
+            "Join community forums and attend meetups"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-python",
+            "name": "Python",
+            "currentLevel": 5,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 0,
+          "priority": 0,
+          "recommendations": []
+        }
+      ],
+      "categories": [
+        {
+          "id": "technical",
+          "name": "Technical Skills",
+          "skills": [
+            {
+              "id": "programming",
+              "name": "Programming Languages",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "frameworks",
+              "name": "Frameworks & Libraries",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "databases",
+              "name": "Database Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "cloud",
+              "name": "Cloud Platforms",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "devops",
+              "name": "DevOps & CI/CD",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            },
+            {
+              "id": "testing",
+              "name": "Testing & QA",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "prompt-engineering",
+              "name": "Prompt Engineering",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "context-engineering",
+              "name": "Context & Retrieval Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            }
+          ]
+        },
+        {
+          "id": "soft",
+          "name": "Soft Skills",
+          "skills": [
+            {
+              "id": "communication",
+              "name": "Communication",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "leadership",
+              "name": "Leadership",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "problem-solving",
+              "name": "Problem Solving",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "teamwork",
+              "name": "Teamwork",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "time-management",
+              "name": "Time Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            }
+          ]
+        },
+        {
+          "id": "domain",
+          "name": "Domain Knowledge",
+          "skills": [
+            {
+              "id": "industry",
+              "name": "Industry Knowledge",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "business",
+              "name": "Business Acumen",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "domain"
+            },
+            {
+              "id": "architecture",
+              "name": "System Architecture",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "security",
+              "name": "Security Best Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            }
+          ]
+        }
+      ],
+      "recommendations": [
+        "Focus on your top 3 skill gaps: Tooling & Infrastructure, Tech Stack Breadth, Frameworks & Libraries",
+        "Invest time in advanced technical training or certifications",
+        "Create a project roadmap to apply the targeted technologies",
+        "Set a focused learning plan with milestones for the identified gaps",
+        "Share your knowledge by mentoring others or writing technical content",
+        "Consider exploring emerging technologies and architectural patterns"
+      ],
+      "learningPath": [
+        "Phase 1: Foundation (Weeks 1-4)",
+        "- Focus on Tooling & Infrastructure: Set a focused improvement goal for Tooling & Infrastructure",
+        "- Focus on Tech Stack Breadth: Set a focused improvement goal for Tech Stack Breadth",
+        "Phase 4: Application (Ongoing)",
+        "- Apply skills in real-world projects",
+        "- Seek feedback and continue learning"
+      ],
+      "githubAnalysis": {
+        "repository": "https://github.com/langchain-ai/langchain-academy",
+        "technologies": [
+          "Jupyter Notebook",
+          "Python"
+        ],
+        "frameworks": [
+          "Python",
+          "pip"
+        ],
+        "languages": [
+          "Jupyter Notebook",
+          "Python"
+        ],
+        "tools": [],
+        "skillLevel": "advanced",
+        "recommendations": [
+          "Explore Django or FastAPI for web development",
+          "Learn pandas and numpy for data science",
+          "Practice with virtual environments and pip"
+        ]
+      }
+    },
+    "context": {
+      "targetRole": "Senior Ai Engineer",
+      "targetIndustry": "Software",
+      "professionalGoals": "Be ready for AI roles",
+      "domainKeywords": [
+        "Software Engineering",
+        "LLm",
+        "AI",
+        "ML"
+      ]
+    },
+    "createdAt": "2025-10-10T04:54:44.858Z",
+    "lastAccessed": "2025-10-10T04:54:44.858Z"
+  },
+  "skillgap_1760072938131_17qh79kbd": {
+    "id": "skillgap_1760072938131_17qh79kbd",
+    "userId": "user_123",
+    "githubAnalysis": {
+      "repository": "https://github.com/langchain-ai/langgraph",
+      "technologies": [
+        "Python",
+        "Makefile",
+        "TypeScript",
+        "JavaScript"
+      ],
+      "frameworks": [
+        "Node.js",
+        "TypeScript",
+        "Python"
+      ],
+      "languages": [
+        "Python",
+        "Makefile",
+        "TypeScript",
+        "JavaScript"
+      ],
+      "tools": [
+        "github actions"
+      ],
+      "skillLevel": "advanced",
+      "recommendations": [
+        "Explore Django or FastAPI for web development",
+        "Learn pandas and numpy for data science",
+        "Practice with virtual environments and pip",
+        "Master modern ES6+ features and async programming",
+        "Learn a frontend framework like React, Vue, or Angular"
+      ]
+    },
+    "skillAssessment": {
+      "overallScore": 95,
+      "skillGaps": [
+        {
+          "skill": {
+            "id": "frameworks",
+            "name": "Frameworks & Libraries",
+            "currentLevel": 4,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 1,
+          "priority": 5,
+          "recommendations": [
+            "Follow official documentation and tutorials",
+            "Build a complete project using the framework",
+            "Join community forums and attend meetups"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-javascript",
+            "name": "JavaScript",
+            "currentLevel": 4.8,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 0.20000000000000018,
+          "priority": 1.0000000000000009,
+          "recommendations": []
+        },
+        {
+          "skill": {
+            "id": "tech-python",
+            "name": "Python",
+            "currentLevel": 5,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 0,
+          "priority": 0,
+          "recommendations": []
+        },
+        {
+          "skill": {
+            "id": "tech-typescript",
+            "name": "TypeScript",
+            "currentLevel": 5,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 0,
+          "priority": 0,
+          "recommendations": []
+        },
+        {
+          "skill": {
+            "id": "framework-nodejs",
+            "name": "Node.js",
+            "currentLevel": 5,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 0,
+          "priority": 0,
+          "recommendations": []
+        }
+      ],
+      "categories": [
+        {
+          "id": "technical",
+          "name": "Technical Skills",
+          "skills": [
+            {
+              "id": "programming",
+              "name": "Programming Languages",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "frameworks",
+              "name": "Frameworks & Libraries",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "databases",
+              "name": "Database Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "cloud",
+              "name": "Cloud Platforms",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "devops",
+              "name": "DevOps & CI/CD",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            },
+            {
+              "id": "testing",
+              "name": "Testing & QA",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "prompt-engineering",
+              "name": "Prompt Engineering",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "context-engineering",
+              "name": "Context & Retrieval Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            }
+          ]
+        },
+        {
+          "id": "soft",
+          "name": "Soft Skills",
+          "skills": [
+            {
+              "id": "communication",
+              "name": "Communication",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "leadership",
+              "name": "Leadership",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "problem-solving",
+              "name": "Problem Solving",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "teamwork",
+              "name": "Teamwork",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "time-management",
+              "name": "Time Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            }
+          ]
+        },
+        {
+          "id": "domain",
+          "name": "Domain Knowledge",
+          "skills": [
+            {
+              "id": "industry",
+              "name": "Industry Knowledge",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "business",
+              "name": "Business Acumen",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "domain"
+            },
+            {
+              "id": "architecture",
+              "name": "System Architecture",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "security",
+              "name": "Security Best Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            }
+          ]
+        }
+      ],
+      "recommendations": [
+        "Focus on your top 3 skill gaps: Frameworks & Libraries",
+        "Invest time in advanced technical training or certifications",
+        "Create a project roadmap to apply the targeted technologies",
+        "Set a focused learning plan with milestones for the identified gaps",
+        "Share your knowledge by mentoring others or writing technical content",
+        "Consider exploring emerging technologies and architectural patterns"
+      ],
+      "learningPath": [
+        "Phase 1: Foundation (Weeks 1-4)",
+        "Phase 4: Application (Ongoing)",
+        "- Apply skills in real-world projects",
+        "- Seek feedback and continue learning"
+      ],
+      "githubAnalysis": {
+        "repository": "https://github.com/langchain-ai/langgraph",
+        "technologies": [
+          "Python",
+          "Makefile",
+          "TypeScript",
+          "JavaScript"
+        ],
+        "frameworks": [
+          "Node.js",
+          "TypeScript",
+          "Python"
+        ],
+        "languages": [
+          "Python",
+          "Makefile",
+          "TypeScript",
+          "JavaScript"
+        ],
+        "tools": [
+          "github actions"
+        ],
+        "skillLevel": "advanced",
+        "recommendations": [
+          "Explore Django or FastAPI for web development",
+          "Learn pandas and numpy for data science",
+          "Practice with virtual environments and pip",
+          "Master modern ES6+ features and async programming",
+          "Learn a frontend framework like React, Vue, or Angular"
+        ]
+      }
+    },
+    "context": {
+      "targetRole": "Senior Ai Engineer",
+      "targetIndustry": "Software",
+      "professionalGoals": "Be ready for AI roles",
+      "domainKeywords": [
+        "Software Engineering",
+        "LLm",
+        "AI",
+        "ML"
+      ]
+    },
+    "createdAt": "2025-10-10T05:08:58.131Z",
+    "lastAccessed": "2025-10-10T05:08:58.132Z"
   }
 }

@@ -179,7 +179,7 @@ export class GitHubClient {
     per_page?: number;
     page?: number;
   } = {}): Promise<GitHubPullRequest[]> {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams();1
     Object.entries(options).forEach(([key, value]) => {
       if (value !== undefined) {
         params.append(key, value.toString());

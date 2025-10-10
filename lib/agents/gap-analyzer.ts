@@ -41,6 +41,13 @@ export interface GapAnalysisResult {
   analysisType?: 'github' | 'ai-chat';
 }
 
+export interface ResearchContext {
+  targetRole?: string;
+  targetIndustry?: string;
+  professionalGoals?: string;
+  domainKeywords?: string[];
+}
+
 export class GapAnalyzerAgent {
   private clampSkillLevel(level: number): number {
     if (Number.isNaN(level)) {
@@ -310,16 +317,35 @@ export class GapAnalyzerAgent {
       }
     });
 
-    // Add general technical skills based on repository complexity
-    skills.push({
-      id: 'programming',
-      name: 'Programming Languages',
-      currentLevel: this.inferGeneralProgrammingLevel(githubAnalysis),
-      targetLevel: 5,
-      importance: 5,
-      category: 'technical'
+    githubAnalysis.technologies.forEach((tech) => {
+      const skillInfo = technologySkillMap[tech.toLowerCase()];
+      if (skillInfo && !skills.some((existing) => existing.id === skillInfo.id)) {
+        skills.push({
+          id: skillInfo.id,
+          name: skillInfo.name,
+          currentLevel: this.inferSkillLevel(githubAnalysis, tech),
+          targetLevel: this.getTargetLevelForTechnology(tech),
+          importance: skillInfo.importance,
+          category: skillInfo.category,
+        });
+      }
     });
 
+    githubAnalysis.tools.forEach(tool => {
+      const skillInfo = technologySkillMap[tool.toLowerCase()];
+      if (skillInfo) {
+        skills.push({
+          id: skillInfo.id,
+          name: skillInfo.name,
+          currentLevel: this.inferToolingSkillLevel(githubAnalysis, tool),
+          targetLevel: this.getTargetLevelForTechnology(tool),
+          importance: skillInfo.importance,
+          category: skillInfo.category,
+        });
+      }
+    });
+
+    // Add general technical skills based on repository complexity
     skills.push({
       id: 'frameworks',
       name: 'Frameworks & Libraries',
@@ -328,6 +354,34 @@ export class GapAnalyzerAgent {
       importance: 5,
       category: 'technical'
     });
+
+    const hasMlSpecialty = skills.some((skill) =>
+      ['ml-python', 'ml-pytorch', 'ml-tensorflow', 'ml-scikit', 'ml-nlp'].includes(skill.id)
+    );
+    if (hasMlSpecialty) {
+      skills.push({
+        id: 'ai-ml-specialization',
+        name: 'AI & Machine Learning',
+        currentLevel: this.inferSpecialtyLevel(skills, ['ml-python', 'ml-pytorch', 'ml-tensorflow', 'ml-scikit', 'ml-nlp']),
+        targetLevel: 5,
+        importance: 5,
+        category: 'technical',
+      });
+    }
+
+    const hasDataEngineering = skills.some((skill) =>
+      ['data-spark', 'data-hadoop', 'data-kafka', 'data-airflow', 'data-snowflake', 'data-databricks'].includes(skill.id)
+    );
+    if (hasDataEngineering) {
+      skills.push({
+        id: 'data-engineering-specialization',
+        name: 'Data Engineering & Pipelines',
+        currentLevel: this.inferSpecialtyLevel(skills, ['data-spark', 'data-hadoop', 'data-kafka', 'data-airflow', 'data-snowflake', 'data-databricks']),
+        targetLevel: 5,
+        importance: 5,
+        category: 'technical',
+      });
+    }
 
     return skills;
   }
@@ -385,7 +439,32 @@ export class GapAnalyzerAgent {
       'kubernetes': 1.5,
       'aws': 1.4,
       'azure': 1.4,
-      'gcp': 1.4
+      'gcp': 1.4,
+      'pytorch': 1.5,
+      'tensorflow': 1.5,
+      'scikit-learn': 1.3,
+      'sklearn': 1.3,
+      'pandas': 1.1,
+      'numpy': 1.1,
+      'huggingface': 1.3,
+      'langchain': 1.2,
+      'machine learning': 1.4,
+      'machine-learning': 1.4,
+      'deep learning': 1.5,
+      'deep-learning': 1.5,
+      'spark': 1.4,
+      'apache spark': 1.4,
+      'hadoop': 1.3,
+      'kafka': 1.3,
+      'airflow': 1.3,
+      'databricks': 1.3,
+      'snowflake': 1.3,
+      'bigquery': 1.2,
+      'terraform': 1.3,
+      'ansible': 1.1,
+      'jest': 1.0,
+      'cypress': 1.1,
+      'playwright': 1.2
     };
     
     return complexityMap[technology.toLowerCase()] || 1.0;
@@ -420,6 +499,13 @@ export class GapAnalyzerAgent {
     return 5;
   }
 
+  private inferToolingSkillLevel(githubAnalysis: GitHubAnalysis, tool: string): number {
+    const baseLevel = this.getBaseLevelFromSkillLevel(githubAnalysis.skillLevel);
+    const isPrimaryTool = githubAnalysis.tools.includes(tool);
+    const multiplier = isPrimaryTool ? 1.2 : 0.9;
+    return this.clampSkillLevel(baseLevel * multiplier);
+  }
+
   /**
    * Get technology to skill mapping
    */
@@ -444,7 +530,34 @@ export class GapAnalyzerAgent {
       'kubernetes': { id: 'devops-kubernetes', name: 'Kubernetes', importance: 5, category: 'technical' },
       'aws': { id: 'cloud-aws', name: 'AWS', importance: 5, category: 'technical' },
       'azure': { id: 'cloud-azure', name: 'Azure', importance: 4, category: 'technical' },
-      'gcp': { id: 'cloud-gcp', name: 'Google Cloud', importance: 4, category: 'technical' }
+      'gcp': { id: 'cloud-gcp', name: 'Google Cloud', importance: 4, category: 'technical' },
+      'terraform': { id: 'devops-terraform', name: 'Terraform', importance: 4, category: 'technical' },
+      'ansible': { id: 'devops-ansible', name: 'Ansible', importance: 3, category: 'technical' },
+      'jest': { id: 'testing-jest', name: 'Jest', importance: 3, category: 'technical' },
+      'cypress': { id: 'testing-cypress', name: 'Cypress', importance: 3, category: 'technical' },
+      'playwright': { id: 'testing-playwright', name: 'Playwright', importance: 3, category: 'technical' },
+      'pytorch': { id: 'ml-pytorch', name: 'PyTorch', importance: 5, category: 'technical' },
+      'tensorflow': { id: 'ml-tensorflow', name: 'TensorFlow', importance: 5, category: 'technical' },
+      'scikit-learn': { id: 'ml-scikit', name: 'scikit-learn', importance: 4, category: 'technical' },
+      'sklearn': { id: 'ml-scikit', name: 'scikit-learn', importance: 4, category: 'technical' },
+      'pandas': { id: 'ml-python', name: 'Pandas', importance: 4, category: 'technical' },
+      'numpy': { id: 'ml-python', name: 'NumPy', importance: 4, category: 'technical' },
+      'huggingface': { id: 'ml-nlp', name: 'Hugging Face Transformers', importance: 4, category: 'technical' },
+      'transformers': { id: 'ml-nlp', name: 'Transformers', importance: 4, category: 'technical' },
+      'langchain': { id: 'ml-langchain', name: 'LangChain', importance: 3, category: 'technical' },
+      'machine learning': { id: 'ml-foundations', name: 'Machine Learning Foundations', importance: 5, category: 'technical' },
+      'machine-learning': { id: 'ml-foundations', name: 'Machine Learning Foundations', importance: 5, category: 'technical' },
+      'deep learning': { id: 'ml-nlp', name: 'Deep Learning', importance: 5, category: 'technical' },
+      'deep-learning': { id: 'ml-nlp', name: 'Deep Learning', importance: 5, category: 'technical' },
+      'mlops': { id: 'mlops', name: 'MLOps Practices', importance: 4, category: 'technical' },
+      'spark': { id: 'data-spark', name: 'Apache Spark', importance: 5, category: 'technical' },
+      'apache spark': { id: 'data-spark', name: 'Apache Spark', importance: 5, category: 'technical' },
+      'hadoop': { id: 'data-hadoop', name: 'Apache Hadoop', importance: 4, category: 'technical' },
+      'kafka': { id: 'data-kafka', name: 'Apache Kafka', importance: 4, category: 'technical' },
+      'airflow': { id: 'data-airflow', name: 'Apache Airflow', importance: 4, category: 'technical' },
+      'databricks': { id: 'data-databricks', name: 'Databricks', importance: 4, category: 'technical' },
+      'snowflake': { id: 'data-snowflake', name: 'Snowflake', importance: 4, category: 'technical' },
+      'bigquery': { id: 'data-bigquery', name: 'BigQuery', importance: 4, category: 'technical' }
     };
   }
 
@@ -482,6 +595,39 @@ export class GapAnalyzerAgent {
     else if (frameworkCount >= 1) level = 3;
     else if (frameworkCount > 0) level = 2;
     return this.clampSkillLevel(level);
+  }
+
+  private inferToolingLevel(githubAnalysis: GitHubAnalysis): number {
+    const toolCount = githubAnalysis.tools.length;
+    const hasAdvancedTools = githubAnalysis.tools.some((tool) =>
+      ['docker', 'kubernetes', 'aws', 'azure', 'gcp', 'terraform', 'spark', 'hadoop', 'kafka', 'airflow', 'databricks', 'snowflake', 'bigquery'].includes(tool.toLowerCase())
+    );
+
+    let level = 1;
+    if (toolCount >= 4 && hasAdvancedTools) level = 5;
+    else if (toolCount >= 3) level = 4;
+    else if (toolCount >= 2) level = 3;
+    else if (toolCount > 0) level = 2;
+    return this.clampSkillLevel(level);
+  }
+
+  private inferStackBreadth(githubAnalysis: GitHubAnalysis): number {
+    const languageLevel = this.inferGeneralProgrammingLevel(githubAnalysis);
+    const frameworkLevel = this.inferFrameworkLevel(githubAnalysis);
+    const toolingLevel = this.inferToolingLevel(githubAnalysis);
+
+    const average = (languageLevel + frameworkLevel + toolingLevel) / 3;
+    return this.clampSkillLevel(Math.round(average));
+  }
+
+  private inferSpecialtyLevel(skills: Skill[], specialtyIds: string[]): number {
+    const relevant = skills.filter((skill) => specialtyIds.includes(skill.id));
+    if (relevant.length === 0) {
+      return 1;
+    }
+    const averageLevel = relevant.reduce((sum, skill) => sum + skill.currentLevel, 0) / relevant.length;
+    const averageImportance = relevant.reduce((sum, skill) => sum + skill.importance, 0) / relevant.length;
+    return this.clampSkillLevel(Math.round((averageLevel * 0.7) + (averageImportance * 0.3)));
   }
 
   /**
@@ -560,7 +706,10 @@ export class GapAnalyzerAgent {
       'docker', 'kubernetes', 'aws', 'azure', 'gcp',
       'typescript', 'javascript', 'python', 'java', 'c#', 'go', 'rust',
       'nextjs', 'nuxt', 'sveltekit', 'gatsby',
-      'tailwind', 'bootstrap', 'material-ui', 'chakra'
+      'tailwind', 'bootstrap', 'material-ui', 'chakra',
+      'pytorch', 'tensorflow', 'scikit-learn', 'sklearn', 'huggingface', 'transformers', 'langchain',
+      'machine learning', 'machine-learning', 'deep learning', 'deep-learning', 'mlops', 'ai', 'artificial intelligence',
+      'apache spark', 'spark', 'hadoop', 'kafka', 'airflow', 'databricks', 'snowflake', 'bigquery', 'data engineering', 'data-engineering'
     ];
 
     techKeywords.forEach(tech => {
@@ -675,26 +824,64 @@ export class GapAnalyzerAgent {
     const toolFiles = contentsData.map((file: any) => file.name);
     
     if (toolFiles.includes('docker-compose.yml') || toolFiles.includes('Dockerfile')) {
-      tools.push('Docker');
+      tools.push('docker');
     }
     
     if (toolFiles.includes('.github')) {
-      tools.push('GitHub Actions');
+      tools.push('github actions');
     }
     
     if (toolFiles.includes('jest.config.js') || toolFiles.includes('vitest.config.ts')) {
-      tools.push('Jest/Vitest');
+      tools.push('jest');
     }
     
     if (toolFiles.includes('eslint.config.js') || toolFiles.includes('.eslintrc')) {
-      tools.push('ESLint');
+      tools.push('eslint');
     }
     
     if (toolFiles.includes('prettier.config.js') || toolFiles.includes('.prettierrc')) {
-      tools.push('Prettier');
+      tools.push('prettier');
     }
 
-    return tools;
+    const fileNamesLower = toolFiles.map((file: string) => file.toLowerCase());
+
+    if (fileNamesLower.some((name) => name.includes('airflow'))) {
+      tools.push('airflow');
+    }
+
+    if (fileNamesLower.some((name) => name.includes('spark'))) {
+      tools.push('spark');
+    }
+
+    if (fileNamesLower.some((name) => name.includes('hadoop'))) {
+      tools.push('hadoop');
+    }
+
+    if (fileNamesLower.some((name) => name.includes('kafka'))) {
+      tools.push('kafka');
+    }
+
+    if (fileNamesLower.some((name) => name.includes('databricks'))) {
+      tools.push('databricks');
+    }
+
+    if (fileNamesLower.some((name) => name.includes('snowflake'))) {
+      tools.push('snowflake');
+    }
+
+    if (fileNamesLower.some((name) => name.includes('bigquery'))) {
+      tools.push('bigquery');
+    }
+
+    if (fileNamesLower.some((name) => name.includes('terraform'))) {
+      tools.push('terraform');
+    }
+
+    if (fileNamesLower.some((name) => name.includes('ansible'))) {
+      tools.push('ansible');
+    }
+
+    return [...new Set(tools)];
   }
 
   /**
@@ -760,6 +947,48 @@ export class GapAnalyzerAgent {
       recommendations.push('Understand Spring Security for authentication');
     }
 
+    if (frameworks.includes('React')) {
+      recommendations.push('Explore advanced React patterns like hooks and context');
+      recommendations.push('Learn performance optimization techniques (memoization, lazy loading)');
+      recommendations.push('Practice testing React components with React Testing Library or Cypress');
+    }
+
+    if (technologies.includes('pytorch')) {
+      recommendations.push('Build end-to-end experiments with PyTorch Lightning or similar frameworks');
+      recommendations.push('Learn model serving with TorchServe, BentoML, or FastAPI integrations');
+      recommendations.push('Explore optimization techniques (mixed precision, distributed training)');
+    }
+
+    if (technologies.includes('tensorflow')) {
+      recommendations.push('Build production-ready models with TensorFlow Extended (TFX)');
+      recommendations.push('Practice model deployment using TensorFlow Serving or Vertex AI');
+      recommendations.push('Learn TensorFlow Lite for edge deployment scenarios');
+    }
+
+    if (technologies.includes('airflow')) {
+      recommendations.push('Design resilient DAGs with modular operators and clear retries');
+      recommendations.push('Implement data quality checks using Airflow sensors or Great Expectations');
+      recommendations.push('Automate environment provisioning with Terraform or Helm');
+    }
+
+    if (technologies.includes('spark')) {
+      recommendations.push('Optimize Spark jobs with partitioning, caching, and Catalyst tuning');
+      recommendations.push('Explore streaming workloads with Spark Structured Streaming');
+      recommendations.push('Deploy Spark on managed services like Databricks or EMR');
+    }
+
+    if (technologies.includes('terraform')) {
+      recommendations.push('Create reusable Terraform modules and enforce code review policies');
+      recommendations.push('Use Terraform Cloud or Atlantis for collaborative workflows');
+      recommendations.push('Integrate Terraform with CI/CD pipelines for infrastructure automation');
+    }
+
+    if (technologies.includes('kubernetes')) {
+      recommendations.push('Learn advanced Kubernetes concepts (Operators, StatefulSets, RBAC)');
+      recommendations.push('Improve observability with Prometheus, Grafana, or OpenTelemetry');
+      recommendations.push('Automate delivery with GitOps tools like ArgoCD or Flux');
+    }
+
     // General recommendations
     if (recommendations.length === 0) {
       recommendations.push('Focus on mastering the primary programming language');
@@ -783,11 +1012,6 @@ export class GapAnalyzerAgent {
 
     if (gap > 0) {
       switch (skill.id) {
-        case 'programming':
-          recommendations.push('Practice coding daily with platforms like LeetCode or HackerRank');
-          recommendations.push('Build personal projects to apply programming concepts');
-          recommendations.push('Contribute to open source projects');
-          break;
         case 'frameworks':
           recommendations.push('Follow official documentation and tutorials');
           recommendations.push('Build a complete project using the framework');

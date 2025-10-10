@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Github, Brain, Target, Rocket, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 const steps = [
   {
@@ -21,8 +22,8 @@ const steps = [
   },
   {
     number: "03",
-    title: "Gap Detection",
-    description: "Advanced algorithms compare your skills with job market demands to identify growth opportunities.",
+    title: "Career Focus",
+    description: "Add optional career goals, target roles, and industry keywords so the agents tailor research and recommendations.",
     icon: Target,
     color: "from-orange-500 to-red-500"
   },
@@ -126,16 +127,18 @@ export function AnimatedHowItWorks() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.5 }}
-          className="flex justify-center mt-12"
+          className="flex justify-center mt-16"
         >
-          <motion.div
-            animate={{ y: [0, 10, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            className="flex items-center gap-2 text-blue-400"
-          >
-            <span className="text-lg font-medium">Try it now</span>
-            <ArrowRight className="w-5 h-5" />
-          </motion.div>
+          <Link href="/agentic" className="group inline-flex">
+            <motion.div
+              animate={{ y: [0, 12, 0] }}
+              transition={{ duration: 1.8, repeat: Infinity }}
+              className="inline-flex items-center gap-3 rounded-full border border-purple-400/40 bg-gradient-to-r from-purple-700/40 via-indigo-700/40 to-blue-700/40 px-6 py-3 text-white shadow-[0_0_25px_rgba(147,51,234,0.35)] backdrop-blur transition-all group-hover:border-purple-300/60 group-hover:shadow-[0_0_35px_rgba(147,51,234,0.45)]"
+            >
+              <span className="text-lg font-semibold tracking-wide">Ready to try it?</span>
+              <ArrowRight className="w-5 h-5 text-purple-200 transition-transform group-hover:translate-x-1" />
+            </motion.div>
+          </Link>
         </motion.div>
       </div>
     </div>

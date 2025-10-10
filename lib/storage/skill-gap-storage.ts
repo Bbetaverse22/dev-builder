@@ -1,4 +1,6 @@
-import { GapAnalysisResult, GitHubAnalysis } from '@/lib/agents/gap-analyzer';
+import { GapAnalysisResult, GitHubAnalysis, ResearchContext } from '@/lib/agents/gap-analyzer';
+import type { ResearchState } from '@/lib/agents/langgraph/research-agent';
+import { buildResearchStateSeed } from '@/lib/agents/langgraph/utils/research-state-seed';
 import { writeFile, readFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 
@@ -7,6 +9,7 @@ interface StoredSkillGap {
   userId: string;
   githubAnalysis: GitHubAnalysis;
   skillAssessment: GapAnalysisResult;
+  context?: ResearchContext;
   createdAt: string; // Store as ISO string for JSON serialization
   lastAccessed: string;
 }
@@ -77,7 +80,12 @@ class SkillGapStorage {
   /**
    * Store skill gap analysis results
    */
-  async storeSkillGap(userId: string, githubAnalysis: GitHubAnalysis, skillAssessment: GapAnalysisResult): Promise<string> {
+  async storeSkillGap(
+    userId: string,
+    githubAnalysis: GitHubAnalysis,
+    skillAssessment: GapAnalysisResult,
+    context?: ResearchContext
+  ): Promise<string> {
     const id = `skillgap_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     const storedGap: StoredSkillGap = {
@@ -85,6 +93,7 @@ class SkillGapStorage {
       userId,
       githubAnalysis,
       skillAssessment,
+      context,
       createdAt: new Date().toISOString(),
       lastAccessed: new Date().toISOString()
     };
@@ -99,6 +108,7 @@ class SkillGapStorage {
       id,
       userId,
       repository: githubAnalysis.repository,
+      context,
       totalStoredGaps: this.storage.size,
       userSessionMapped: this.userSessions.has(userId),
       userSessionsBefore: Array.from(this.userSessions.entries())
@@ -173,7 +183,7 @@ class SkillGapStorage {
       return null;
     }
 
-    const { skillAssessment, githubAnalysis } = latestGap;
+    const { skillAssessment, githubAnalysis, context } = latestGap;
     
     const summary = `
 SKILL GAP ANALYSIS SUMMARY
@@ -195,9 +205,41 @@ Key Recommendations:
 ${skillAssessment.recommendations.slice(0, 3).map((rec, index) => 
   `${index + 1}. ${rec}`
 ).join('\n')}
+${
+  context
+    ? `\n\nContext:\n${context.targetRole ? `- Target Role: ${context.targetRole}\n` : ''}${
+        context.targetIndustry ? `- Target Industry: ${context.targetIndustry}\n` : ''
+      }${context.professionalGoals ? `- Goals: ${context.professionalGoals}\n` : ''}${
+        context.domainKeywords && context.domainKeywords.length
+          ? `- Domain Keywords: ${context.domainKeywords.join(', ')}\n`
+          : ''
+      }`
+    : ''
+}
     `.trim();
 
     return summary;
+  }
+
+  /**
+   * Build a LangGraph research state seed from the latest stored gap analysis.
+   */
+  getResearchStateSeed(userId: string): Partial<ResearchState> | null {
+    const latestGap = this.getLatestSkillGap(userId);
+    if (!latestGap) {
+      return null;
+    }
+
+    try {
+      return buildResearchStateSeed({
+        skillAssessment: latestGap.skillAssessment,
+        githubAnalysis: latestGap.githubAnalysis,
+        context: latestGap.context,
+      });
+    } catch (error) {
+      console.error('❌ Failed to build research state seed:', error);
+      return null;
+    }
   }
 
   /**

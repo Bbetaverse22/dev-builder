@@ -35,23 +35,23 @@ export function StickyAgentStatus({
   const getStatusColor = (status: AgentStatus) => {
     switch (status) {
       case 'IDLE':
-        return 'bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300';
+        return 'bg-purple-500/20 text-purple-100 border border-purple-400/40';
       case 'ANALYZING':
-        return 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300';
+        return 'bg-blue-500/20 text-blue-100 border border-blue-400/40';
       case 'RESEARCHING':
-        return 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300';
+        return 'bg-purple-500/30 text-purple-100 border border-purple-400/50';
       case 'PLANNING':
-        return 'bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300';
+        return 'bg-orange-500/20 text-orange-100 border border-orange-400/40';
       case 'ACTING':
-        return 'bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300';
+        return 'bg-emerald-500/20 text-emerald-100 border border-emerald-400/40';
       case 'MONITORING':
-        return 'bg-yellow-100 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300';
+        return 'bg-yellow-500/20 text-yellow-100 border border-yellow-400/40';
       case 'COMPLETE':
-        return 'bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300';
+        return 'bg-emerald-500/20 text-emerald-100 border border-emerald-400/40';
       case 'ERROR':
-        return 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300';
+        return 'bg-red-500/25 text-red-100 border border-red-400/40';
       default:
-        return 'bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300';
+        return 'bg-purple-500/20 text-purple-100 border border-purple-400/40';
     }
   };
 
@@ -62,36 +62,36 @@ export function StickyAgentStatus({
   }
 
   return (
-    <div className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 py-3">
+    <div className="sticky top-0 z-50 border-b border-purple-500/40 bg-gradient-to-r from-purple-950/95 via-indigo-950/95 to-slate-950/95 backdrop-blur supports-[backdrop-filter]:bg-purple-950/80">
+      <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Left: Status & Progress */}
           <div className="flex items-center space-x-4 flex-1">
-            <Activity className="h-5 w-5 text-primary animate-pulse" />
+            <Activity className="h-6 w-6 text-purple-300 animate-pulse" />
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2 mb-1">
-                <Badge className={getStatusColor(status)}>
+                <Badge className={`${getStatusColor(status)} backdrop-blur`}>
                   {status}
                 </Badge>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-base text-purple-200">
                   {progress}%
                 </span>
               </div>
               
               <div className="flex items-center space-x-2">
-                <p className="text-sm truncate">{currentTask}</p>
+                <p className="text-base text-white truncate">{currentTask}</p>
                 {estimatedTimeRemaining && (
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  <span className="text-sm text-purple-200/80 whitespace-nowrap">
                     • {estimatedTimeRemaining} remaining
                   </span>
                 )}
               </div>
               
               {/* Thin Progress Bar */}
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 mt-2">
+              <div className="w-full bg-purple-900/60 rounded-full h-1.5 mt-2">
                 <div
-                  className="bg-primary h-1 rounded-full transition-all duration-500"
+                  className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-blue-400 h-1.5 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(168,85,247,0.45)]"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -101,21 +101,21 @@ export function StickyAgentStatus({
           {/* Right: Actions */}
           <div className="flex items-center space-x-2">
             {onViewLogs && (
-              <Button variant="outline" size="sm" onClick={onViewLogs}>
+              <Button variant="outline" size="sm" onClick={onViewLogs} className="border-purple-500/40 text-white hover:bg-purple-500/20">
                 <AlertCircle className="h-4 w-4 mr-2" />
                 View Logs
               </Button>
             )}
             
             {!isPaused && onPause && (
-              <Button variant="outline" size="sm" onClick={onPause}>
+              <Button variant="outline" size="sm" onClick={onPause} className="border-purple-500/40 text-white hover:bg-purple-500/20">
                 <Pause className="h-4 w-4 mr-2" />
                 Pause
               </Button>
             )}
             
             {isPaused && onResume && (
-              <Button variant="default" size="sm" onClick={onResume}>
+              <Button variant="default" size="sm" onClick={onResume} className="bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-600 hover:to-fuchsia-500 border-0">
                 <Play className="h-4 w-4 mr-2" />
                 Resume
               </Button>
@@ -126,4 +126,3 @@ export function StickyAgentStatus({
     </div>
   );
 }
-
