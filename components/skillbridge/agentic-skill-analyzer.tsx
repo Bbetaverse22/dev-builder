@@ -68,6 +68,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
   const [skillGaps, setSkillGaps] = useState<any[]>([]);
   const [portfolioTasks, setPortfolioTasks] = useState<PortfolioTask[]>([]);
   const [careerInsights, setCareerInsights] = useState<any>(null);
+  const [researchResults, setResearchResults] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [targetRole, setTargetRole] = useState('');
   const [targetIndustry, setTargetIndustry] = useState('');
@@ -121,6 +122,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
     setSkillGaps([]);
     setPortfolioTasks([]);
     setCareerInsights(null);
+    setResearchResults(null);
 
     try {
       // Phase 1: REAL GitHub Analysis (using existing tool integrations)
@@ -266,6 +268,10 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
 
         if (researchResponse.ok) {
           const researchData = await researchResponse.json();
+
+          // Store research results for display
+          setResearchResults(researchData);
+
           addLog('success', `Found ${researchData.resources?.length || 0} learning resources`, <CheckCircle2 className="h-4 w-4" />);
           addLog('success', `Found ${researchData.examples?.length || 0} GitHub examples`, <CheckCircle2 className="h-4 w-4" />);
           addLog('success', `Generated ${researchData.recommendations?.length || 0} personalized recommendations`, <CheckCircle2 className="h-4 w-4" />);
@@ -319,19 +325,28 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
       setProgress(95);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const mockCareerInsights = {
-        targetRole: targetRole || 'Senior Full-Stack Engineer',
-        targetIndustry: targetIndustry || 'Technology',
-        avgSalary: '$135,000 - $180,000',
-        topCompanies: ['Google', 'Meta', 'Stripe', 'Vercel', 'Netflix'],
-        timeToReady: '3-6 months',
-        recommendedCourses: [
-          'Kubernetes for Developers (Udemy)',
-          'System Design Interview Prep (Frontend Masters)',
-          'Testing JavaScript (Kent C. Dodds)'
-        ]
-      };
-      setCareerInsights(mockCareerInsights);
+      // Use real research results for career insights
+      if (researchResults?.recommendations) {
+        const topResourceRecs = researchResults.recommendations
+          .filter((r: any) => r.type === 'resource')
+          .slice(0, 3)
+          .map((r: any) => r.title);
+
+        const careerInsightsData = {
+          targetRole: targetRole || 'Senior Full-Stack Engineer',
+          targetIndustry: targetIndustry || 'Technology',
+          avgSalary: '$135,000 - $180,000',
+          topCompanies: ['Google', 'Meta', 'Stripe', 'Vercel', 'Netflix'],
+          timeToReady: '3-6 months',
+          recommendedCourses: topResourceRecs.length > 0 ? topResourceRecs : [
+            'Kubernetes for Developers (Udemy)',
+            'System Design Interview Prep (Frontend Masters)',
+            'Testing JavaScript (Kent C. Dodds)'
+          ],
+          researchData: researchResults // Store full research data
+        };
+        setCareerInsights(careerInsightsData);
+      }
       addLog('success', 'Career research complete', <CheckCircle2 className="h-4 w-4" />);
 
       // Complete
@@ -667,6 +682,140 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Research Results Section */}
+      {researchResults && (
+        <Card className="border-blue-400/30 bg-gradient-to-br from-blue-800/50 via-blue-900/40 to-slate-950/70">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-3 text-white text-3xl">
+              <Brain className="h-7 w-7" />
+              <span>Research Results</span>
+            </CardTitle>
+            <CardDescription className="text-white/80 text-lg">
+              AI-curated learning resources and examples for your skill gaps
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Learning Resources */}
+            {researchResults.resources && researchResults.resources.length > 0 && (
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
+                  <FileText className="h-5 w-5 mr-2" />
+                  Learning Resources ({researchResults.resources.length})
+                </h3>
+                <div className="grid gap-3">
+                  {researchResults.resources.slice(0, 5).map((resource: any, index: number) => (
+                    <a
+                      key={index}
+                      href={resource.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-4 bg-blue-200/10 rounded-lg border border-blue-200/20 hover:bg-blue-200/20 transition-colors group"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">
+                            {resource.title}
+                          </h4>
+                          <p className="text-sm text-blue-100/70 mt-1">{resource.description}</p>
+                          {resource.score && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <div className="flex">
+                                {[...Array(5)].map((_, i) => (
+                                  <span key={i} className={i < (resource.rating || 3) ? 'text-yellow-400' : 'text-gray-600'}>⭐</span>
+                                ))}
+                              </div>
+                              <span className="text-xs text-blue-200/60">Score: {(resource.score * 100).toFixed(0)}%</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* GitHub Examples */}
+            {researchResults.examples && researchResults.examples.length > 0 && (
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
+                  <Github className="h-5 w-5 mr-2" />
+                  GitHub Examples ({researchResults.examples.length})
+                </h3>
+                <div className="grid gap-3">
+                  {researchResults.examples.slice(0, 5).map((example: any, index: number) => (
+                    <a
+                      key={index}
+                      href={example.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-4 bg-blue-200/10 rounded-lg border border-blue-200/20 hover:bg-blue-200/20 transition-colors group"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors flex items-center gap-2">
+                            {example.name}
+                            <Badge variant="secondary" className="text-xs">{example.stars}⭐</Badge>
+                          </h4>
+                          <p className="text-sm text-blue-100/70 mt-1">{example.description}</p>
+                          {example.language && (
+                            <Badge variant="outline" className="mt-2 text-xs text-blue-200 border-blue-200/30">
+                              {example.language}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Recommendations */}
+            {researchResults.recommendations && researchResults.recommendations.length > 0 && (
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
+                  <Sparkles className="h-5 w-5 mr-2" />
+                  AI Recommendations ({researchResults.recommendations.length})
+                </h3>
+                <div className="space-y-2">
+                  {researchResults.recommendations.map((rec: any, index: number) => (
+                    <div
+                      key={index}
+                      className="p-3 bg-blue-200/10 rounded-lg border border-blue-200/20"
+                    >
+                      <div className="flex items-start gap-3">
+                        <Badge
+                          variant={rec.priority === 'high' ? 'destructive' : rec.priority === 'medium' ? 'default' : 'outline'}
+                          className="mt-1 text-xs"
+                        >
+                          {rec.priority}
+                        </Badge>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-white">{rec.title}</h4>
+                          <p className="text-sm text-blue-100/70 mt-1">{rec.description}</p>
+                          {rec.url && (
+                            <a
+                              href={rec.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-300 hover:text-blue-200 mt-1 inline-block"
+                            >
+                              View Resource →
+                            </a>
+                          )}
+                        </div>
+                        <Badge variant="secondary" className="text-xs">{rec.type}</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Career Insights Section */}

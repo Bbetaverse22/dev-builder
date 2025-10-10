@@ -263,6 +263,314 @@
       ]
     },
     "createdAt": "2025-10-10T23:16:13.969Z",
-    "lastAccessed": "2025-10-10T23:16:13.969Z"
+    "lastAccessed": "2025-10-10T23:16:15.460Z"
+  },
+  "skillgap_1760139063957_w5pp5634w": {
+    "id": "skillgap_1760139063957_w5pp5634w",
+    "userId": "user_123",
+    "githubAnalysis": {
+      "repository": "https://github.com/Bbetaverse22/ticketing-project-beta",
+      "technologies": [
+        "CSS",
+        "HTML",
+        "Java",
+        "JavaScript"
+      ],
+      "frameworks": [
+        "Node.js",
+        "Spring Framework",
+        "Spring Boot"
+      ],
+      "languages": [
+        "CSS",
+        "HTML",
+        "Java",
+        "JavaScript"
+      ],
+      "tools": [],
+      "skillLevel": "intermediate",
+      "recommendations": [
+        "Master Spring Boot and Spring Security for enterprise development",
+        "Learn Maven or Gradle for dependency management",
+        "Practice design patterns and SOLID principles",
+        "Master modern ES6+ features and async programming",
+        "Learn a frontend framework like React, Vue, or Angular"
+      ]
+    },
+    "skillAssessment": {
+      "overallScore": 81,
+      "skillGaps": [
+        {
+          "skill": {
+            "id": "tech-javascript",
+            "name": "JavaScript",
+            "currentLevel": 3.6,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 1.4,
+          "priority": 7,
+          "recommendations": [
+            "Set a focused improvement goal for JavaScript",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "frameworks",
+            "name": "Frameworks & Libraries",
+            "currentLevel": 4,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 1,
+          "priority": 5,
+          "recommendations": [
+            "Follow official documentation and tutorials",
+            "Build a complete project using the framework",
+            "Join community forums and attend meetups"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-java",
+            "name": "Java",
+            "currentLevel": 4.3,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 0.7000000000000002,
+          "priority": 3.500000000000001,
+          "recommendations": [
+            "Set a focused improvement goal for Java",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "framework-nodejs",
+            "name": "Node.js",
+            "currentLevel": 4.3,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 0.7000000000000002,
+          "priority": 3.500000000000001,
+          "recommendations": [
+            "Set a focused improvement goal for Node.js",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        }
+      ],
+      "categories": [
+        {
+          "id": "technical",
+          "name": "Technical Skills",
+          "skills": [
+            {
+              "id": "programming",
+              "name": "Programming Languages",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "frameworks",
+              "name": "Frameworks & Libraries",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "databases",
+              "name": "Database Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "cloud",
+              "name": "Cloud Platforms",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "devops",
+              "name": "DevOps & CI/CD",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            },
+            {
+              "id": "testing",
+              "name": "Testing & QA",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "prompt-engineering",
+              "name": "Prompt Engineering",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "context-engineering",
+              "name": "Context & Retrieval Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            }
+          ]
+        },
+        {
+          "id": "soft",
+          "name": "Soft Skills",
+          "skills": [
+            {
+              "id": "communication",
+              "name": "Communication",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "leadership",
+              "name": "Leadership",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "problem-solving",
+              "name": "Problem Solving",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "teamwork",
+              "name": "Teamwork",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "time-management",
+              "name": "Time Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            }
+          ]
+        },
+        {
+          "id": "domain",
+          "name": "Domain Knowledge",
+          "skills": [
+            {
+              "id": "industry",
+              "name": "Industry Knowledge",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "business",
+              "name": "Business Acumen",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "domain"
+            },
+            {
+              "id": "architecture",
+              "name": "System Architecture",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "security",
+              "name": "Security Best Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            }
+          ]
+        }
+      ],
+      "recommendations": [
+        "Focus on your top 3 skill gaps: JavaScript, Frameworks & Libraries",
+        "Invest time in advanced technical training or certifications",
+        "Create a project roadmap to apply the targeted technologies",
+        "Set a focused learning plan with milestones for the identified gaps",
+        "Explore advanced features and patterns in your current technology stack",
+        "Consider contributing to open source projects to gain real-world experience"
+      ],
+      "learningPath": [
+        "Phase 1: Foundation (Weeks 1-4)",
+        "Phase 4: Application (Ongoing)",
+        "- Apply skills in real-world projects",
+        "- Seek feedback and continue learning"
+      ],
+      "githubAnalysis": {
+        "repository": "https://github.com/Bbetaverse22/ticketing-project-beta",
+        "technologies": [
+          "CSS",
+          "HTML",
+          "Java",
+          "JavaScript"
+        ],
+        "frameworks": [
+          "Node.js",
+          "Spring Framework",
+          "Spring Boot"
+        ],
+        "languages": [
+          "CSS",
+          "HTML",
+          "Java",
+          "JavaScript"
+        ],
+        "tools": [],
+        "skillLevel": "intermediate",
+        "recommendations": [
+          "Master Spring Boot and Spring Security for enterprise development",
+          "Learn Maven or Gradle for dependency management",
+          "Practice design patterns and SOLID principles",
+          "Master modern ES6+ features and async programming",
+          "Learn a frontend framework like React, Vue, or Angular"
+        ]
+      }
+    },
+    "context": {},
+    "createdAt": "2025-10-10T23:31:03.957Z",
+    "lastAccessed": "2025-10-10T23:31:03.957Z"
   }
 }
