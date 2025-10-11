@@ -81,11 +81,12 @@ export class GitHubClient {
     this.token = token || process.env.GITHUB_TOKEN || '';
   }
 
-  private async makeRequest<T>(endpoint: string): Promise<T> {
+  private async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Accept': 'application/vnd.github.v3+json',
       'User-Agent': 'SkillBridge.ai-Agents/1.0.0',
+      ...((options.headers as Record<string, string>) || {}),
     };
 
     if (this.token) {
@@ -93,8 +94,8 @@ export class GitHubClient {
     }
 
     try {
-      const response = await fetch(url, { headers });
-      
+      const response = await fetch(url, { ...options, headers });
+
       if (!response.ok) {
         throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
       }
@@ -250,6 +251,58 @@ export class GitHubClient {
    */
   async getRepositoryReadme(owner: string, repo: string): Promise<{ content: string; encoding: string }> {
     return this.makeRequest<{ content: string; encoding: string }>(`/repos/${owner}/${repo}/readme`);
+  }
+
+  /**
+   * Create an issue in a repository
+   */
+  async createIssue(
+    owner: string,
+    repo: string,
+    title: string,
+    body: string,
+    options?: {
+      labels?: string[];
+      assignees?: string[];
+      milestone?: number;
+    }
+  ): Promise<GitHubIssue> {
+    const issueData: any = {
+      title,
+      body,
+    };
+
+    if (options?.labels) {
+      issueData.labels = options.labels;
+    }
+
+    if (options?.assignees) {
+      issueData.assignees = options.assignees;
+    }
+
+    if (options?.milestone) {
+      issueData.milestone = options.milestone;
+    }
+
+    return this.makeRequest<GitHubIssue>(`/repos/${owner}/${repo}/issues`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(issueData),
+    });
+  }
+
+  /**
+   * Check if a file exists in the repository
+   */
+  async fileExists(owner: string, repo: string, path: string): Promise<boolean> {
+    try {
+      await this.getRepositoryContents(owner, repo, path);
+      return true;
+    } catch (error) {
+      return false;
+    }
   }
 }
 

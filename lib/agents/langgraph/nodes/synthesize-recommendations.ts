@@ -99,7 +99,10 @@ async function generateRecommendations(
           "- medium: Important but not urgent",
           "- low: Nice to have, supplementary",
           "",
-          "Return JSON matching the schema. Include 5-10 recommendations.",
+          "IMPORTANT: Return ONLY valid JSON with this exact structure:",
+          '{"recommendations": [{"type": "resource", "title": "...", "description": "...", "url": "...", "priority": "high"}]}',
+          "",
+          "ALL recommendations MUST have a title field. Do not include any explanatory text, only the JSON object.",
         ].join("\n"),
       ],
       [
@@ -117,7 +120,7 @@ async function generateRecommendations(
           "Top GitHub Examples:",
           ...topExamples.map((e, i) => `${i + 1}. ${e.name} (⭐ ${e.stars})\n   ${e.url}\n   ${e.description}`),
           "",
-          "Generate personalized recommendations to help the user close this skill gap.",
+          "Generate 5-10 personalized recommendations. Return JSON with a 'recommendations' array where each recommendation has: type, title, description, url (optional), and priority.",
         ].join("\n"),
       ],
     ]);

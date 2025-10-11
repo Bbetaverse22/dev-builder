@@ -127,7 +127,10 @@ async function evaluateWithLLM(
           "- comprehensiveness: Depth and completeness",
           "- practicality: Hands-on, actionable content",
           "",
-          "Return JSON matching the schema.",
+          "IMPORTANT: Return ONLY valid JSON with this exact structure:",
+          '{"evaluations": [{"url": "...", "relevance": 0.8, "authority": 0.9, "recency": 0.7, "comprehensiveness": 0.8, "practicality": 0.7}]}',
+          "",
+          "Do not include any explanatory text, only the JSON object.",
         ].join("\n"),
       ],
       [
@@ -140,7 +143,7 @@ async function evaluateWithLLM(
           "Resources to evaluate:",
           ...resources.map((r, i) => `${i + 1}. ${r.title}\n   URL: ${r.url}\n   Description: ${r.description}`),
           "",
-          "Provide evaluation scores for each resource (0-1 scale for each criterion).",
+          "Return JSON with an 'evaluations' array containing one object per resource.",
         ].join("\n"),
       ],
     ]);

@@ -7,6 +7,7 @@
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { join } from 'path';
 
 interface TemplateExtractionOptions {
   preserveStructure?: boolean;
@@ -64,11 +65,14 @@ export class TemplateCreatorClient {
     }
 
     // Use tsx to run TypeScript directly (no build needed)
+    // Fix: Use absolute path instead of require.resolve to avoid [project] placeholder issues
+    const serverPath = join(process.cwd(), 'lib', 'mcp', 'template-creator', 'server.ts');
+
     this.transport = new StdioClientTransport({
       command: 'npx',
       args: [
         'tsx',
-        require.resolve('./server.ts'), // Use TypeScript file directly
+        serverPath,
       ],
     });
 

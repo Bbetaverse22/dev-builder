@@ -74,7 +74,11 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
   const [targetIndustry, setTargetIndustry] = useState('');
   const [professionalGoals, setProfessionalGoals] = useState('');
   const [domainKeywords, setDomainKeywords] = useState('');
-  
+  const [portfolioData, setPortfolioData] = useState<any>(null);
+  const [repoUrl, setRepoUrl] = useState<string | null>(null);
+  const [isCreatingIssues, setIsCreatingIssues] = useState(false);
+  const [createdIssues, setCreatedIssues] = useState<any[]>([]);
+
   const gapAnalyzer = useMemo(() => new GapAnalyzerAgent(), []);
 
   const addLog = (type: ActionLog['type'], message: string, icon?: React.ReactNode) => {
@@ -123,6 +127,9 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
     setPortfolioTasks([]);
     setCareerInsights(null);
     setResearchResults(null);
+    setPortfolioData(null);
+    setRepoUrl(null);
+    setCreatedIssues([]);
 
     try {
       // Phase 1: REAL GitHub Analysis (using existing tool integrations)
@@ -170,6 +177,9 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
       if (!repoUrl) {
         throw new Error('Unable to determine a repository to analyze. Please provide a direct repo URL or ensure the profile has public repositories.');
       }
+
+      // Store repo URL for later use
+      setRepoUrl(repoUrl);
 
       // Use REAL GitHub analysis
       const githubAnalysis = await gapAnalyzer.analyzeGitHubRepository(repoUrl);
@@ -286,39 +296,72 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
 
       setProgress(70);
 
-      // Phase 3: Portfolio Analysis & Planning
+      // Phase 3: REAL Portfolio Builder Agent
       setAgentStatus('PLANNING');
       addLog('info', 'Portfolio Builder Agent activated', <Rocket className="h-4 w-4" />);
       setProgress(70);
-      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      addLog('info', 'Analyzing portfolio quality and completeness...', <Activity className="h-4 w-4" />);
-      setProgress(75);
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      try {
+        // Analyze repository quality
+        addLog('info', 'Analyzing portfolio quality and completeness...', <Activity className="h-4 w-4" />);
+        setProgress(75);
 
-      addLog('warning', 'Found 3 repositories without READMEs', <FileText className="h-4 w-4" />);
-      addLog('warning', 'Found 0 test coverage in 5 projects', <AlertCircle className="h-4 w-4" />);
-      addLog('info', 'Generating improvement plan...', <Sparkles className="h-4 w-4" />);
-      setProgress(80);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+        const portfolioResponse = await fetch('/api/portfolio-builder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            repoUrl: repoUrl,
+            researchResults: researchResults, // Pass research results to enrich recommendations
+            createIssues: false, // Don't create issues automatically (can be enabled later)
+          }),
+        });
 
-      // Phase 4: Autonomous Actions
-      setAgentStatus('ACTING');
-      addLog('info', 'Creating GitHub issues for portfolio improvements...', <GitPullRequest className="h-4 w-4" />);
-      setProgress(85);
-      await new Promise(resolve => setTimeout(resolve, 1500));
+        if (portfolioResponse.ok) {
+          const portfolioDataResult = await portfolioResponse.json();
 
-      const mockTasks: PortfolioTask[] = [
-        { id: '1', title: 'Add comprehensive README to portfolio-website', type: 'readme', status: 'pending', priority: 'high' },
-        { id: '2', title: 'Implement Jest tests for React components', type: 'test', status: 'pending', priority: 'high' },
-        { id: '3', title: 'Add Docker containerization guide', type: 'documentation', status: 'pending', priority: 'medium' },
-        { id: '4', title: 'Create GitHub issue: Add Kubernetes deployment', type: 'issue', status: 'pending', priority: 'medium' },
-        { id: '5', title: 'Document API endpoints in backend project', type: 'documentation', status: 'pending', priority: 'low' }
-      ];
-      setPortfolioTasks(mockTasks);
-      addLog('success', `Created ${mockTasks.length} GitHub issues`, <CheckCircle2 className="h-4 w-4" />);
-      setProgress(90);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+          // Store portfolio data for later use
+          setPortfolioData(portfolioDataResult);
+
+          // Log findings
+          addLog('success', `Portfolio quality: ${portfolioDataResult.analysis.overallQuality}%`, <CheckCircle2 className="h-4 w-4" />);
+
+          if (portfolioDataResult.analysis.weaknesses.length > 0) {
+            portfolioDataResult.analysis.weaknesses.forEach((weakness: any) => {
+              addLog('warning', weakness.title, <AlertCircle className="h-4 w-4" />);
+            });
+          }
+
+          addLog('info', `Generated ${portfolioDataResult.recommendations.length} improvement recommendations`, <Sparkles className="h-4 w-4" />);
+          setProgress(80);
+
+          // Phase 4: Show improvement tasks (GitHub issues will be created on demand)
+          setAgentStatus('ACTING');
+          addLog('info', 'Generating portfolio improvement tasks...', <GitPullRequest className="h-4 w-4" />);
+          setProgress(85);
+
+          // Convert recommendations to portfolio tasks for display
+          const tasks: PortfolioTask[] = portfolioDataResult.recommendations.map((rec: any, index: number) => ({
+            id: `rec-${index}`,
+            title: rec.title,
+            type: rec.weakness.type === 'testing' ? 'test' :
+                  rec.weakness.type === 'readme' ? 'readme' :
+                  rec.weakness.type === 'cicd' ? 'issue' : 'documentation',
+            status: 'pending' as const,
+            priority: rec.weakness.severity as 'high' | 'medium' | 'low',
+          }));
+
+          setPortfolioTasks(tasks);
+          addLog('success', `Generated ${tasks.length} improvement tasks (awaiting your approval to create GitHub issues)`, <CheckCircle2 className="h-4 w-4" />);
+          setProgress(90);
+        } else {
+          addLog('warning', 'Portfolio analysis returned no results, continuing...', <AlertCircle className="h-4 w-4" />);
+          setProgress(85);
+        }
+      } catch (portfolioError) {
+        addLog('warning', 'Portfolio Builder failed, skipping...', <AlertCircle className="h-4 w-4" />);
+        console.error('Portfolio Builder error:', portfolioError);
+        setProgress(85);
+      }
 
       // Phase 5: Career Insights
       addLog('info', 'Generating personalized career insights...', <TrendingUp className="h-4 w-4" />);
@@ -359,6 +402,51 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       addLog('error', `Analysis failed: ${errorMessage}`, <AlertCircle className="h-4 w-4" />);
+    }
+  };
+
+  const handleCreateGitHubIssues = async () => {
+    if (!repoUrl || !portfolioData) {
+      console.error('Missing repo URL or portfolio data');
+      return;
+    }
+
+    setIsCreatingIssues(true);
+    addLog('info', 'User approved - creating GitHub issues...', <GitPullRequest className="h-4 w-4" />);
+
+    try {
+      const createIssuesResponse = await fetch('/api/portfolio-builder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoUrl: repoUrl,
+          researchResults: researchResults,
+          createIssues: true, // Now we create issues with user approval
+        }),
+      });
+
+      if (createIssuesResponse.ok) {
+        const result = await createIssuesResponse.json();
+
+        if (result.issues) {
+          const successfulIssues = result.issues.filter((issue: any) => issue.success);
+          setCreatedIssues(successfulIssues);
+
+          addLog('success', `✅ Successfully created ${successfulIssues.length} GitHub issues!`, <CheckCircle2 className="h-4 w-4" />);
+
+          // Log each created issue
+          successfulIssues.forEach((issue: any) => {
+            addLog('success', `Created: ${issue.title}`, <GitPullRequest className="h-4 w-4" />);
+          });
+        }
+      } else {
+        addLog('error', 'Failed to create GitHub issues', <AlertCircle className="h-4 w-4" />);
+      }
+    } catch (error) {
+      console.error('Error creating issues:', error);
+      addLog('error', 'Error creating GitHub issues', <AlertCircle className="h-4 w-4" />);
+    } finally {
+      setIsCreatingIssues(false);
     }
   };
 
@@ -667,11 +755,42 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
                       <p className="text-sm font-medium">{task.title}</p>
                     </div>
                   ))}
-                  
-                  <Button className="w-full mt-4" size="sm">
-                    <Github className="h-4 w-4 mr-2" />
-                    View on GitHub
-                  </Button>
+
+                  {createdIssues.length > 0 ? (
+                    <div className="space-y-2 mt-4">
+                      <Button
+                        className="w-full"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => createdIssues[0]?.issueUrl && window.open(createdIssues[0].issueUrl.split('/issues/')[0] + '/issues', '_blank')}
+                      >
+                        <Github className="h-4 w-4 mr-2" />
+                        View {createdIssues.length} Issues on GitHub
+                      </Button>
+                      <div className="text-xs text-muted-foreground text-center">
+                        ✅ Issues created successfully!
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      className="w-full mt-4"
+                      size="sm"
+                      onClick={handleCreateGitHubIssues}
+                      disabled={isCreatingIssues || !repoUrl || !portfolioData}
+                    >
+                      {isCreatingIssues ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2" />
+                          Creating Issues...
+                        </>
+                      ) : (
+                        <>
+                          <Rocket className="h-4 w-4 mr-2" />
+                          Create GitHub Issues
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -682,6 +801,192 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Portfolio Quality Visualization */}
+      {portfolioData && portfolioData.analysis && (
+        <Card className="border-emerald-400/30 bg-gradient-to-br from-emerald-800/50 via-emerald-900/40 to-slate-950/70">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-3 text-white text-3xl">
+              <Target className="h-7 w-7" />
+              <span>Portfolio Quality Analysis</span>
+            </CardTitle>
+            <CardDescription className="text-white/80 text-lg">
+              AI-powered analysis of your repository quality and completeness
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Overall Quality Score */}
+            <div className="p-6 bg-emerald-200/10 rounded-lg border border-emerald-200/20">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-semibold text-white">Overall Quality Score</h3>
+                <div className="text-right">
+                  <div className={`text-5xl font-bold ${
+                    portfolioData.analysis.overallQuality >= 80 ? 'text-emerald-300' :
+                    portfolioData.analysis.overallQuality >= 60 ? 'text-yellow-300' :
+                    'text-red-300'
+                  }`}>
+                    {portfolioData.analysis.overallQuality}%
+                  </div>
+                  <p className="text-sm text-emerald-100/70 mt-1">
+                    {portfolioData.analysis.overallQuality >= 80 ? 'Excellent' :
+                     portfolioData.analysis.overallQuality >= 60 ? 'Good' :
+                     'Needs Improvement'}
+                  </p>
+                </div>
+              </div>
+              <Progress
+                value={portfolioData.analysis.overallQuality}
+                className="h-3"
+              />
+            </div>
+
+            {/* Strengths */}
+            {portfolioData.analysis.strengths && portfolioData.analysis.strengths.length > 0 && (
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
+                  <CheckCircle2 className="h-5 w-5 mr-2 text-emerald-300" />
+                  Strengths ({portfolioData.analysis.strengths.length})
+                </h3>
+                <div className="grid gap-2">
+                  {portfolioData.analysis.strengths.map((strength: string, index: number) => (
+                    <div
+                      key={index}
+                      className="p-3 bg-emerald-200/10 rounded-lg border border-emerald-200/20 flex items-start gap-2"
+                    >
+                      <CheckCircle2 className="h-4 w-4 text-emerald-300 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-emerald-50">{strength}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Weaknesses */}
+            {portfolioData.analysis.weaknesses && portfolioData.analysis.weaknesses.length > 0 && (
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
+                  <AlertCircle className="h-5 w-5 mr-2 text-red-300" />
+                  Areas for Improvement ({portfolioData.analysis.weaknesses.length})
+                </h3>
+                <div className="grid gap-2">
+                  {portfolioData.analysis.weaknesses.map((weakness: any, index: number) => (
+                    <div
+                      key={index}
+                      className="p-4 bg-red-200/10 rounded-lg border border-red-200/20"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-semibold text-white">{weakness.title}</h4>
+                        <Badge
+                          variant={weakness.severity === 'high' ? 'destructive' : weakness.severity === 'medium' ? 'default' : 'outline'}
+                          className="text-xs"
+                        >
+                          {weakness.severity}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-red-100/70 mb-2">{weakness.description}</p>
+                      <div className="flex items-start gap-2 mt-2 p-2 bg-red-200/10 rounded">
+                        <AlertCircle className="h-4 w-4 text-red-300 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-red-100/80"><strong>Impact:</strong> {weakness.impact}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Improvement Recommendations */}
+            {portfolioData.recommendations && portfolioData.recommendations.length > 0 && (
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
+                  <Sparkles className="h-5 w-5 mr-2 text-yellow-300" />
+                  AI-Generated Recommendations ({portfolioData.recommendations.length})
+                </h3>
+                <div className="space-y-3">
+                  {portfolioData.recommendations.map((rec: any, index: number) => (
+                    <div
+                      key={index}
+                      className="p-4 bg-emerald-200/10 rounded-lg border border-emerald-200/20"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="text-lg font-semibold text-white">{rec.title}</h4>
+                        <Badge variant="secondary" className="text-xs">
+                          Priority: {rec.priority}/10
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-emerald-100/70 mb-3">{rec.description}</p>
+
+                      {/* Action Items */}
+                      {rec.actionItems && rec.actionItems.length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold text-emerald-200/90 mb-2">Action Items:</p>
+                          <ul className="space-y-1">
+                            {rec.actionItems.slice(0, 3).map((item: string, i: number) => (
+                              <li key={i} className="text-xs text-emerald-100/80 flex items-start gap-2">
+                                <span className="text-emerald-300">•</span>
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                            {rec.actionItems.length > 3 && (
+                              <li className="text-xs text-emerald-100/60">
+                                ... and {rec.actionItems.length - 3} more
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Resources */}
+                      {rec.resources && rec.resources.length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold text-emerald-200/90 mb-2">Learning Resources:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {rec.resources.slice(0, 2).map((resource: any, i: number) => (
+                              <a
+                                key={i}
+                                href={resource.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-emerald-300 hover:text-emerald-200 underline"
+                              >
+                                {resource.title}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Templates (from Template Creator MCP) */}
+                      {rec.templates && rec.templates.length > 0 && (
+                        <div className="mt-3 p-3 bg-yellow-200/10 rounded border border-yellow-200/20">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Sparkles className="h-4 w-4 text-yellow-300" />
+                            <p className="text-xs font-semibold text-yellow-200">
+                              {rec.templates.length} Ready-to-Use Template{rec.templates.length > 1 ? 's' : ''} Extracted
+                            </p>
+                          </div>
+                          <p className="text-xs text-yellow-100/70">
+                            Clean code templates automatically extracted from example projects - available when you create GitHub issues!
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Effort Badge */}
+                      <div className="mt-3 flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs text-emerald-200 border-emerald-200/30">
+                          Effort: {rec.estimatedEffort}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs text-emerald-200 border-emerald-200/30">
+                          Category: {rec.weakness.type}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Research Results Section */}

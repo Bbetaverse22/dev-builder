@@ -3,7 +3,11 @@
  * Alternative to Prisma Studio when it has issues
  */
 
+import { config } from 'dotenv'
 import { prisma } from '../lib/db'
+
+// Load environment variables from .env.local
+config({ path: '.env.local' })
 
 async function viewDatabase() {
   console.log('📊 SkillBridge Database Viewer\n')

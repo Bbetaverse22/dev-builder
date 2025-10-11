@@ -8,7 +8,10 @@
       "Bash(pnpm tsx:*)",
       "Bash(npm search:*)",
       "WebFetch(domain:github.com)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(cat:*)",
+      "Bash(pnpm prisma generate:*)",
+      "Bash(pnpm db:view:*)"
     ],
     "deny": [],
     "ask": []

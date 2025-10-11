@@ -1,304 +1,34 @@
 {
-  "skillgap_1760138173969_oem6q9esc": {
-    "id": "skillgap_1760138173969_oem6q9esc",
+  "skillgap_1760206271575_auxlct6az": {
+    "id": "skillgap_1760206271575_auxlct6az",
     "userId": "user_123",
     "githubAnalysis": {
-      "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
+      "repository": "https://github.com/Bbetaverse22/skillbridge-agents",
       "technologies": [
-        "Python"
-      ],
-      "frameworks": [
-        "Python",
-        "pip"
-      ],
-      "languages": [
-        "Python"
-      ],
-      "tools": [],
-      "skillLevel": "beginner",
-      "recommendations": [
-        "Explore Django or FastAPI for web development",
-        "Learn pandas and numpy for data science",
-        "Practice with virtual environments and pip"
-      ]
-    },
-    "skillAssessment": {
-      "overallScore": 66,
-      "skillGaps": [
-        {
-          "skill": {
-            "id": "tech-python",
-            "name": "Python",
-            "currentLevel": 2.6,
-            "targetLevel": 5,
-            "importance": 5,
-            "category": "technical"
-          },
-          "gap": 2.4,
-          "priority": 12,
-          "recommendations": [
-            "Set a focused improvement goal for Python",
-            "Design a mini-project to exercise this skill in context",
-            "Review feedback or code reviews related to this area"
-          ]
-        },
-        {
-          "skill": {
-            "id": "frameworks",
-            "name": "Frameworks & Libraries",
-            "currentLevel": 4,
-            "targetLevel": 5,
-            "importance": 5,
-            "category": "technical"
-          },
-          "gap": 1,
-          "priority": 5,
-          "recommendations": [
-            "Follow official documentation and tutorials",
-            "Build a complete project using the framework",
-            "Join community forums and attend meetups"
-          ]
-        }
-      ],
-      "categories": [
-        {
-          "id": "technical",
-          "name": "Technical Skills",
-          "skills": [
-            {
-              "id": "programming",
-              "name": "Programming Languages",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 5,
-              "category": "technical"
-            },
-            {
-              "id": "frameworks",
-              "name": "Frameworks & Libraries",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 5,
-              "category": "technical"
-            },
-            {
-              "id": "databases",
-              "name": "Database Management",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 4,
-              "category": "technical"
-            },
-            {
-              "id": "cloud",
-              "name": "Cloud Platforms",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 4,
-              "category": "technical"
-            },
-            {
-              "id": "devops",
-              "name": "DevOps & CI/CD",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 3,
-              "category": "technical"
-            },
-            {
-              "id": "testing",
-              "name": "Testing & QA",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 4,
-              "category": "technical"
-            },
-            {
-              "id": "prompt-engineering",
-              "name": "Prompt Engineering",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 4,
-              "category": "technical"
-            },
-            {
-              "id": "context-engineering",
-              "name": "Context & Retrieval Practices",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 3,
-              "category": "technical"
-            }
-          ]
-        },
-        {
-          "id": "soft",
-          "name": "Soft Skills",
-          "skills": [
-            {
-              "id": "communication",
-              "name": "Communication",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 5,
-              "category": "soft"
-            },
-            {
-              "id": "leadership",
-              "name": "Leadership",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 4,
-              "category": "soft"
-            },
-            {
-              "id": "problem-solving",
-              "name": "Problem Solving",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 5,
-              "category": "soft"
-            },
-            {
-              "id": "teamwork",
-              "name": "Teamwork",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 4,
-              "category": "soft"
-            },
-            {
-              "id": "time-management",
-              "name": "Time Management",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 4,
-              "category": "soft"
-            }
-          ]
-        },
-        {
-          "id": "domain",
-          "name": "Domain Knowledge",
-          "skills": [
-            {
-              "id": "industry",
-              "name": "Industry Knowledge",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 4,
-              "category": "domain"
-            },
-            {
-              "id": "business",
-              "name": "Business Acumen",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 3,
-              "category": "domain"
-            },
-            {
-              "id": "architecture",
-              "name": "System Architecture",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 4,
-              "category": "domain"
-            },
-            {
-              "id": "security",
-              "name": "Security Best Practices",
-              "currentLevel": 1,
-              "targetLevel": 5,
-              "importance": 4,
-              "category": "domain"
-            }
-          ]
-        }
-      ],
-      "recommendations": [
-        "Focus on your top 3 skill gaps: Python, Frameworks & Libraries",
-        "Invest time in advanced technical training or certifications",
-        "Create a project roadmap to apply the targeted technologies",
-        "Set a focused learning plan with milestones for the identified gaps",
-        "Focus on mastering the fundamentals of your primary programming language",
-        "Practice with smaller, simpler projects before tackling complex ones"
-      ],
-      "learningPath": [
-        "Phase 1: Foundation (Weeks 1-4)",
-        "- Focus on Python: Set a focused improvement goal for Python",
-        "Phase 4: Application (Ongoing)",
-        "- Apply skills in real-world projects",
-        "- Seek feedback and continue learning"
-      ],
-      "githubAnalysis": {
-        "repository": "https://github.com/Bbetaverse22/snowflake-sql-linter-mcp",
-        "technologies": [
-          "Python"
-        ],
-        "frameworks": [
-          "Python",
-          "pip"
-        ],
-        "languages": [
-          "Python"
-        ],
-        "tools": [],
-        "skillLevel": "beginner",
-        "recommendations": [
-          "Explore Django or FastAPI for web development",
-          "Learn pandas and numpy for data science",
-          "Practice with virtual environments and pip"
-        ]
-      }
-    },
-    "context": {
-      "targetRole": "Senior FullStack Engineer",
-      "targetIndustry": "Software",
-      "professionalGoals": "I want to be a senior full stack engineer in 3 months",
-      "domainKeywords": [
-        "UI",
-        "API",
-        "Tests"
-      ]
-    },
-    "createdAt": "2025-10-10T23:16:13.969Z",
-    "lastAccessed": "2025-10-10T23:16:15.460Z"
-  },
-  "skillgap_1760139063957_w5pp5634w": {
-    "id": "skillgap_1760139063957_w5pp5634w",
-    "userId": "user_123",
-    "githubAnalysis": {
-      "repository": "https://github.com/Bbetaverse22/ticketing-project-beta",
-      "technologies": [
+        "TypeScript",
         "CSS",
-        "HTML",
-        "Java",
         "JavaScript"
       ],
       "frameworks": [
         "Node.js",
-        "Spring Framework",
-        "Spring Boot"
+        "TypeScript",
+        "Next.js"
       ],
       "languages": [
+        "TypeScript",
         "CSS",
-        "HTML",
-        "Java",
         "JavaScript"
       ],
       "tools": [],
       "skillLevel": "intermediate",
       "recommendations": [
-        "Master Spring Boot and Spring Security for enterprise development",
-        "Learn Maven or Gradle for dependency management",
-        "Practice design patterns and SOLID principles",
         "Master modern ES6+ features and async programming",
-        "Learn a frontend framework like React, Vue, or Angular"
+        "Learn a frontend framework like React, Vue, or Angular",
+        "Understand Node.js and server-side JavaScript"
       ]
     },
     "skillAssessment": {
-      "overallScore": 81,
+      "overallScore": 83,
       "skillGaps": [
         {
           "skill": {
@@ -336,23 +66,6 @@
         },
         {
           "skill": {
-            "id": "tech-java",
-            "name": "Java",
-            "currentLevel": 4.3,
-            "targetLevel": 5,
-            "importance": 5,
-            "category": "technical"
-          },
-          "gap": 0.7000000000000002,
-          "priority": 3.500000000000001,
-          "recommendations": [
-            "Set a focused improvement goal for Java",
-            "Design a mini-project to exercise this skill in context",
-            "Review feedback or code reviews related to this area"
-          ]
-        },
-        {
-          "skill": {
             "id": "framework-nodejs",
             "name": "Node.js",
             "currentLevel": 4.3,
@@ -367,6 +80,19 @@
             "Design a mini-project to exercise this skill in context",
             "Review feedback or code reviews related to this area"
           ]
+        },
+        {
+          "skill": {
+            "id": "tech-typescript",
+            "name": "TypeScript",
+            "currentLevel": 4.7,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 0.2999999999999998,
+          "priority": 1.4999999999999991,
+          "recommendations": []
         }
       ],
       "categories": [
@@ -540,37 +266,42 @@
         "- Seek feedback and continue learning"
       ],
       "githubAnalysis": {
-        "repository": "https://github.com/Bbetaverse22/ticketing-project-beta",
+        "repository": "https://github.com/Bbetaverse22/skillbridge-agents",
         "technologies": [
+          "TypeScript",
           "CSS",
-          "HTML",
-          "Java",
           "JavaScript"
         ],
         "frameworks": [
           "Node.js",
-          "Spring Framework",
-          "Spring Boot"
+          "TypeScript",
+          "Next.js"
         ],
         "languages": [
+          "TypeScript",
           "CSS",
-          "HTML",
-          "Java",
           "JavaScript"
         ],
         "tools": [],
         "skillLevel": "intermediate",
         "recommendations": [
-          "Master Spring Boot and Spring Security for enterprise development",
-          "Learn Maven or Gradle for dependency management",
-          "Practice design patterns and SOLID principles",
           "Master modern ES6+ features and async programming",
-          "Learn a frontend framework like React, Vue, or Angular"
+          "Learn a frontend framework like React, Vue, or Angular",
+          "Understand Node.js and server-side JavaScript"
         ]
       }
     },
-    "context": {},
-    "createdAt": "2025-10-10T23:31:03.957Z",
-    "lastAccessed": "2025-10-10T23:31:03.957Z"
+    "context": {
+      "targetRole": "AI Engineer",
+      "targetIndustry": "Software",
+      "professionalGoals": "Ready to be a skilled AI engineer",
+      "domainKeywords": [
+        "AI",
+        "ML",
+        "Data"
+      ]
+    },
+    "createdAt": "2025-10-11T18:11:11.575Z",
+    "lastAccessed": "2025-10-11T18:11:11.575Z"
   }
 }
