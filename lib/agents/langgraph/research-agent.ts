@@ -42,6 +42,9 @@ export interface ResearchState {
   recommendations?: Recommendation[];
   actionPlan?: ActionItem[];
   loadedFromStorage?: boolean;
+
+  // Index signature for LangGraph compatibility
+  [key: string]: any;
 }
 
 export interface Resource {
@@ -163,22 +166,22 @@ function buildResearchGraph() {
         value: (left?: boolean, right?: boolean) => right ?? left ?? false,
       },
     },
-  });
+  } as any);
 
   // Web search node (Issue #3)
-  workflow.addNode("search", searchResourcesNode);
+  workflow.addNode("search", searchResourcesNode as any);
 
   // GitHub examples search node (Issue #5b)
-  workflow.addNode("search_github", searchGitHubExamplesNode);
+  workflow.addNode("search_github", searchGitHubExamplesNode as any);
 
   // Evaluate quality node (Issue #4)
-  workflow.addNode("evaluate", evaluateQualityNode);
+  workflow.addNode("evaluate", evaluateQualityNode as any);
 
   // Synthesize recommendations node (Issue #7)
-  workflow.addNode("synthesize", synthesizeRecommendationsNode);
+  workflow.addNode("synthesize", synthesizeRecommendationsNode as any);
 
   // Add state loader node
-  workflow.addNode("load_state", loadLatestStateNode);
+  workflow.addNode("load_state", loadLatestStateNode as any);
 
   // Connect nodes with conditional flow
   workflow.addEdge(START, "load_state" as any);
@@ -188,7 +191,7 @@ function buildResearchGraph() {
   // Conditional edge: Continue searching or evaluate?
   workflow.addConditionalEdges(
     "search_github" as any,
-    (state: ResearchState) => {
+    ((state: ResearchState) => {
       // If we found good examples, move to evaluation
       if (state.examples && state.examples.length >= 3) {
         return "evaluate";
@@ -199,7 +202,7 @@ function buildResearchGraph() {
       }
       // Otherwise, proceed to evaluation with what we have
       return "evaluate";
-    },
+    }) as any,
     {
       search: "search" as any,
       evaluate: "evaluate" as any,

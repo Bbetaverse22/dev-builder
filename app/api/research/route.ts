@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Run the research agent
-    const result = await graph.invoke(input);
+    const result = await graph.invoke(input as any) as ResearchState;
 
     console.log("[Research Agent] Workflow complete");
     console.log(`  Resources: ${result.searchResults?.length || 0}`);

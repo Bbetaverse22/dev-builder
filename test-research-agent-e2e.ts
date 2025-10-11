@@ -52,7 +52,7 @@ async function runTest(scenario: TestScenario) {
     const startTime = Date.now();
 
     // Run the graph
-    const result = await graph.invoke(scenario.input);
+    const result = await graph.invoke(scenario.input as any) as ResearchState;
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
