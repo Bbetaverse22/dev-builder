@@ -8,6 +8,7 @@ import { prisma } from '@/lib/db';
 import { GapAnalysisResult, GitHubAnalysis, ResearchContext } from '@/lib/agents/gap-analyzer';
 import type { ResearchState } from '@/lib/agents/langgraph/research-agent';
 import { buildResearchStateSeed } from '@/lib/agents/langgraph/utils/research-state-seed';
+import { formatGapValue } from '@/lib/utils';
 
 export interface StoredSkillGap {
   id: string;
@@ -227,7 +228,7 @@ ${skillAssessment.skillGaps
   .slice(0, 3)
   .map(
     (gap, index) =>
-      `${index + 1}. ${gap.skill.name}: ${gap.skill.currentLevel}/5 → ${gap.skill.targetLevel}/5 (Gap: ${gap.gap})`
+      `${index + 1}. ${gap.skill.name}: ${formatGapValue(gap.skill.currentLevel)}/5 → ${formatGapValue(gap.skill.targetLevel)}/5 (Gap: ${formatGapValue(gap.gap)})`
   )
   .join('\n')}
 
@@ -240,11 +241,7 @@ ${
   context
     ? `\n\nContext:\n${context.targetRole ? `- Target Role: ${context.targetRole}\n` : ''}${
         context.targetIndustry ? `- Target Industry: ${context.targetIndustry}\n` : ''
-      }${context.professionalGoals ? `- Goals: ${context.professionalGoals}\n` : ''}${
-        context.domainKeywords && context.domainKeywords.length
-          ? `- Domain Keywords: ${context.domainKeywords.join(', ')}\n`
-          : ''
-      }`
+      }${context.professionalGoals ? `- Goals: ${context.professionalGoals}\n` : ''}`
     : ''
 }
     `.trim();

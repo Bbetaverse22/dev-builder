@@ -117,12 +117,19 @@ function buildSearchQuerySet(state: ResearchState): Set<string> {
   const language = state.detectedLanguage?.trim();
 
   if (baseSkillGap) {
-    safeAdd(baseSkillGap);
-    safeAdd(`best resources to learn ${baseSkillGap}`);
+    // ALWAYS prioritize language-specific queries first
     if (language && language.toLowerCase() !== "unknown") {
-      safeAdd(`${baseSkillGap} ${language} tutorial`);
-      safeAdd(`${baseSkillGap} roadmap ${language}`);
+      // Language-specific queries come FIRST (higher priority in search)
+      safeAdd(`${language} ${baseSkillGap} tutorial`);
+      safeAdd(`${baseSkillGap} ${language} best practices`);
+      safeAdd(`learn ${baseSkillGap} with ${language}`);
+      safeAdd(`${language} ${baseSkillGap} roadmap`);
+      // Generic query comes last as fallback
+      safeAdd(`${baseSkillGap} tutorial`);
     } else {
+      // No language detected - use generic queries
+      safeAdd(baseSkillGap);
+      safeAdd(`best resources to learn ${baseSkillGap}`);
       safeAdd(`${baseSkillGap} tutorial`);
     }
   }
@@ -140,12 +147,6 @@ function buildSearchQuerySet(state: ResearchState): Set<string> {
       safeAdd(`${parts.join(" ")} best practices`);
     });
 
-  (state.domainKeywords ?? [])
-    .slice(0, 5)
-    .forEach((keyword) => {
-      safeAdd(`${keyword} tutorial`);
-      safeAdd(`${keyword} roadmap`);
-    });
 
   if (queries.size === 0) {
     safeAdd("software engineering learning resources");
@@ -278,13 +279,16 @@ async function runLLMFallback(
           "Return results as JSON that matches the schema provided.",
           "Prefer official docs, reputable guides, modern tutorials, and hands-on courses.",
           "Do not invent URLs. Only use links you are confident exist.",
+          "CRITICAL: If a primary language is specified, ALL resources MUST be specific to that language/framework.",
+          "For example, if the primary language is TypeScript, return TypeScript-specific resources, NOT Java or Python.",
         ].join(" "),
       ],
       [
         "human",
         [
           `Skill gap: ${state.skillGap}`,
-          `Primary language: ${state.detectedLanguage || "unknown"}`,
+          `**PRIMARY LANGUAGE/FRAMEWORK: ${state.detectedLanguage || "unknown"}**`,
+          `IMPORTANT: All resources must be relevant to ${state.detectedLanguage || "general programming"}.`,
           `Learning objectives: ${(state.learningObjectives ?? []).join(", ")}`,
           `Focus skills: ${(state.focusSkills ?? [])
             .map((skill) => `${skill.name}`)
@@ -297,6 +301,7 @@ async function runLLMFallback(
                 .join(", ")}`
             : "No resources yet.",
           "Output JSON with keys `resources` and (optional) `supplemental_queries`.",
+          `Remember: Focus on ${state.detectedLanguage || "relevant"} resources ONLY!`,
         ].join("\n"),
       ],
     ]);

@@ -14,20 +14,20 @@ Built with advanced AI agents for intelligent career development and portfolio i
 
 ### 🧠 Agentic Skill Analyzer
 - **Multi-Stage Analysis**: Automatically profiles GitHub repos, detects tech stack, and generates skill gaps
-- **Deep Career Research**: Real-time scraping of job boards (LinkedIn, Indeed) for role requirements
-- **Learning Intelligence**: Finds relevant courses, documentation, and tutorials based on gaps
+- **Career Research (Planned)**: Upcoming web research for job boards, salary trends, and learning resources
+- **Learning Intelligence**: Surfaces curated resources with the current research pipeline
 - **Persistent Memory**: Stores skill profiles for continuous tracking and improvement
 
 ### 🤖 Portfolio Builder Agent
 - **Autonomous Improvement Loop**: Analyzes portfolio weaknesses and creates actionable tasks
-- **GitHub Integration**: Creates issues and PRs directly in your repositories
-- **README Generation**: Drafts professional documentation for your projects
-- **Progress Monitoring**: Tracks completion and adapts recommendations
+- **GitHub Integration**: Creates GitHub issues with prioritized action steps
+- **README Guidance**: Highlights documentation gaps and suggests next actions
+- **Progress Monitoring (Planned)**: Upcoming tracking for completion and portfolio improvements
 
 ### 🔗 Tool Integrations
-- **GitHub API**: Repository analysis, issue creation, profile enhancement
-- **Web Research**: Real-time job market and learning resource discovery
-- **Extensible Architecture**: Easy to add custom tools and integrations
+- **GitHub REST API**: Repository analysis and issue creation (no MCP/Docker required)
+- **Template Creator MCP**: Custom MCP server for extracting reusable code templates
+- **Extensible Architecture**: Designed for additional tools like web research MCPs
 
 ### 🎨 Modern UI
 - **Single Tab Focus**: Clean, action-oriented interface for skill analysis
@@ -65,11 +65,10 @@ Built with advanced AI agents for intelligent career development and portfolio i
    # Required
    OPENAI_API_KEY=your_openai_api_key_here
 
-   # Database (Prisma Postgres with Accelerate)
+   # Database (Prisma Postgres)
    DATABASE_URL=your_postgres_connection_url
-   PRISMA_DATABASE_URL=your_prisma_accelerate_url
 
-   # GitHub OAuth (for multi-user support)
+   # GitHub OAuth (for upcoming multi-user support)
    GITHUB_CLIENT_ID=your_github_oauth_client_id
    GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
    NEXTAUTH_SECRET=generate_with_openssl_rand_base64_32
@@ -114,24 +113,24 @@ Built with advanced AI agents for intelligent career development and portfolio i
 1. **GitHub Profiling**: Analyzes your repositories, tech stack, and coding patterns
 2. **Role Detection**: Automatically determines if you're a backend dev, data engineer, DevOps, etc.
 3. **Skill Gap Identification**: Compares your current skills vs. market demands
-4. **Market Intelligence**: Scrapes real job postings for required skills
+4. **Market Intelligence (Planned)**: Future integration will monitor job postings for required skills
 
 ### Phase 2: Research & Planning
-1. **Job Market Research**: Real-time web scraping of LinkedIn, Indeed, AngelList
-2. **Salary Analysis**: Pulls compensation data for roles matching your profile
-3. **Learning Resource Discovery**: Finds tutorials, courses, and documentation
-4. **Priority Ranking**: Determines which skills have highest ROI
+1. **Job Market Research (Planned)**: LinkedIn, Indeed, and AngelList scrapers are on the roadmap
+2. **Salary Analysis (Planned)**: Compensation insights slated for a later release
+3. **Learning Resource Discovery**: Current LangGraph research node surfaces courses, docs, and tutorials
+4. **Priority Ranking**: Determines which skills have highest ROI using LLM reasoning
 
 ### Phase 3: Autonomous Action (Portfolio Builder)
 1. **Weakness Detection**: Identifies repos needing improvement (missing READMEs, tests, docs)
 2. **Task Generation**: Creates GitHub issues with specific improvement steps
-3. **README Drafting**: Generates professional documentation for your projects
-4. **Progress Monitoring**: Tracks issue completion and portfolio quality
+3. **README Drafting (Planned)**: Template-based drafting is under development
+4. **Progress Monitoring (Planned)**: Upcoming dashboards for issue completion and quality tracking
 
 ### Phase 4: Continuous Loop
-- **Weekly Check-ins**: Re-analyzes portfolio to measure progress
+- **Weekly Check-ins (Planned)**: Automated re-analysis to measure progress
 - **Adaptive Planning**: Adjusts recommendations based on completed tasks
-- **New Opportunities**: Surfaces trending technologies and emerging skill demands
+- **New Opportunities (Planned)**: Future updates will highlight trending technologies and skills
 
 ## 🔧 Configuration
 
@@ -143,7 +142,6 @@ DevBuilder uses **Prisma Postgres** for data persistence:
 - ✅ 5 GB storage (supports 1000s of skill gap analyses)
 - ✅ 10k queries/day
 - ✅ **No credit card required**
-- ✅ Built-in connection pooling with Prisma Accelerate
 - ✅ Perfect for V1 + early production
 
 **Setup (2 minutes):**
@@ -151,9 +149,7 @@ DevBuilder uses **Prisma Postgres** for data persistence:
 1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
 2. Navigate to **Storage** → **Create Database** → **Prisma Postgres**
 3. Select **Free Tier**
-4. Copy the following environment variables to `.env.local`:
-   - `DATABASE_URL` (direct connection URL)
-   - `PRISMA_DATABASE_URL` (Prisma Accelerate URL with connection pooling)
+4. Copy the `DATABASE_URL` connection string to `.env.local`
 5. Run migrations:
    ```bash
    npx prisma generate
@@ -201,11 +197,10 @@ The research agent is defined in `lib/agents/langgraph/research-agent.ts` and co
 # AI Model Access
 OPENAI_API_KEY=your_openai_api_key_here
 
-# Database (Prisma Postgres with Accelerate)
+# Database (Prisma Postgres)
 DATABASE_URL=your_postgres_connection_url
-PRISMA_DATABASE_URL=your_prisma_accelerate_url
 
-# GitHub OAuth (for multi-user authentication)
+# GitHub OAuth (planned multi-user authentication)
 GITHUB_CLIENT_ID=your_oauth_client_id
 GITHUB_CLIENT_SECRET=your_oauth_client_secret
 NEXTAUTH_SECRET=generate_with_openssl_rand_base64_32
@@ -218,7 +213,7 @@ NEXTAUTH_URL=http://localhost:3000
 GITHUB_TOKEN=your_github_personal_access_token_here
 ```
 
-**How to get GitHub OAuth credentials:**
+**How to get GitHub OAuth credentials (optional until NextAuth integration ships):**
 1. Go to GitHub Settings → Developer settings → OAuth Apps
 2. Create new OAuth App:
    - Homepage URL: `http://localhost:3000`
@@ -279,12 +274,12 @@ See `V1_DEVELOPMENT_PLAN.md` for implementation roadmap.
 - **NextAuth.js**: Authentication with GitHub OAuth
 
 ### Database & Storage
-- **Prisma Postgres**: Serverless PostgreSQL with Prisma Accelerate (connection pooling + caching)
+- **Prisma Postgres**: Serverless PostgreSQL managed via Vercel
 - **Free Tier**: 5 GB storage, 10k queries/day, no credit card required
 - **11 Data Models**: Users, skill gaps, technologies, recommendations, research results, GitHub issues
 
 ### Integrations
-- **GitHub API**: Repository analysis, issue creation, profile enhancement
+- **GitHub REST API**: Repository analysis, issue creation, profile enhancement
 - **Web Scraping**: Job boards, salary data, learning resources (planned)
 - **LangGraph Platform**: Visual agent development and debugging
 
@@ -294,7 +289,7 @@ See `V1_DEVELOPMENT_PLAN.md` for implementation roadmap.
 **Focus**: Research + Action fundamentals
 - ✅ LangGraph agent framework setup
 - ✅ Database schema and migrations (Prisma Postgres)
-- ✅ GitHub OAuth credentials configured
+- 🔄 GitHub OAuth integration (NextAuth wiring in progress)
 - 🚧 Research agent implementation (LangGraph)
 - 🚧 Portfolio Builder Agent
 - 🚧 Deep career research with web scraping
@@ -303,11 +298,11 @@ See `V1_DEVELOPMENT_PLAN.md` for implementation roadmap.
 
 **Deliverables**: Working demo with real GitHub integration, research capabilities, and autonomous actions
 
-**Progress**: Infrastructure complete - LangGraph Platform, database, and authentication ready
+**Progress**: LangGraph Platform and database are ready; GitHub authentication is next
 
 ### 🔮 V2 (Future Enhancements)
 **Focus**: Scale and intelligence
-- ✅ Multi-user support with NextAuth.js (in progress)
+- 🔄 Multi-user support with NextAuth.js (in progress)
 - ✅ Database-backed persistence (Prisma Postgres - complete)
 - Advanced tool integrations (LinkedIn, code quality tools)
 - ML-powered skill matching

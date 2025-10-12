@@ -30,7 +30,6 @@ export async function POST(request: NextRequest) {
       targetRole: body.targetRole,
       targetIndustry: body.targetIndustry,
       professionalGoals: body.professionalGoals,
-      domainKeywords: body.domainKeywords,
       focusSkills: body.focusSkills || [],
       learningObjectives: body.learningObjectives || [],
       iterationCount: 0,

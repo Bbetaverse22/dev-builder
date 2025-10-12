@@ -1,7 +1,7 @@
 # Portfolio Builder Agent - Implementation Status
 
-**Status**: ✅ **COMPLETE** (Ready for Testing)
-**Date**: October 11, 2025
+**Status**: ✅ **Core Workflow Complete** (UI polish pending)
+**Date**: October 12, 2025
 
 ## 🎉 What Was Implemented
 
@@ -203,8 +203,7 @@ FIRECRAWL_API_KEY=fc_your_key_here  # For web scraping in research agent
 3. ✅ **Check portfolio quality scores** - Should accurately reflect repo quality
 
 ### Short-term Improvements
-- [ ] Add "Create Issues" button in UI (currently set to `createIssues: false`)
-- [ ] Display issue URLs after creation
+- [ ] Surface GitHub issue URLs and numbers after creation
 - [ ] Add progress tracking for created issues
 - [ ] Implement issue status monitoring
 

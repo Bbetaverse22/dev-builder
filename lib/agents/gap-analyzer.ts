@@ -45,7 +45,6 @@ export interface ResearchContext {
   targetRole?: string;
   targetIndustry?: string;
   professionalGoals?: string;
-  domainKeywords?: string[];
 }
 
 export class GapAnalyzerAgent {

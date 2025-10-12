@@ -1,14 +1,14 @@
 # GitHub MCP Implementation Status
 
-**Date:** October 8, 2025
+**Date:** October 12, 2025
 **Issue:** #0 - Setup Official GitHub MCP Server
-**Status:** ✅ **Implementation Complete** (Requires Docker runtime)
+**Status:** ⏹️ **De-scoped** — project now defaults to GitHub REST API (no Docker)
 
 ---
 
 ## 🎯 Summary
 
-The GitHub MCP client implementation is **complete and ready for production use**. The code is fully functional, but the official GitHub MCP server requires Docker to run. The implementation has been tested and verified using direct GitHub API calls.
+We built a working GitHub MCP client, but the official MCP server requires Docker (or a local Go build), which is out of scope for the current capstone environment. The project now standardizes on the GitHub REST API for repository search, file reads, and issue creation. The MCP client code remains available behind a feature flag if we revisit MCP tooling later.
 
 ---
 
@@ -73,18 +73,18 @@ Currently, the Docker daemon is not running on the development machine:
 docker: Cannot connect to the Docker daemon at unix:///var/run/docker.sock
 ```
 
-### Why This Isn't a Blocker
+### Current Decision
 
-The GitHub MCP client implementation is **architecturally complete** and will work perfectly once Docker is running. The codebase is production-ready.
+Because Docker access is restricted in the target deployment environments (local dev without Docker, Vercel serverless), we officially adopted the GitHub REST API client (`lib/github/github-client.ts`) as the production integration. It powers:
+- LangGraph search node (`lib/agents/langgraph/nodes/search-github-examples.ts`)
+- Portfolio Builder agent (`lib/agents/portfolio-builder.ts`)
+- UI-driven issue creation (`components/skillbridge/agentic-skill-analyzer.tsx`)
 
-**Verification:** We confirmed the GitHub token works by testing directly against the GitHub REST API:
-- ✅ Authenticated as user: `Bbetaverse22`
-- ✅ Successfully searched repositories
-- ✅ Successfully retrieved file contents
+The MCP client remains in the repo for future experimentation, but it is no longer required to ship V1.
 
 ---
 
-## 🔧 How to Use (When Docker is Running)
+## 🔧 Optional: Running the MCP Client (Docker Required)
 
 ### 1. Start Docker
 

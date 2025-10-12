@@ -46,7 +46,6 @@ const scenarios: Scenario[] = [
         { name: "Airflow", gap: 4, priority: 5 },
         { name: "Data Pipelines", gap: 3, priority: 4 },
       ],
-      domainKeywords: ["ETL", "batch processing", "data warehousing"],
     },
   },
 ];

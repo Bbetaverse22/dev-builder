@@ -20,7 +20,6 @@ export interface ResearchState {
   targetRole?: string;
   targetIndustry?: string;
   professionalGoals?: string;
-  domainKeywords?: string[];
   focusSkills?: FocusSkill[];
   learningObjectives?: string[];
   queries?: string[];
@@ -122,9 +121,6 @@ function buildResearchGraph() {
       },
       professionalGoals: {
         value: (left?: string, right?: string) => right ?? left ?? "",
-      },
-      domainKeywords: {
-        value: (left?: string[], right?: string[]) => right ?? left ?? [],
       },
       focusSkills: {
         value: (left?: FocusSkill[], right?: FocusSkill[]) => right ?? left ?? [],

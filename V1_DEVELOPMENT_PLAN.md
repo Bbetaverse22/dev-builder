@@ -60,32 +60,30 @@ Status:
 
 ---
 
-#### Issue #0: Setup Official GitHub MCP Server ✅ **COMPLETE**
+#### Issue #0: Setup Official GitHub MCP Server ✅ **Re-scoped**
 **Priority:** Critical
 **Labels:** `priority-critical`, `type-feature`, `component-mcp`
 **Estimate:** 3 hours
-**Completed:** October 8, 2025
+**Completed:** October 12, 2025
 
-**Description:**
-Install and configure official Anthropic GitHub MCP server for LangGraph tool integration.
+**Description (updated):**
+Original scope required the official Anthropic GitHub MCP server, but Docker access is unavailable in current environments. We replaced this dependency with a GitHub REST API client that delivers the same functionality (search, read files, create issues) and keeps the workflow deployable on Vercel and local dev without Docker.
 
 **Tasks:**
 - [x] Install `@modelcontextprotocol/sdk` package
-- [x] Install `@modelcontextprotocol/server-github` package
+- [x] Install `@modelcontextprotocol/server-github` package (optional, retained for future experiments)
 - [x] Create MCP client configuration file
 - [x] Configure GitHub token for MCP authentication
 - [x] Create MCP tools wrapper for LangGraph
-- [x] Test GitHub MCP connection
-- [x] Verify available tools: `create_issue`, `search_repositories`, `get_file_contents`
+- [x] Build GitHub REST API wrapper (`lib/github/github-client.ts`) as production fallback
+- [x] Verify search/issue flows via REST API (LangGraph node + Portfolio Builder)
 - [x] Update package.json with MCP dependencies
 - [x] Update README with GitHub MCP setup instructions
 
 **Acceptance Criteria:**
-- ✅ GitHub MCP server installed and configured
-- ✅ MCP client can connect to GitHub (via Docker)
-- ✅ Tools are accessible and working (101 tools found)
-- ✅ Tests pass confirming MCP setup
-- ✅ GitHub REST API fallback implemented (works on Vercel)
+- ✅ GitHub REST API client powers LangGraph node & Portfolio Builder
+- ✅ MCP client remains available behind feature flag (requires Docker)
+- ✅ README documents REST-first workflow (no Docker prerequisites)
 
 **Implementation Notes:**
 - GitHub MCP requires Docker (`ghcr.io/github/github-mcp-server`)
@@ -93,50 +91,38 @@ Install and configure official Anthropic GitHub MCP server for LangGraph tool in
 - Full documentation in `docs/GITHUB_MCP_STATUS.md`
 - Token verified working with GitHub API
 
-**Files to Create/Modify:**
+**Files Created/Modified:**
 - `package.json`
-- `lib/mcp/github-mcp-client.ts`
-- `lib/mcp/github-mcp-tools.ts`
-- `lib/mcp/types.ts`
+- `lib/mcp/github/client.ts` (optional MCP client retained for future use)
+- `lib/mcp/github/types.ts`
+- `lib/github/github-client.ts` (REST production client)
+- `docs/GITHUB_MCP_STATUS.md`
 - `README.md`
 
-**Example Setup:**
+**Example Setup (current production path):**
 ```typescript
-// lib/mcp/github-mcp-client.ts
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+// lib/github/github-client.ts (excerpt)
+const API_BASE_URL = 'https://api.github.com';
 
-export class GitHubMCPClient {
-  private client: Client;
+export class GitHubClient {
+  constructor(private token?: string) {}
 
-  async connect() {
-    const transport = new StdioClientTransport({
-      command: 'npx',
-      args: ['-y', '@modelcontextprotocol/server-github'],
-      env: {
-        ...process.env,
-        GITHUB_PERSONAL_ACCESS_TOKEN: process.env.GITHUB_TOKEN
-      }
+  private async makeRequest<T>(endpoint: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...init,
+      headers: {
+        'User-Agent': 'skillbridge-agents',
+        Authorization: this.token ? `Bearer ${this.token}` : undefined,
+        Accept: 'application/vnd.github+json',
+        ...init?.headers,
+      },
     });
 
-    this.client = new Client({
-      name: 'skillbridge-github-client',
-      version: '1.0.0',
-    }, {
-      capabilities: {
-        tools: {}
-      }
-    });
+    if (!response.ok) {
+      throw new Error(`GitHub API request failed: ${response.status}`);
+    }
 
-    await this.client.connect(transport);
-    return this.client;
-  }
-
-  async callTool(toolName: string, args: Record<string, unknown>) {
-    return await this.client.callTool({
-      name: toolName,
-      arguments: args
-    });
+    return response.json() as Promise<T>;
   }
 }
 ```
@@ -348,14 +334,14 @@ const result = await mcpClient.callTool('extract_template', {
 
 ---
 
-#### Issue #5b: Implement GitHub Examples Search Node (Using Official GitHub MCP) ✅ **COMPLETE**
+#### Issue #5b: Implement GitHub Examples Search Node (GitHub REST API) ✅ **COMPLETE**
 **Priority:** High
-**Labels:** `priority-high`, `type-feature`, `component-langgraph`, `component-mcp`
+**Labels:** `priority-high`, `type-feature`, `component-langgraph`, `component-github`
 **Estimate:** 4 hours
 **Completed:** October 8, 2025
 
 **Description:**
-Create node that finds example GitHub projects using Official Anthropic GitHub MCP server.
+Create node that finds example GitHub projects using the GitHub REST API (no Docker dependency).
 
 **Tasks:**
 - [x] Create `searchGitHubExamplesNode` function

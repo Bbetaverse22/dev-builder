@@ -10,6 +10,7 @@ export interface GitHubRepository {
   description: string | null;
   html_url: string;
   clone_url: string;
+  homepage: string | null;
   language: string | null;
   stargazers_count: number;
   forks_count: number;

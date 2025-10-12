@@ -27,6 +27,7 @@ import {
   TrendingUp,
   BookOpen
 } from 'lucide-react';
+import { formatGapValue } from '@/lib/utils';
 
 export function AutomaticGapAnalysis() {
   const [githubAnalysis, setGitHubAnalysis] = useState<GitHubAnalysis | null>(null);
@@ -43,7 +44,6 @@ export function AutomaticGapAnalysis() {
   const [targetRole, setTargetRole] = useState('');
   const [targetIndustry, setTargetIndustry] = useState('');
   const [professionalGoals, setProfessionalGoals] = useState('');
-  const [domainKeywords, setDomainKeywords] = useState('');
   const gapAnalyzer = useMemo(() => new GapAnalyzerAgent(), []);
 
   const normalizeLevel = useCallback((value: number) => {
@@ -105,16 +105,10 @@ export function AutomaticGapAnalysis() {
       if (analysisToStore) {
         const userId = 'user_123';
         try {
-          const domainKeywordList = domainKeywords
-            .split(',')
-            .map((keyword) => keyword.trim())
-            .filter(Boolean);
-
           const contextPayload = {
             targetRole: targetRole || undefined,
             targetIndustry: targetIndustry || undefined,
             professionalGoals: professionalGoals || undefined,
-            domainKeywords: domainKeywordList.length ? domainKeywordList : undefined,
           };
 
           // Store on the server via API call
@@ -146,7 +140,7 @@ export function AutomaticGapAnalysis() {
         }
       }
     },
-    [domainKeywords, professionalGoals, targetIndustry, targetRole]
+    [professionalGoals, targetIndustry, targetRole]
   );
 
   const handleGitHubAnalysisComplete = useCallback(async (
@@ -477,26 +471,15 @@ export function AutomaticGapAnalysis() {
               />
             </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">
-                Domain Keywords (comma separated)
-              </label>
-              <Input
-                value={domainKeywords}
-                onChange={(event) => setDomainKeywords(event.target.value)}
-                placeholder="e.g. HIPAA, EHR, patient analytics"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Professional Goals</label>
-              <Textarea
-                value={professionalGoals}
-                onChange={(event) => setProfessionalGoals(event.target.value)}
-                placeholder="Describe what you want to achieve in the next 6-12 months"
-                rows={4}
-              />
-            </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">Professional Goals</label>
+            <Textarea
+              value={professionalGoals}
+              onChange={(event) => setProfessionalGoals(event.target.value)}
+              placeholder="Describe what you want to achieve in the next 6-12 months"
+              rows={3}
+              className="min-h-10"
+            />
           </div>
         </CardContent>
       </Card>
@@ -755,9 +738,9 @@ export function AutomaticGapAnalysis() {
             <CardContent>
               <div className="space-y-3">
                 {skillAssessment.skillGaps.slice(0, 5).map((gap) => {
-                  const gapValue = (Math.round(gap.gap * 10) / 10).toFixed(1);
-                  const currentLevel = (Math.round(gap.skill.currentLevel * 10) / 10).toFixed(1);
-                  const targetLevel = (Math.round(gap.skill.targetLevel * 10) / 10).toFixed(1);
+                  const gapValue = formatGapValue(gap.gap);
+                  const currentLevel = formatGapValue(gap.skill.currentLevel);
+                  const targetLevel = formatGapValue(gap.skill.targetLevel);
 
                   return (
                     <div key={`${gap.skill.id}-${gapValue}`} className="p-4 border rounded-lg">

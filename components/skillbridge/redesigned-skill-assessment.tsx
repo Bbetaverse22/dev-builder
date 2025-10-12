@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { GapAnalyzerAgent } from '@/lib/agents/gap-analyzer';
+import { formatGapValue } from '@/lib/utils';
 import { 
   Github, 
   Search, 
@@ -485,7 +486,7 @@ export function RedesignedSkillAssessment({ onNavigateToLearning }: RedesignedSk
                       <div className="flex items-center justify-between text-sm">
                         <span className="truncate">{skillGap.skill.name}</span>
                         <Badge variant={isHighPriority ? 'destructive' : isMediumPriority ? 'default' : 'outline'}>
-                          Gap: {skillGap.gap.toFixed(1)}
+                          Gap: {formatGapValue(skillGap.gap)}
                         </Badge>
                       </div>
                       <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
@@ -495,8 +496,8 @@ export function RedesignedSkillAssessment({ onNavigateToLearning }: RedesignedSk
                         />
                       </div>
                       <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Current: {skillGap.skill.currentLevel}/5</span>
-                        <span>Target: {skillGap.skill.targetLevel}/5</span>
+                        <span>Current: {formatGapValue(skillGap.skill.currentLevel)}/5</span>
+                        <span>Target: {formatGapValue(skillGap.skill.targetLevel)}/5</span>
                       </div>
                     </div>
                   );
@@ -584,4 +585,3 @@ export function RedesignedSkillAssessment({ onNavigateToLearning }: RedesignedSk
     </div>
   );
 }
-

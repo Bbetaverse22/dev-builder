@@ -73,7 +73,6 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
   const [targetRole, setTargetRole] = useState('');
   const [targetIndustry, setTargetIndustry] = useState('');
   const [professionalGoals, setProfessionalGoals] = useState('');
-  const [domainKeywords, setDomainKeywords] = useState('');
   const [portfolioData, setPortfolioData] = useState<any>(null);
   const [repoUrl, setRepoUrl] = useState<string | null>(null);
   const [isCreatingIssues, setIsCreatingIssues] = useState(false);
@@ -202,19 +201,13 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
 
       // Store results on server
       try {
-        const domainKeywordList = domainKeywords
-          .split(',')
-          .map((keyword) => keyword.trim())
-          .filter(Boolean);
-
         const contextPayload = {
           targetRole: targetRole || undefined,
           targetIndustry: targetIndustry || undefined,
           professionalGoals: professionalGoals || undefined,
-          domainKeywords: domainKeywordList.length ? domainKeywordList : undefined,
         };
 
-        if (contextPayload.targetRole || contextPayload.targetIndustry || contextPayload.professionalGoals || contextPayload.domainKeywords) {
+        if (contextPayload.targetRole || contextPayload.targetIndustry || contextPayload.professionalGoals) {
           addLog(
             'info',
             `Captured career focus${contextPayload.targetRole ? `: ${contextPayload.targetRole}` : ''}${contextPayload.targetIndustry ? ` (${contextPayload.targetIndustry})` : ''}`,
@@ -606,19 +599,8 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
                 />
                 </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-xs uppercase text-purple-200/80 tracking-widest">Domain Keywords</label>
-                <Input
-                  value={domainKeywords}
-                  onChange={(event) => setDomainKeywords(event.target.value)}
-                  placeholder="Comma separated — e.g. HIPAA, EHR, patient analytics"
-                  disabled={!canEditInputs}
-                  className="bg-purple-200/10 border-purple-300/25 text-white placeholder:text-purple-200/60 focus-visible:ring-purple-200/40 text-2xl rounded-lg px-5 py-4"
-                />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs uppercase text-purple-200/80 tracking-widest">Professional Goals</label>
+              <div className="space-y-2">
+                <label className="text-xs uppercase text-purple-200/80 tracking-widest">Professional Goals</label>
                 <Textarea
                   value={professionalGoals}
                   onChange={(event) => setProfessionalGoals(event.target.value)}
@@ -627,7 +609,6 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
                   disabled={!canEditInputs}
                   className="bg-purple-200/10 border-purple-300/25 text-white placeholder:text-purple-200/60 focus-visible:ring-purple-200/40 text-2xl rounded-lg px-5 py-4"
                 />
-                </div>
               </div>
             </div>
 

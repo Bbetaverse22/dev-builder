@@ -24,32 +24,6 @@ function buildFocusSkills(skillAssessment: GapAnalysisResult): FocusSkill[] {
     }));
 }
 
-function buildDomainKeywords(
-  githubAnalysis: GitHubAnalysis,
-  context?: ResearchContext
-): string[] {
-  const keywordSet = new Set<string>();
-
-  const addKeyword = (keyword?: string) => {
-    if (!keyword) return;
-    const normalized = normalizeKeyword(keyword);
-    if (normalized.length) {
-      keywordSet.add(normalized);
-    }
-  };
-
-  context?.domainKeywords?.forEach(addKeyword);
-  addKeyword(context?.targetIndustry);
-
-  githubAnalysis.languages?.forEach(addKeyword);
-  githubAnalysis.frameworks?.forEach(addKeyword);
-  githubAnalysis.technologies?.forEach(addKeyword);
-  githubAnalysis.recommendations?.forEach((rec) => {
-    rec.split(/[,/]/).forEach(addKeyword);
-  });
-
-  return Array.from(keywordSet);
-}
 
 function suggestQueries(
   focusSkills: FocusSkill[],
@@ -88,7 +62,6 @@ export function buildResearchStateSeed({
   examples,
 }: ResearchStateSeedOptions): Partial<ResearchState> {
   const focusSkills = buildFocusSkills(skillAssessment);
-  const domainKeywords = buildDomainKeywords(githubAnalysis, context);
   const queries = suggestQueries(focusSkills, context);
 
   return {
@@ -98,7 +71,6 @@ export function buildResearchStateSeed({
     targetRole: context?.targetRole,
     targetIndustry: context?.targetIndustry,
     professionalGoals: context?.professionalGoals,
-    domainKeywords,
     focusSkills,
     learningObjectives: skillAssessment.learningPath ?? [],
     queries,

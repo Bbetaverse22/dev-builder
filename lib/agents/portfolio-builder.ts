@@ -154,9 +154,9 @@ export class PortfolioBuilderAgent {
           id: 'cicd',
           type: 'cicd',
           severity: 'medium',
-          title: 'No CI/CD Pipeline',
-          description: 'No automated testing or deployment pipeline configured',
-          impact: 'Manual testing and deployment increases errors and slows development',
+          title: 'No CI/CD Pipeline Detected',
+          description: 'No automated testing or deployment pipeline configuration found. Note: If you use Vercel, Netlify, or similar platforms with Git integration, they provide built-in CI/CD and you may not need additional configuration.',
+          impact: 'Without automated CI/CD, manual testing and deployment can increase errors and slow development. However, modern platforms like Vercel handle this automatically.',
         });
       }
 
@@ -621,13 +621,14 @@ export class PortfolioBuilderAgent {
           break;
 
         case 'cicd':
-          description = 'Set up automated CI/CD to catch bugs early and streamline deployments.';
+          description = 'Set up automated CI/CD to catch bugs early and streamline deployments. If you already use Vercel, Netlify, or similar platforms, they provide built-in CI/CD - you may just need to add status checks or testing workflows.';
           actionItems = [
-            'Create GitHub Actions workflow file (.github/workflows/ci.yml)',
+            '✅ If using Vercel/Netlify: You already have deployment CI/CD! Consider adding a GitHub Actions workflow just for testing.',
+            '🔧 If self-hosting: Create GitHub Actions workflow file (.github/workflows/ci.yml)',
             'Configure automated test runs on pull requests',
             'Add linting and code quality checks',
-            'Set up automated deployments (optional)',
             'Add build status badge to README',
+            'Consider adding a vercel.json or netlify.toml to make deployment config explicit',
           ];
           break;
 
@@ -738,19 +739,31 @@ export class PortfolioBuilderAgent {
   }
 
   /**
-   * Check for CI/CD setup
+   * Check for CI/CD setup or modern deployment platforms
    */
   private async checkCICDSetup(owner: string, repo: string, contents: any): Promise<boolean> {
     try {
-      // Check for .github/workflows directory
+      // Check for .github/workflows directory (GitHub Actions)
       const hasGithubActions = await this.githubClient.fileExists(owner, repo, '.github/workflows');
-      if (hasGithubActions) return true;
+      if (hasGithubActions) {
+        console.log('[Portfolio Builder] ✅ Detected GitHub Actions CI/CD');
+        return true;
+      }
 
-      // Check for other CI config files
+      // Check for deployment platform indicators in README and repo description
+      const hasDeploymentLinks = await this.checkForDeploymentLinks(owner, repo);
+      if (hasDeploymentLinks) {
+        console.log('[Portfolio Builder] ✅ Detected deployment platform from links (built-in CI/CD) - skipping CI/CD recommendation');
+        return true;
+      }
+
+      // Check for other traditional CI config files
       if (!Array.isArray(contents)) return false;
 
       const fileNames = contents.map((file: any) => file.name.toLowerCase());
-      const ciFiles = [
+
+      // Traditional CI/CD platforms
+      const traditionalCIFiles = [
         '.travis.yml',
         'circle.yml',
         '.circleci',
@@ -759,8 +772,98 @@ export class PortfolioBuilderAgent {
         'azure-pipelines.yml',
       ];
 
-      return fileNames.some((name) => ciFiles.some((ci) => name.includes(ci)));
+      // Modern deployment platforms (Vercel, Netlify, etc.) that provide built-in CI/CD
+      const deploymentPlatformFiles = [
+        'vercel.json',        // Vercel config
+        '.vercel',            // Vercel project folder
+        'netlify.toml',       // Netlify config
+        '_redirects',         // Netlify redirects
+        'netlify',            // Netlify folder
+        'render.yaml',        // Render config
+        'fly.toml',           // Fly.io config
+        'railway.json',       // Railway config
+        'railway.toml',       // Railway config
+      ];
+
+      // Check for traditional CI/CD
+      const hasTraditionalCI = fileNames.some((name) =>
+        traditionalCIFiles.some((ci) => name.includes(ci))
+      );
+      if (hasTraditionalCI) {
+        console.log('[Portfolio Builder] ✅ Detected traditional CI/CD config');
+        return true;
+      }
+
+      // Check for modern deployment platforms (they handle CI/CD automatically)
+      const hasDeploymentPlatform = fileNames.some((name) =>
+        deploymentPlatformFiles.some((platform) => name.includes(platform))
+      );
+      if (hasDeploymentPlatform) {
+        console.log('[Portfolio Builder] ✅ Detected deployment platform config files (built-in CI/CD) - skipping CI/CD recommendation');
+        return true; // Modern platforms include CI/CD automatically
+      }
+
+      return false;
     } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Check README and repository description for deployment platform links
+   */
+  private async checkForDeploymentLinks(owner: string, repo: string): Promise<boolean> {
+    try {
+      // Get repository data for description
+      const repoData = await this.githubClient.getRepository(owner, repo);
+      const description = (repoData.description || '').toLowerCase();
+      const homepage = (repoData.homepage || '').toLowerCase();
+
+      // Deployment platform domains to check for
+      const deploymentDomains = [
+        'vercel.app',          // Vercel deployment
+        'vercel.com',          // Vercel link
+        'netlify.app',         // Netlify deployment
+        'netlify.com',         // Netlify link
+        'railway.app',         // Railway deployment
+        'railway.com',         // Railway link
+        'render.com',          // Render deployment
+        'fly.dev',             // Fly.io deployment
+        'fly.io',              // Fly.io link
+        'herokuapp.com',       // Heroku deployment
+        'pages.dev',           // Cloudflare Pages
+        'surge.sh',            // Surge deployment
+        'now.sh',              // Old Vercel domain
+      ];
+
+      // Check homepage URL
+      if (homepage && deploymentDomains.some(domain => homepage.includes(domain))) {
+        console.log(`[Portfolio Builder] 📍 Found deployment platform in homepage: ${homepage}`);
+        return true;
+      }
+
+      // Check description
+      if (description && deploymentDomains.some(domain => description.includes(domain))) {
+        console.log(`[Portfolio Builder] 📍 Found deployment platform in description`);
+        return true;
+      }
+
+      // Check README content
+      try {
+        const readme = await this.githubClient.getRepositoryReadme(owner, repo);
+        const readmeContent = Buffer.from(readme.content, 'base64').toString('utf-8').toLowerCase();
+
+        if (deploymentDomains.some(domain => readmeContent.includes(domain))) {
+          console.log(`[Portfolio Builder] 📍 Found deployment platform links in README`);
+          return true;
+        }
+      } catch (error) {
+        // README doesn't exist or couldn't be read, continue without it
+      }
+
+      return false;
+    } catch (error) {
+      console.error('[Portfolio Builder] Error checking deployment links:', error);
       return false;
     }
   }
