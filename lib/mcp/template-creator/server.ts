@@ -328,7 +328,7 @@ class TemplateCreatorServer {
         recursive: '1',
       });
 
-      const tree = (data.tree ?? [])
+      const tree: GitTreeItem[] = (data.tree ?? [])
         .filter((item): item is GitTreeItem => !!item.path && !!item.sha)
         .map((item) => ({
           path: item.path!,
