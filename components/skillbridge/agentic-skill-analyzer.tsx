@@ -5,7 +5,7 @@
  * Single-page agentic workflow with AI-powered Portfolio Builder
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import { GapAnalyzerAgent } from '@/lib/agents/gap-analyzer';
 import { StickyAgentStatus } from './sticky-agent-status';
 import { InteractiveSkillCard } from './interactive-skill-card';
@@ -51,15 +52,36 @@ interface ActionLog {
 interface PortfolioTask {
   id: string;
   title: string;
-  type: 'issue' | 'readme' | 'documentation' | 'test';
+  type: 'issue' | 'readme' | 'documentation' | 'test' | 'skill';
   status: 'pending' | 'in_progress' | 'completed';
   priority: 'high' | 'medium' | 'low';
+  optional?: boolean;
+  skillName?: string;
+  description?: string;
+  actionItems?: string[];
+}
+
+interface GeneratedTemplateSummary {
+  sourceName: string;
+  sourceUrl: string;
+  templateDirectory: string;
+  branchName: string;
+  instructions: string[];
+  analysisSummary: {
+    framework: string;
+    templateWorthiness: number;
+    insights: string[];
+  };
+  pullRequestUrl?: string;
+  pullRequestNumber?: number;
 }
 
 interface AgenticSkillAnalyzerProps {
   showMarketing?: boolean;
 }
 
+const MAX_DISPLAY_RESOURCES = 3;
+const MAX_DISPLAY_EXAMPLES = 3;
 export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnalyzerProps) {
   const [githubUsername, setGithubUsername] = useState('');
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('IDLE');
@@ -77,6 +99,243 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
   const [repoUrl, setRepoUrl] = useState<string | null>(null);
   const [isCreatingIssues, setIsCreatingIssues] = useState(false);
   const [createdIssues, setCreatedIssues] = useState<any[]>([]);
+  const [skillAssessment, setSkillAssessment] = useState<any | null>(null);
+  const [selectedRecommendations, setSelectedRecommendations] = useState<string[]>([]);
+  const [resourcesExpanded, setResourcesExpanded] = useState(false);
+  const [examplesExpanded, setExamplesExpanded] = useState(false);
+  const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
+  const [generatedTemplates, setGeneratedTemplates] = useState<Record<string, GeneratedTemplateSummary>>({});
+  const [templateGenerationLoading, setTemplateGenerationLoading] = useState<Record<string, boolean>>({});
+  const [templateGenerationErrors, setTemplateGenerationErrors] = useState<Record<string, string>>({});
+  const [templatePrLoading, setTemplatePrLoading] = useState<Record<string, boolean>>({});
+  const [templatePrErrors, setTemplatePrErrors] = useState<Record<string, string>>({});
+  const [customTemplateRepo, setCustomTemplateRepo] = useState('');
+  const [customTemplateFeature, setCustomTemplateFeature] = useState('');
+  const [customTemplateError, setCustomTemplateError] = useState('');
+
+  const groupedResearchRecommendations = useMemo(() => {
+    const recs = Array.isArray(researchResults?.recommendations)
+      ? researchResults.recommendations
+      : [];
+    const resource: any[] = [];
+    const example: any[] = [];
+    const action: any[] = [];
+
+    recs.forEach((rec: any) => {
+      if (!rec || typeof rec !== 'object') return;
+      if (rec.type === 'resource') {
+        resource.push(rec);
+      } else if (rec.type === 'example') {
+        example.push(rec);
+      } else if (rec.type === 'action') {
+        action.push(rec);
+      }
+    });
+
+    return {
+      resource,
+      example,
+      action,
+      total: resource.length + example.length + action.length,
+    };
+  }, [researchResults]);
+
+  const normalizedCustomRepo = customTemplateRepo.trim();
+  const customTemplateLoading = normalizedCustomRepo ? templateGenerationLoading[normalizedCustomRepo] : false;
+  const customTemplateFailure = normalizedCustomRepo ? templateGenerationErrors[normalizedCustomRepo] : '';
+  const customTemplateSuccess = normalizedCustomRepo ? generatedTemplates[normalizedCustomRepo] : undefined;
+  const customTemplatePrLoading = normalizedCustomRepo ? templatePrLoading[normalizedCustomRepo] : false;
+  const customTemplatePrError = normalizedCustomRepo ? templatePrErrors[normalizedCustomRepo] : '';
+
+  useEffect(() => {
+    setResourcesExpanded(false);
+    setExamplesExpanded(false);
+  }, [researchResults]);
+
+  useEffect(() => {
+    setExpandedTasks({});
+  }, [portfolioTasks.length]);
+
+  const toggleRecommendationSelection = (id: string, checked: boolean) => {
+    setSelectedRecommendations((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return Array.from(next);
+    });
+  };
+
+  const selectAllRecommendations = (items: any[], checked: boolean) => {
+    if (!items || items.length === 0) {
+      setSelectedRecommendations([]);
+      return;
+    }
+    if (checked) {
+      const ids = items.map((item) => item.id);
+      setSelectedRecommendations(ids);
+    } else {
+      setSelectedRecommendations([]);
+    }
+  };
+
+  const generateTemplateFromExample = async (example: any) => {
+    if (!example?.url) {
+      return;
+    }
+
+    const url: string = example.url;
+    setTemplateGenerationErrors((prev) => ({ ...prev, [url]: '' }));
+    setTemplateGenerationLoading((prev) => ({ ...prev, [url]: true }));
+    setTemplatePrErrors((prev) => ({ ...prev, [url]: '' }));
+
+    try {
+      const response = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'preview',
+          exampleUrl: url,
+          featureName: example.name,
+          skillName: skillGaps[0]?.name,
+          repositoryUrl: repoUrl,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data?.success) {
+        setGeneratedTemplates((prev) => ({
+          ...prev,
+          [url]: {
+            sourceName: data.sourceName ?? example.name ?? url,
+            sourceUrl: data.sourceUrl ?? url,
+            templateDirectory: data.templateDirectory,
+            branchName: data.branchName,
+            instructions: data.instructions ?? [],
+            analysisSummary: data.analysisSummary ?? {
+              framework: 'unknown',
+              templateWorthiness: 0,
+              insights: [],
+            },
+            pullRequestUrl: undefined,
+            pullRequestNumber: undefined,
+          },
+        }));
+        addLog(
+          'success',
+          `Generated template example from ${example.name ?? url}. Saved to ${data.templateDirectory}.`,
+          <Sparkles className="h-4 w-4" />
+        );
+      } else {
+        const message = data?.message ?? 'Template generation failed';
+        setTemplateGenerationErrors((prev) => ({ ...prev, [url]: message }));
+        addLog('warning', message, <AlertCircle className="h-4 w-4" />);
+      }
+    } catch (error) {
+      console.error('Template generation error:', error);
+      setTemplateGenerationErrors((prev) => ({
+        ...prev,
+        [url]: 'Unexpected error while generating template.',
+      }));
+      addLog('error', 'Unexpected error while generating template example', <AlertCircle className="h-4 w-4" />);
+    } finally {
+      setTemplateGenerationLoading((prev) => ({ ...prev, [url]: false }));
+    }
+  };
+
+  const handleManualTemplateGeneration = async () => {
+    const url = customTemplateRepo.trim();
+    if (!url) {
+      setCustomTemplateError('Enter a GitHub repository URL');
+      return;
+    }
+
+    if (!/^https?:\/\/github\.com\/[^\/]+\/[^\/]+/i.test(url)) {
+      setCustomTemplateError('Enter a valid GitHub repository URL');
+      return;
+    }
+
+    setCustomTemplateError('');
+    await generateTemplateFromExample({
+      url,
+      name: customTemplateFeature || url,
+    });
+  };
+
+  const createTemplatePullRequest = async (example: any) => {
+    if (!example?.url) {
+      return;
+    }
+    if (!repoUrl) {
+      addLog('warning', 'Run the analyzer on a repository before creating a template PR.', <AlertCircle className="h-4 w-4" />);
+      setTemplatePrErrors((prev) => ({
+        ...prev,
+        [example.url]: 'Run the analyzer on a repository before creating a template PR.',
+      }));
+      return;
+    }
+
+    const url: string = example.url;
+    setTemplatePrErrors((prev) => ({ ...prev, [url]: '' }));
+    setTemplatePrLoading((prev) => ({ ...prev, [url]: true }));
+
+    try {
+      const response = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create-pr',
+          exampleUrl: url,
+          featureName: example.name,
+          skillName: skillGaps[0]?.name,
+          repositoryUrl: repoUrl,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data?.success && data.pullRequest) {
+        setGeneratedTemplates((prev) => {
+          const existing = prev[url];
+          if (!existing) {
+            return prev;
+          }
+          return {
+            ...prev,
+            [url]: {
+              ...existing,
+              pullRequestUrl: data.pullRequest.pullRequestUrl,
+              pullRequestNumber: data.pullRequest.number,
+              branchName: data.branchName ?? existing.branchName,
+            },
+          };
+        });
+        setTemplatePrErrors((prev) => ({ ...prev, [url]: '' }));
+
+        addLog(
+          'success',
+          `Created pull request ${data.pullRequest.pullRequestUrl}`,
+          <GitPullRequest className="h-4 w-4" />
+        );
+      } else {
+        const message = data?.message ?? 'Failed to create pull request';
+        setTemplatePrErrors((prev) => ({ ...prev, [url]: message }));
+        addLog('warning', message, <AlertCircle className="h-4 w-4" />);
+      }
+    } catch (error) {
+      console.error('Template PR creation error:', error);
+      setTemplatePrErrors((prev) => ({
+        ...prev,
+        [url]: 'Unexpected error while creating pull request.',
+      }));
+      addLog('error', 'Unexpected error while creating template pull request', <AlertCircle className="h-4 w-4" />);
+    } finally {
+      setTemplatePrLoading((prev) => ({ ...prev, [url]: false }));
+    }
+  };
 
   const gapAnalyzer = useMemo(() => new GapAnalyzerAgent(), []);
 
@@ -129,6 +388,12 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
     setPortfolioData(null);
     setRepoUrl(null);
     setCreatedIssues([]);
+    setSelectedRecommendations([]);
+    setGeneratedTemplates({});
+    setTemplateGenerationLoading({});
+    setTemplateGenerationErrors({});
+    setTemplatePrLoading({});
+    setTemplatePrErrors({});
 
     try {
       // Phase 1: REAL GitHub Analysis (using existing tool integrations)
@@ -194,10 +459,11 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
       setProgress(50);
       
       const gapAnalysis = await gapAnalyzer.generateAutomaticSkillAssessment(githubAnalysis);
-      
+
       addLog('success', `Overall skill score: ${gapAnalysis.overallScore}%`, <CheckCircle2 className="h-4 w-4" />);
       addLog('info', `Identified ${gapAnalysis.skillGaps.length} skill gaps`, <Target className="h-4 w-4" />);
       setProgress(55);
+      setSkillAssessment(gapAnalysis);
 
       // Store results on server
       try {
@@ -232,11 +498,16 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
 
       // Set REAL skill gaps
       const topGaps = gapAnalysis.skillGaps.slice(0, 5).map(sg => ({
+        id: sg.skill.id,
         name: sg.skill.name,
         currentLevel: sg.skill.currentLevel,
         targetLevel: sg.skill.targetLevel,
         priority: Math.round(sg.priority),
-        gap: sg.gap
+        gap: sg.gap,
+        guidance: sg.guidance,
+        recommendations: sg.guidance?.recommendedSteps?.length
+          ? sg.guidance.recommendedSteps
+          : sg.recommendations,
       }));
       setSkillGaps(topGaps);
       setProgress(60);
@@ -305,18 +576,26 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
           body: JSON.stringify({
             repoUrl: repoUrl,
             researchResults: researchResults, // Pass research results to enrich recommendations
+            skillAssessment: gapAnalysis,
             createIssues: false, // Don't create issues automatically (can be enabled later)
           }),
         });
 
-        if (portfolioResponse.ok) {
-          const portfolioDataResult = await portfolioResponse.json();
+          if (portfolioResponse.ok) {
+            const portfolioDataResult = await portfolioResponse.json();
 
-          // Store portfolio data for later use
-          setPortfolioData(portfolioDataResult);
+            // Store portfolio data for later use
+            setPortfolioData(portfolioDataResult);
+            const defaultSelected = (portfolioDataResult.recommendations || [])
+              .filter((rec: any) => !rec.weakness?.optional)
+              .map((rec: any) => rec.id);
+            if (defaultSelected.length === 0 && (portfolioDataResult.recommendations || []).length > 0) {
+              defaultSelected.push(portfolioDataResult.recommendations[0].id);
+            }
+            setSelectedRecommendations(defaultSelected);
 
-          // Log findings
-          addLog('success', `Portfolio quality: ${portfolioDataResult.analysis.overallQuality}%`, <CheckCircle2 className="h-4 w-4" />);
+            // Log findings
+            addLog('success', `Portfolio quality: ${portfolioDataResult.analysis.overallQuality}%`, <CheckCircle2 className="h-4 w-4" />);
 
           if (portfolioDataResult.analysis.weaknesses.length > 0) {
             portfolioDataResult.analysis.weaknesses.forEach((weakness: any) => {
@@ -334,17 +613,27 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
 
           // Convert recommendations to portfolio tasks for display
           const tasks: PortfolioTask[] = portfolioDataResult.recommendations.map((rec: any, index: number) => ({
-            id: `rec-${index}`,
+            id: rec.id,
             title: rec.title,
             type: rec.weakness.type === 'testing' ? 'test' :
                   rec.weakness.type === 'readme' ? 'readme' :
+                  rec.weakness.type === 'skill' ? 'skill' :
                   rec.weakness.type === 'cicd' ? 'issue' : 'documentation',
             status: 'pending' as const,
             priority: rec.weakness.severity as 'high' | 'medium' | 'low',
+            optional: rec.weakness.optional,
+            skillName: rec.skillGap?.skill?.name,
+            description: rec.description,
+            actionItems: rec.actionItems ?? [],
           }));
 
           setPortfolioTasks(tasks);
           addLog('success', `Generated ${tasks.length} improvement tasks (awaiting your approval to create GitHub issues)`, <CheckCircle2 className="h-4 w-4" />);
+          const skillTaskCount = portfolioDataResult.recommendations.filter((rec: any) => rec.weakness?.type === 'skill').length;
+          if (skillTaskCount > 0) {
+            addLog('success', `Mapped ${skillTaskCount} tasks directly to your top skill gaps`, <Sparkles className="h-4 w-4" />);
+          }
+          addLog('info', 'Use the checkboxes in Portfolio Builder to choose which tasks become GitHub issues.', <GitPullRequest className="h-4 w-4" />);
           setProgress(90);
         } else {
           addLog('warning', 'Portfolio analysis returned no results, continuing...', <AlertCircle className="h-4 w-4" />);
@@ -404,17 +693,37 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
       return;
     }
 
+    const selectedRecs = (portfolioData.recommendations || []).filter((rec: any) =>
+      selectedRecommendations.includes(rec.id)
+    );
+
+    if (selectedRecs.length === 0) {
+      addLog('warning', 'Select at least one recommendation before creating GitHub issues.', <AlertCircle className="h-4 w-4" />);
+      return;
+    }
+
+    setCreatedIssues([]);
     setIsCreatingIssues(true);
-    addLog('info', 'User approved - creating GitHub issues...', <GitPullRequest className="h-4 w-4" />);
+    addLog('info', `User selected ${selectedRecs.length} improvement${selectedRecs.length > 1 ? 's' : ''} for issue creation...`, <GitPullRequest className="h-4 w-4" />);
 
     try {
+      const optionalSkippedCount = (portfolioData.recommendations || []).filter(
+        (rec: any) => rec.weakness?.optional && !selectedRecommendations.includes(rec.id)
+      ).length;
+      if (optionalSkippedCount > 0) {
+        addLog('info', `Skipping ${optionalSkippedCount} optional improvement${optionalSkippedCount > 1 ? 's' : ''}. Select them in the Portfolio Builder checklist to include.`, <AlertCircle className="h-4 w-4" />);
+      }
+
       const createIssuesResponse = await fetch('/api/portfolio-builder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           repoUrl: repoUrl,
           researchResults: researchResults,
-          createIssues: true, // Now we create issues with user approval
+          skillAssessment: skillAssessment,
+          recommendationIds: selectedRecs.map((rec: any) => rec.id),
+          includeOptionalImprovements: selectedRecs.some((rec: any) => rec.weakness?.optional),
+          createIssues: true,
         }),
       });
 
@@ -425,9 +734,8 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
           const successfulIssues = result.issues.filter((issue: any) => issue.success);
           setCreatedIssues(successfulIssues);
 
-          addLog('success', `✅ Successfully created ${successfulIssues.length} GitHub issues!`, <CheckCircle2 className="h-4 w-4" />);
+          addLog('success', `✅ Successfully created ${successfulIssues.length} GitHub issue${successfulIssues.length === 1 ? '' : 's'}!`, <CheckCircle2 className="h-4 w-4" />);
 
-          // Log each created issue
           successfulIssues.forEach((issue: any) => {
             addLog('success', `Created: ${issue.title}`, <GitPullRequest className="h-4 w-4" />);
           });
@@ -670,7 +978,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
           </Card>
 
           {/* Column 2: Skill Gaps */}
-          <Card>
+          <Card id="portfolio-builder-card">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Target className="h-5 w-5" />
@@ -711,31 +1019,116 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
                 <span>Portfolio Builder</span>
               </CardTitle>
               <CardDescription>
-                Autonomous improvement tasks created by the agent
+                Autonomous improvement tasks created by the agent — select the ones you want to publish
               </CardDescription>
             </CardHeader>
             <CardContent>
               {portfolioTasks.length > 0 ? (
                 <div className="space-y-3">
-                  {portfolioTasks.map((task) => (
-                    <div 
-                      key={task.id} 
-                      className="p-3 border rounded-lg hover:bg-accent/50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          {task.type === 'issue' && <GitPullRequest className="h-4 w-4 text-blue-600" />}
-                          {task.type === 'readme' && <FileText className="h-4 w-4 text-green-600" />}
-                          {task.type === 'documentation' && <FileText className="h-4 w-4 text-purple-600" />}
-                          {task.type === 'test' && <Code className="h-4 w-4 text-orange-600" />}
-                          <Badge variant="outline" className="text-xs">
-                            {task.priority}
-                          </Badge>
-                        </div>
-                      </div>
-                      <p className="text-sm font-medium">{task.title}</p>
+                  <div className="flex items-center justify-between text-xs text-slate-600">
+                    <span className="font-medium">Select tasks to publish as GitHub issues.</span>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={
+                          portfolioTasks.length === 0
+                            ? false
+                            : selectedRecommendations.length === 0
+                              ? false
+                              : selectedRecommendations.length === portfolioTasks.length
+                                ? true
+                                : 'indeterminate'
+                        }
+                        onCheckedChange={(value) => selectAllRecommendations(portfolioTasks, value === true)}
+                        disabled={isCreatingIssues || portfolioTasks.length === 0}
+                        className="border-purple-200/60"
+                      />
+                      <span className="text-slate-700">Select all</span>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="space-y-3">
+                    {portfolioTasks.map((task) => {
+                      const isSelected = selectedRecommendations.includes(task.id);
+                      const isExpanded = expandedTasks[task.id] ?? false;
+                      const toggleExpanded = () =>
+                        setExpandedTasks((prev) => ({ ...prev, [task.id]: !isExpanded }));
+
+                      return (
+                        <div
+                          key={task.id}
+                          className={`border rounded-lg transition-colors shadow-sm ${
+                            isSelected
+                              ? 'border-purple-300/60 bg-white'
+                              : 'border-slate-300 bg-white hover:border-purple-200/30'
+                          }`}
+                        >
+                          <div
+                            className="px-3 py-3 flex items-start gap-3 cursor-pointer"
+                            onClick={toggleExpanded}
+                          >
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(value) => toggleRecommendationSelection(task.id, value === true)}
+                              disabled={isCreatingIssues}
+                              className="mt-1 border-purple-200/60"
+                              onClick={(event) => event.stopPropagation()}
+                            />
+                            <div className="flex-1 space-y-1">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  {task.type === 'issue' && <GitPullRequest className="h-4 w-4 text-blue-500" />}
+                                  {task.type === 'readme' && <FileText className="h-4 w-4 text-green-500" />}
+                                  {task.type === 'documentation' && <FileText className="h-4 w-4 text-purple-400" />}
+                                  {task.type === 'test' && <Code className="h-4 w-4 text-orange-400" />}
+                                  {task.type === 'skill' && <Target className="h-4 w-4 text-pink-400" />}
+                                  <p className="text-sm font-semibold text-slate-900">{task.title}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {task.type === 'skill' && task.skillName && (
+                                    <Badge variant="outline" className="text-xs text-pink-600 border-pink-400/60 bg-pink-50">
+                                      {task.skillName}
+                                    </Badge>
+                                  )}
+                                  {task.optional && (
+                                    <Badge variant="outline" className="text-xs text-slate-600 border-slate-300 bg-slate-100">
+                                      Optional
+                                    </Badge>
+                                  )}
+                                  <Badge variant="outline" className="text-xs uppercase">
+                                    {task.priority}
+                                  </Badge>
+                                </div>
+                              </div>
+                              {task.description && (
+                                <p className="text-xs text-slate-600">
+                                  {task.description}
+                                </p>
+                              )}
+                              <div className="flex items-center justify-between text-xs text-slate-500">
+                                <span>
+                                  {Array.isArray(task.actionItems) && task.actionItems.length > 0
+                                    ? `${task.actionItems.length} action item${task.actionItems.length === 1 ? '' : 's'}`
+                                    : 'No action items'}
+                                </span>
+                                <Badge variant="secondary" className="text-[10px] uppercase">
+                                  {isExpanded ? 'Hide Details' : 'Show Details'}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                          {isExpanded && Array.isArray(task.actionItems) && task.actionItems.length > 0 && (
+                            <div className="px-6 pb-4">
+                              <ul className="text-xs text-slate-600 list-disc list-inside space-y-1">
+                                {task.actionItems.map((item, idx) => (
+                                  <li key={idx}>{item}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
 
                   {createdIssues.length > 0 ? (
                     <div className="space-y-2 mt-4">
@@ -757,7 +1150,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
                       className="w-full mt-4"
                       size="sm"
                       onClick={handleCreateGitHubIssues}
-                      disabled={isCreatingIssues || !repoUrl || !portfolioData}
+                      disabled={isCreatingIssues || !repoUrl || !portfolioData || selectedRecommendations.length === 0}
                     >
                       {isCreatingIssues ? (
                         <>
@@ -767,7 +1160,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
                       ) : (
                         <>
                           <Rocket className="h-4 w-4 mr-2" />
-                          Create GitHub Issues
+                          Create {selectedRecommendations.length} Issue{selectedRecommendations.length === 1 ? '' : 's'}
                         </>
                       )}
                     </Button>
@@ -786,7 +1179,10 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
 
       {/* Portfolio Quality Visualization */}
       {portfolioData && portfolioData.analysis && (
-        <Card className="border-emerald-400/30 bg-gradient-to-br from-emerald-800/50 via-emerald-900/40 to-slate-950/70">
+        <Card
+          id="portfolio-quality"
+          className="border-emerald-400/30 bg-gradient-to-br from-emerald-800/50 via-emerald-900/40 to-slate-950/70"
+        >
           <CardHeader>
             <CardTitle className="flex items-center space-x-3 text-white text-3xl">
               <Target className="h-7 w-7" />
@@ -876,96 +1272,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
               </div>
             )}
 
-            {/* Improvement Recommendations */}
-            {portfolioData.recommendations && portfolioData.recommendations.length > 0 && (
-              <div>
-                <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
-                  <Sparkles className="h-5 w-5 mr-2 text-yellow-300" />
-                  AI-Generated Recommendations ({portfolioData.recommendations.length})
-                </h3>
-                <div className="space-y-3">
-                  {portfolioData.recommendations.map((rec: any, index: number) => (
-                    <div
-                      key={index}
-                      className="p-4 bg-emerald-200/10 rounded-lg border border-emerald-200/20"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="text-lg font-semibold text-white">{rec.title}</h4>
-                        <Badge variant="secondary" className="text-xs">
-                          Priority: {rec.priority}/10
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-emerald-100/70 mb-3">{rec.description}</p>
-
-                      {/* Action Items */}
-                      {rec.actionItems && rec.actionItems.length > 0 && (
-                        <div className="mt-3">
-                          <p className="text-xs font-semibold text-emerald-200/90 mb-2">Action Items:</p>
-                          <ul className="space-y-1">
-                            {rec.actionItems.slice(0, 3).map((item: string, i: number) => (
-                              <li key={i} className="text-xs text-emerald-100/80 flex items-start gap-2">
-                                <span className="text-emerald-300">•</span>
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                            {rec.actionItems.length > 3 && (
-                              <li className="text-xs text-emerald-100/60">
-                                ... and {rec.actionItems.length - 3} more
-                              </li>
-                            )}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Resources */}
-                      {rec.resources && rec.resources.length > 0 && (
-                        <div className="mt-3">
-                          <p className="text-xs font-semibold text-emerald-200/90 mb-2">Learning Resources:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {rec.resources.slice(0, 2).map((resource: any, i: number) => (
-                              <a
-                                key={i}
-                                href={resource.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-emerald-300 hover:text-emerald-200 underline"
-                              >
-                                {resource.title}
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Templates (from Template Creator MCP) */}
-                      {rec.templates && rec.templates.length > 0 && (
-                        <div className="mt-3 p-3 bg-yellow-200/10 rounded border border-yellow-200/20">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Sparkles className="h-4 w-4 text-yellow-300" />
-                            <p className="text-xs font-semibold text-yellow-200">
-                              {rec.templates.length} Ready-to-Use Template{rec.templates.length > 1 ? 's' : ''} Extracted
-                            </p>
-                          </div>
-                          <p className="text-xs text-yellow-100/70">
-                            Clean code templates automatically extracted from example projects - available when you create GitHub issues!
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Effort Badge */}
-                      <div className="mt-3 flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs text-emerald-200 border-emerald-200/30">
-                          Effort: {rec.estimatedEffort}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs text-emerald-200 border-emerald-200/30">
-                          Category: {rec.weakness.type}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Improvement Recommendations removed to avoid duplication. See Portfolio Builder column. */}
           </CardContent>
         </Card>
       )}
@@ -988,116 +1295,346 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
               <div>
                 <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
                   <FileText className="h-5 w-5 mr-2" />
-                  Learning Resources ({researchResults.resources.length})
+                  Learning Resources ({Math.min(researchResults.resources.length, resourcesExpanded ? researchResults.resources.length : MAX_DISPLAY_RESOURCES)})
                 </h3>
                 <div className="grid gap-3">
-                  {researchResults.resources.slice(0, 5).map((resource: any, index: number) => (
-                    <a
-                      key={index}
-                      href={resource.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-4 bg-blue-200/10 rounded-lg border border-blue-200/20 hover:bg-blue-200/20 transition-colors group"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">
-                            {resource.title}
-                          </h4>
-                          <p className="text-sm text-blue-100/70 mt-1">{resource.description}</p>
-                          {resource.score && (
-                            <div className="flex items-center gap-2 mt-2">
-                              <div className="flex">
-                                {[...Array(5)].map((_, i) => (
-                                  <span key={i} className={i < (resource.rating || 3) ? 'text-yellow-400' : 'text-gray-600'}>⭐</span>
-                                ))}
+                  {researchResults.resources
+                    .slice(0, resourcesExpanded ? researchResults.resources.length : MAX_DISPLAY_RESOURCES)
+                    .map((resource: any, index: number) => (
+                      <a
+                        key={index}
+                        href={resource.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-4 bg-blue-200/10 rounded-lg border border-blue-200/20 hover:bg-blue-200/20 transition-colors group"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">
+                              {resource.title}
+                            </h4>
+                            <p className="text-sm text-blue-100/70 mt-1">{resource.description}</p>
+                            {resource.score && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <div className="flex">
+                                  {[...Array(5)].map((_, i) => (
+                                    <span key={i} className={i < (resource.rating || 3) ? 'text-yellow-400' : 'text-gray-600'}>⭐</span>
+                                  ))}
+                                </div>
+                                <span className="text-xs text-blue-200/60">Score: {(resource.score * 100).toFixed(0)}%</span>
                               </div>
-                              <span className="text-xs text-blue-200/60">Score: {(resource.score * 100).toFixed(0)}%</span>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </a>
-                  ))}
+                      </a>
+                    ))}
                 </div>
+                {researchResults.resources.length > MAX_DISPLAY_RESOURCES && (
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setResourcesExpanded((prev) => !prev)}
+                      className="text-xs text-blue-200 hover:text-blue-100 underline"
+                    >
+                      {resourcesExpanded ? 'Show fewer resources' : `Show ${researchResults.resources.length - MAX_DISPLAY_RESOURCES} more`}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
+
+            {/* Manual Template Generation */}
+            <div className="p-4 bg-blue-900/40 border border-blue-200/30 rounded-lg space-y-3">
+              <div className="flex items-center gap-2 text-blue-100">
+                <Sparkles className="h-4 w-4" />
+                <h3 className="text-sm font-semibold">Generate template from a specific repo</h3>
+              </div>
+              <p className="text-xs text-blue-100/80">
+                Paste any GitHub repository URL to pull a full example feature into your current project.
+              </p>
+              <div className="grid gap-2 md:grid-cols-[2fr,1fr]">
+                <Input
+                  value={customTemplateRepo}
+                  onChange={(event) => setCustomTemplateRepo(event.target.value)}
+                  placeholder="https://github.com/owner/repo"
+                  className="bg-blue-200/10 border-blue-200/30 text-white placeholder:text-blue-200/60"
+                />
+                <Input
+                  value={customTemplateFeature}
+                  onChange={(event) => setCustomTemplateFeature(event.target.value)}
+                  placeholder="Optional feature name"
+                  className="bg-blue-200/10 border-blue-200/30 text-white placeholder:text-blue-200/60"
+                />
+              </div>
+              {customTemplateError && (
+                <p className="text-xs text-red-200">{customTemplateError}</p>
+              )}
+              {customTemplateFailure && !customTemplateError && (
+                <p className="text-xs text-red-200">{customTemplateFailure}</p>
+              )}
+              {customTemplateSuccess && (
+                <div className="text-xs text-emerald-200 space-y-2 border border-emerald-300/30 rounded-md p-3 bg-emerald-900/30">
+                  <div>
+                    <p>
+                      Saved to{' '}
+                      <code className="text-emerald-100">{customTemplateSuccess.templateDirectory}</code>.
+                    </p>
+                    <p>
+                      Suggested branch:{' '}
+                      <code className="text-emerald-100">{customTemplateSuccess.branchName}</code>
+                    </p>
+                  </div>
+                  {customTemplateSuccess.instructions?.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="uppercase tracking-wide text-emerald-200/80 font-semibold">Branch Steps</p>
+                      <ol className="list-decimal list-inside space-y-1">
+                        {customTemplateSuccess.instructions.map((instruction, idx) => (
+                          <li key={idx}>{instruction}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                  {customTemplateSuccess.analysisSummary.insights?.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="uppercase tracking-wide text-emerald-200/80 font-semibold">Insights</p>
+                      <ul className="list-disc list-inside space-y-1 text-emerald-100/80">
+                        {customTemplateSuccess.analysisSummary.insights.slice(0, 4).map((insight, idx) => (
+                          <li key={idx}>{insight}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {customTemplatePrError && (
+                    <p className="text-red-200">{customTemplatePrError}</p>
+                  )}
+                  {customTemplateSuccess.pullRequestUrl && (
+                    <div className="flex items-center gap-2 text-emerald-100">
+                      <GitPullRequest className="h-4 w-4" />
+                      <a
+                        href={customTemplateSuccess.pullRequestUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-emerald-200"
+                      >
+                        View pull request #{customTemplateSuccess.pullRequestNumber ?? ''}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-blue-200/50 text-blue-100 hover:text-blue-900 hover:bg-blue-100/80"
+                  onClick={handleManualTemplateGeneration}
+                  disabled={customTemplateLoading}
+                >
+                  {customTemplateLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-300 mr-2" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      {customTemplateSuccess ? 'Regenerate Template' : 'Generate Template'}
+                    </>
+                  )}
+                </Button>
+                {customTemplateSuccess && (
+                  customTemplateSuccess.pullRequestUrl ? null : (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        createTemplatePullRequest({
+                          url: normalizedCustomRepo,
+                          name: customTemplateFeature || normalizedCustomRepo,
+                        })
+                      }
+                      disabled={customTemplatePrLoading}
+                    >
+                      {customTemplatePrLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2" />
+                          Creating PR...
+                        </>
+                      ) : (
+                        <>
+                          <GitPullRequest className="h-4 w-4 mr-2" />
+                          Create Pull Request
+                        </>
+                      )}
+                    </Button>
+                  )
+                )}
+              </div>
+            </div>
 
             {/* GitHub Examples */}
             {researchResults.examples && researchResults.examples.length > 0 && (
               <div>
                 <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
                   <Github className="h-5 w-5 mr-2" />
-                  GitHub Examples ({researchResults.examples.length})
+                  GitHub Examples ({Math.min(researchResults.examples.length, examplesExpanded ? researchResults.examples.length : MAX_DISPLAY_EXAMPLES)})
                 </h3>
                 <div className="grid gap-3">
-                  {researchResults.examples.slice(0, 5).map((example: any, index: number) => (
-                    <a
-                      key={index}
-                      href={example.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-4 bg-blue-200/10 rounded-lg border border-blue-200/20 hover:bg-blue-200/20 transition-colors group"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors flex items-center gap-2">
-                            {example.name}
-                            <Badge variant="secondary" className="text-xs">{example.stars}⭐</Badge>
-                          </h4>
-                          <p className="text-sm text-blue-100/70 mt-1">{example.description}</p>
-                          {example.language && (
-                            <Badge variant="outline" className="mt-2 text-xs text-blue-200 border-blue-200/30">
-                              {example.language}
-                            </Badge>
-                          )}
+                  {researchResults.examples
+                    .slice(0, examplesExpanded ? researchResults.examples.length : MAX_DISPLAY_EXAMPLES)
+                    .map((example: any, index: number) => (
+                      <div
+                        key={index}
+                        className="p-4 bg-blue-200/10 rounded-lg border border-blue-200/20 hover:bg-blue-200/20 transition-colors group space-y-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={example.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors flex items-center gap-2"
+                              >
+                                {example.name}
+                                <Badge variant="secondary" className="text-xs">{example.stars}⭐</Badge>
+                              </a>
+                            </div>
+                            <p className="text-sm text-blue-100/70">{example.description}</p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {example.language && (
+                                <Badge variant="outline" className="text-xs text-blue-200 border-blue-200/30">
+                                  {example.language}
+                                </Badge>
+                              )}
+                              {typeof example.templateWorthiness === 'number' && (
+                                <Badge variant="outline" className="text-xs text-blue-200 border-blue-200/30">
+                                  Worthiness: {example.templateWorthiness.toFixed(2)}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-blue-200/50 text-blue-100 hover:text-blue-900 hover:bg-blue-100/80"
+                              onClick={() => generateTemplateFromExample(example)}
+                              disabled={templateGenerationLoading[example.url]}
+                            >
+                              {templateGenerationLoading[example.url] ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-300 mr-2" />
+                                  Generating...
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="h-4 w-4 mr-2" />
+                                  {generatedTemplates[example.url] ? 'Regenerate Template' : 'Generate Template'}
+                                </>
+                              )}
+                            </Button>
+                            {generatedTemplates[example.url] && (
+                              generatedTemplates[example.url].pullRequestUrl ? (
+                                <a
+                                  href={generatedTemplates[example.url].pullRequestUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-md bg-blue-100 text-blue-900 hover:bg-blue-200"
+                                >
+                                  <GitPullRequest className="h-4 w-4" />
+                                  View Pull Request
+                                </a>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  onClick={() => createTemplatePullRequest(example)}
+                                  disabled={templatePrLoading[example.url]}
+                                >
+                                  {templatePrLoading[example.url] ? (
+                                    <>
+                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2" />
+                                      Creating PR...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <GitPullRequest className="h-4 w-4 mr-2" />
+                                      Create Pull Request
+                                    </>
+                                  )}
+                                </Button>
+                              )
+                            )}
+                          </div>
                         </div>
+                        {templateGenerationErrors[example.url] && (
+                          <div className="text-xs text-red-200">
+                            {templateGenerationErrors[example.url]}
+                          </div>
+                        )}
+                        {templatePrErrors[example.url] && (
+                          <div className="text-xs text-red-200">
+                            {templatePrErrors[example.url]}
+                          </div>
+                        )}
+                        {generatedTemplates[example.url] && (
+                          <div className="space-y-2 p-3 border border-emerald-200/40 rounded-lg bg-emerald-300/10">
+                            <p className="text-sm text-emerald-100">
+                              Template saved to <code className="text-emerald-200">{generatedTemplates[example.url].templateDirectory}</code>.
+                              Suggested branch: <code className="text-emerald-200">{generatedTemplates[example.url].branchName}</code>
+                            </p>
+                            <div className="space-y-1">
+                              <p className="text-xs text-emerald-100 font-semibold uppercase tracking-wide">Next Steps</p>
+                              <ol className="list-decimal list-inside text-xs text-emerald-100 space-y-1">
+                                {generatedTemplates[example.url].instructions.map((instruction, idx) => (
+                                  <li key={idx}>{instruction}</li>
+                                ))}
+                              </ol>
+                            </div>
+                            {generatedTemplates[example.url].analysisSummary.insights?.length > 0 && (
+                              <div className="space-y-1">
+                                <p className="text-xs text-emerald-100 font-semibold uppercase tracking-wide">Insights</p>
+                                <ul className="list-disc list-inside text-xs text-emerald-100/80 space-y-1">
+                                  {generatedTemplates[example.url].analysisSummary.insights.slice(0, 3).map((insight, idx) => (
+                                    <li key={idx}>{insight}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </a>
-                  ))}
+                    ))}
                 </div>
+                {researchResults.examples.length > MAX_DISPLAY_EXAMPLES && (
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setExamplesExpanded((prev) => !prev)}
+                      className="text-xs text-blue-200 hover:text-blue-100 underline"
+                    >
+                      {examplesExpanded ? 'Show fewer examples' : `Show ${researchResults.examples.length - MAX_DISPLAY_EXAMPLES} more`}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Recommendations */}
-            {researchResults.recommendations && researchResults.recommendations.length > 0 && (
-              <div>
-                <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
-                  <Sparkles className="h-5 w-5 mr-2" />
-                  AI Recommendations ({researchResults.recommendations.length})
-                </h3>
-                <div className="space-y-2">
-                  {researchResults.recommendations.map((rec: any, index: number) => (
-                    <div
-                      key={index}
-                      className="p-3 bg-blue-200/10 rounded-lg border border-blue-200/20"
-                    >
-                      <div className="flex items-start gap-3">
-                        <Badge
-                          variant={rec.priority === 'high' ? 'destructive' : rec.priority === 'medium' ? 'default' : 'outline'}
-                          className="mt-1 text-xs"
-                        >
-                          {rec.priority}
-                        </Badge>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-white">{rec.title}</h4>
-                          <p className="text-sm text-blue-100/70 mt-1">{rec.description}</p>
-                          {rec.url && (
-                            <a
-                              href={rec.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-blue-300 hover:text-blue-200 mt-1 inline-block"
-                            >
-                              View Resource →
-                            </a>
-                          )}
-                        </div>
-                        <Badge variant="secondary" className="text-xs">{rec.type}</Badge>
-                      </div>
-                    </div>
-                  ))}
+            {groupedResearchRecommendations.action.length > 0 && (
+              <div className="p-4 bg-white/5 border border-slate-700/60 rounded-lg space-y-2">
+                <div className="flex items-center gap-2 text-slate-100">
+                  <Sparkles className="h-4 w-4 text-emerald-300" />
+                  <p className="text-sm font-semibold">Actionable tasks generated</p>
                 </div>
+                <p className="text-xs text-slate-300/80">
+                  We added {groupedResearchRecommendations.action.length} personalized task{groupedResearchRecommendations.action.length === 1 ? '' : 's'} to the <button
+                    type="button"
+                    onClick={() => document.getElementById('portfolio-builder-card')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="underline text-emerald-200 hover:text-emerald-100"
+                  >
+                    Portfolio Builder
+                  </button>. Review them there and create GitHub issues for the ones you want to tackle.
+                </p>
               </div>
             )}
           </CardContent>

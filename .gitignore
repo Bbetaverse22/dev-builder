@@ -63,6 +63,9 @@ jspm_packages/
 
 # Next.js build output
 .next
+
+# Generated template examples
+examples/generated/
 out
 
 # Nuxt.js build / generate output

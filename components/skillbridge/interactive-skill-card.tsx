@@ -18,14 +18,17 @@ import {
   Briefcase
 } from 'lucide-react';
 import { formatGapValue } from '@/lib/utils';
+import type { SkillGuidance } from '@/lib/agents/gap-analyzer';
 
 interface SkillGap {
+  id?: string;
   name: string;
   currentLevel: number;
   targetLevel: number;
   priority: number;
   gap: number;
   recommendations?: string[];
+  guidance?: SkillGuidance;
 }
 
 interface InteractiveSkillCardProps {
@@ -35,6 +38,14 @@ interface InteractiveSkillCardProps {
 
 export function InteractiveSkillCard({ skill, onStartLearning }: InteractiveSkillCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const formattedCurrentLevel = formatGapValue(skill.currentLevel);
+  const formattedTargetLevel = formatGapValue(skill.targetLevel);
+  const formattedGap = formatGapValue(skill.gap);
+  const guidance = skill.guidance;
+  const recommendedSteps = guidance?.recommendedSteps?.length
+    ? guidance.recommendedSteps
+    : (skill.recommendations ?? []);
 
   const getPriorityColor = (priority: number) => {
     if (priority >= 8) return 'destructive';
@@ -59,43 +70,54 @@ export function InteractiveSkillCard({ skill, onStartLearning }: InteractiveSkil
     const isLargeGap = skill.gap >= 2;
     const isMediumGap = skill.gap >= 1 && skill.gap < 2;
 
+    let baseExplanation = {
+      severity: 'Foundational Gap',
+      icon: <Target className="h-4 w-4 text-blue-500" />,
+      reason: `You're at ${formattedCurrentLevel}/5, and improving to ${formattedTargetLevel}/5 strengthens your technical foundation.`,
+      impact: `This ${formattedGap}-level improvement ensures you can confidently work on diverse projects and contribute to team success.`,
+      marketContext: `While not always required, ${skill.name} proficiency is a common expectation in modern development environments.`
+    };
+
     if (isHighPriority && isLargeGap) {
-      return {
+      baseExplanation = {
         severity: 'Critical Gap',
         icon: <AlertCircle className="h-4 w-4 text-red-500" />,
-        reason: `You're currently at ${skill.currentLevel}/5 proficiency, but the market expects ${skill.targetLevel}/5 for competitive roles.`,
-        impact: `This ${skill.gap}-level gap is blocking access to senior positions and higher-paying opportunities.`,
+        reason: `You're currently at ${formattedCurrentLevel}/5 proficiency, but the market expects ${formattedTargetLevel}/5 for competitive roles.`,
+        impact: `This ${formattedGap}-level gap is blocking access to senior positions and higher-paying opportunities.`,
         marketContext: `${skill.name} is a core requirement in 70-85% of relevant job postings, with expertise directly correlating to salary bands.`
       };
     }
 
     if (isHighPriority && isMediumGap) {
-      return {
+      baseExplanation = {
         severity: 'High Priority',
         icon: <AlertCircle className="h-4 w-4 text-orange-500" />,
-        reason: `Your ${skill.currentLevel}/5 proficiency is solid, but advancing to ${skill.targetLevel}/5 is crucial for career progression.`,
-        impact: `Closing this ${skill.gap}-level gap unlocks leadership roles, technical decision-making authority, and competitive compensation.`,
+        reason: `Your ${formattedCurrentLevel}/5 proficiency is solid, but advancing to ${formattedTargetLevel}/5 is crucial for career progression.`,
+        impact: `Closing this ${formattedGap}-level gap unlocks leadership roles, technical decision-making authority, and competitive compensation.`,
         marketContext: `Advanced ${skill.name} skills differentiate candidates in competitive hiring processes and enable you to mentor others.`
       };
     }
 
     if (isMediumPriority) {
-      return {
+      baseExplanation = {
         severity: 'Important Gap',
         icon: <Target className="h-4 w-4 text-yellow-500" />,
-        reason: `You have ${skill.currentLevel}/5 proficiency, but reaching ${skill.targetLevel}/5 enhances your versatility and market value.`,
-        impact: `Addressing this ${skill.gap}-level gap broadens your project opportunities and makes you more competitive for cross-functional roles.`,
+        reason: `You have ${formattedCurrentLevel}/5 proficiency, but reaching ${formattedTargetLevel}/5 enhances your versatility and market value.`,
+        impact: `Addressing this ${formattedGap}-level gap broadens your project opportunities and makes you more competitive for cross-functional roles.`,
         marketContext: `${skill.name} appears in 40-60% of relevant job descriptions and is increasingly valued as teams adopt modern practices.`
       };
     }
 
-    return {
-      severity: 'Foundational Gap',
-      icon: <Target className="h-4 w-4 text-blue-500" />,
-      reason: `You're at ${skill.currentLevel}/5, and improving to ${skill.targetLevel}/5 strengthens your technical foundation.`,
-      impact: `This ${skill.gap}-level improvement ensures you can confidently work on diverse projects and contribute to team success.`,
-      marketContext: `While not always required, ${skill.name} proficiency is a common expectation in modern development environments.`
-    };
+    if (guidance) {
+      return {
+        ...baseExplanation,
+        reason: guidance.currentState || baseExplanation.reason,
+        impact: guidance.careerImpact || baseExplanation.impact,
+        marketContext: guidance.marketContext || baseExplanation.marketContext,
+      };
+    }
+
+    return baseExplanation;
   };
 
   const explanation = getGapExplanation();
@@ -136,9 +158,9 @@ export function InteractiveSkillCard({ skill, onStartLearning }: InteractiveSkil
               />
             </div>
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Current: {formatGapValue(skill.currentLevel)}/5</span>
-              <span>Gap: {formatGapValue(skill.gap)} levels</span>
-              <span>Target: {formatGapValue(skill.targetLevel)}/5</span>
+              <span>Current: {formattedCurrentLevel}/5</span>
+              <span>Gap: {formattedGap} levels</span>
+              <span>Target: {formattedTargetLevel}/5</span>
             </div>
           </div>
         </div>
@@ -200,6 +222,38 @@ export function InteractiveSkillCard({ skill, onStartLearning }: InteractiveSkil
                 </div>
               </div>
             </div>
+
+            {(guidance?.highlightedFrameworks?.length || recommendedSteps.length > 0) && (
+              <div className="pt-3 border-t space-y-4">
+                {guidance?.highlightedFrameworks?.length ? (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                      Focus Frameworks
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {guidance.highlightedFrameworks.map((framework) => (
+                        <Badge key={framework} variant="outline" className="text-xs">
+                          {framework}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {recommendedSteps.length > 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Recommended Steps
+                    </p>
+                    <ul className="list-disc pl-4 space-y-1 text-sm leading-relaxed">
+                      {recommendedSteps.map((step) => (
+                        <li key={step}>{step}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            )}
 
             {/* Action Hint */}
             <div className="pt-2 border-t">

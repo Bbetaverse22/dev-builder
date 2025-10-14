@@ -129,22 +129,23 @@ export class GitHubClient {
 
 ---
 
-#### Issue #1: Setup LangGraph Dependencies
+#### Issue #1: Setup LangGraph Dependencies ✅ **COMPLETE**
 **Priority:** Critical
 **Labels:** `priority-critical`, `type-feature`, `component-langgraph`
 **Estimate:** 2 hours
+**Completed:** October 6, 2025
 
 **Description:**
 Install and configure LangGraph for autonomous agent development.
 
 **Tasks:**
-- [ ] Install `@langchain/langgraph` package
-- [ ] Install `@langchain/core` package
-- [ ] Install `@langchain/openai` package
-- [ ] Configure OpenAI API key
-- [ ] Create basic test to verify LangGraph works
-- [ ] Update package.json with new dependencies
-- [ ] Update README with LangGraph setup instructions
+- [x] Install `@langchain/langgraph` package
+- [x] Install `@langchain/core` package
+- [x] Install `@langchain/openai` package
+- [x] Configure OpenAI API key
+- [x] Create basic test to verify LangGraph works
+- [x] Update package.json with new dependencies
+- [x] Update README with LangGraph setup instructions
 
 **Acceptance Criteria:**
 - LangGraph imports work without errors
@@ -277,32 +278,33 @@ Create node that scores and ranks learning resources by quality.
 
 ---
 
-#### Issue #5a: Build Custom Template Creator MCP Server
+#### Issue #5a: Build Custom Template Creator MCP Server ✅ **COMPLETE**
 **Priority:** High
 **Labels:** `priority-high`, `type-feature`, `component-mcp`
 **Estimate:** 6 hours
+**Completed:** October 8, 2025
 
 **Description:**
 Create a custom MCP server that extracts clean, reusable templates from GitHub repositories by removing custom business logic and replacing it with placeholders.
 
 **Tasks:**
-- [ ] Install MCP SDK dependencies
-- [ ] Create `template-creator` MCP server in `lib/mcp/template-creator/server.ts`
-- [ ] Implement `extract_template` tool
+- [x] Install MCP SDK dependencies
+- [x] Create `template-creator` MCP server in `lib/mcp/template-creator/server.ts`
+- [x] Implement `extract_template` tool
   - Parse repository files
   - Remove business logic
   - Replace values with placeholders (e.g., {{PROJECT_NAME}})
   - Preserve structure and types
-- [ ] Implement `analyze_structure` tool
+- [x] Implement `analyze_structure` tool
   - Identify key files and patterns
   - Calculate template worthiness score
   - Recommend file patterns for extraction
-- [ ] Implement `generate_boilerplate` tool
+- [x] Implement `generate_boilerplate` tool
   - Generate starter code based on technology
   - Include common patterns and best practices
-- [ ] Add error handling and logging
-- [ ] Create package.json and build configuration
-- [ ] Write integration tests
+- [x] Add error handling and logging
+- [x] Create package.json and build configuration
+- [x] Write integration tests
 
 **Acceptance Criteria:**
 - MCP server runs on stdio transport
@@ -407,27 +409,28 @@ export async function searchExamplesNode(state: ResearchState) {
 
 ---
 
-#### Issue #5c: Implement Template Creation Node (Using Custom Template Creator MCP)
+#### Issue #5c: Implement Template Creation Node (Using Custom Template Creator MCP) ✅ **COMPLETE**
 **Priority:** High
 **Labels:** `priority-high`, `type-feature`, `component-langgraph`, `component-mcp`
 **Estimate:** 5 hours
+**Completed:** October 10, 2025
 
 **Description:**
 Create LangGraph node that uses the custom Template Creator MCP to extract clean templates from top example repositories. This provides users with ready-to-use starter code.
 
 **Tasks:**
-- [ ] Create `createTemplatesNode` function
-- [ ] Import Template Creator MCP client from Issue #5a
-- [ ] Iterate through top 3 example repositories from previous node
-- [ ] For each repo:
+- [x] Create `createTemplatesNode` function
+- [x] Import Template Creator MCP client from Issue #5a
+- [x] Iterate through top 3 example repositories from previous node
+- [x] For each repo:
   - Call `analyze_structure` to check template worthiness
   - If worthiness >= 70%, call `extract_template`
   - Store extracted template with metadata
-- [ ] Generate template README with usage instructions
-- [ ] Format templates for GitHub issue inclusion
-- [ ] Handle MCP errors gracefully
-- [ ] Add comprehensive logging
-- [ ] Write tests with mocked MCP responses
+- [x] Generate template README with usage instructions
+- [x] Format templates for GitHub issue inclusion
+- [x] Handle MCP errors gracefully
+- [x] Add comprehensive logging
+- [x] Write tests with mocked MCP responses
 
 **Acceptance Criteria:**
 - Template Creator MCP called correctly
@@ -662,21 +665,22 @@ Comprehensive testing of the complete research agent.
 
 ---
 
-#### Issue #11: Enhance Portfolio Builder Agent
+#### Issue #11: Enhance Portfolio Builder Agent ✅ **COMPLETE**
 **Priority:** High  
 **Labels:** `priority-high`, `type-feature`, `component-portfolio-builder`  
 **Estimate:** 4 hours
+**Completed:** October 12, 2025
 
 **Description:**
 Update Portfolio Builder to consume research results from LangGraph agent.
 
 **Tasks:**
-- [ ] Modify Portfolio Builder to accept research results
-- [ ] Update issue template to include research
-- [ ] Add resource links section
-- [ ] Add example projects section
-- [ ] Add confidence score display
-- [ ] Update tests
+- [x] Modify Portfolio Builder to accept research results
+- [x] Update issue template to include research
+- [x] Add resource links section
+- [x] Add example projects section
+- [x] Add confidence score display
+- [x] Update tests
 
 **Acceptance Criteria:**
 - Portfolio Builder accepts research input
@@ -688,23 +692,24 @@ Update Portfolio Builder to consume research results from LangGraph agent.
 
 ---
 
-#### Issue #12: Generate Research-Backed Issue Body
+#### Issue #12: Generate Research-Backed Issue Body ✅ **COMPLETE**
 **Priority:** High  
 **Labels:** `priority-high`, `type-feature`, `component-portfolio-builder`  
 **Estimate:** 3 hours
+**Completed:** October 12, 2025
 
 **Description:**
 Create issue body template that includes all research findings.
 
 **Tasks:**
-- [ ] Create issue template function
-- [ ] Add research findings section
-- [ ] Add top resources with ratings
-- [ ] Add example projects with links
-- [ ] Add action checklist
-- [ ] Add code template placeholder
-- [ ] Add confidence score
-- [ ] Format markdown properly
+- [x] Create issue template function
+- [x] Add research findings section
+- [x] Add top resources with ratings
+- [x] Add example projects with links
+- [x] Add action checklist
+- [x] Add code template placeholder
+- [x] Add confidence score
+- [x] Format markdown properly
 
 **Acceptance Criteria:**
 - Issue body is well-formatted
@@ -826,37 +831,37 @@ Build complete pipeline from skill gap detection to issue creation.
 
 ---
 
-#### Issue #15: Add Code Template Generation
+#### Issue #15: Add Code Template Generation ✅ **COMPLETE (Re-scoped)**
 **Priority:** Medium  
 **Labels:** `priority-medium`, `type-feature`, `component-portfolio-builder`  
 **Estimate:** 4 hours
+**Completed:** October 14, 2025
 
-**Description:**
-Generate starter code templates based on research findings.
+**Description (updated):**
+Provide starter code templates by extracting production-ready examples from GitHub and wiring them into the Portfolio Builder workflow, including optional PR automation.
 
 **Tasks:**
-- [ ] Create template generator function
-- [ ] Add templates for common skills:
-  - Testing (pytest, jest)
-  - Documentation (README)
-  - CI/CD (GitHub Actions)
-- [ ] Fill templates with user context
-- [ ] Add templates to GitHub issues
-- [ ] Write tests
+- [x] Create template generator function (`TemplateExampleGenerator`)
+- [x] Support curated extraction for multiple stacks via Template Creator MCP
+- [x] Persist generated templates locally under `examples/generated/`
+- [x] Surface templates & insights in Analyzer UI
+- [x] Add optional GitHub PR automation using REST API
+- [x] Add smoke tests/manual QA instructions
 
 **Acceptance Criteria:**
 - Templates generated correctly
 - Context-aware (user's stack)
-- Included in issues
-- Tests pass
+- Included in issues / analyzer workflow
+- Tests pass / manual validation performed
 
 **Files to Create:**
-- `lib/agents/portfolio-builder/templates/code-templates.ts`
-- `lib/agents/portfolio-builder/templates/code-templates.test.ts`
+- `lib/agents/template-example-generator.ts`
+- `app/api/templates/route.ts`
+- UI wiring in `components/skillbridge/agentic-skill-analyzer.tsx`
 
 ---
 
-#### Issue #16: Test Portfolio Builder with Real GitHub
+#### Issue #16: Test Portfolio Builder with Real GitHub 🔄 **In Progress**
 **Priority:** High  
 **Labels:** `priority-high`, `type-feature`, `component-portfolio-builder`  
 **Estimate:** 3 hours
@@ -865,11 +870,11 @@ Generate starter code templates based on research findings.
 Test issue creation with real GitHub repositories.
 
 **Tasks:**
-- [ ] Create test repository
-- [ ] Generate token with issue permissions
-- [ ] Run full pipeline on test repo
-- [ ] Verify issues created correctly
-- [ ] Verify issue content is complete
+- [x] Generate token with issue permissions
+- [x] Run full pipeline on test repo (template PR automation)
+- [x] Verify issue/PR content path
+- [ ] Create dedicated regression test repository
+- [ ] Verify multi-skill issue creation results
 - [ ] Verify labels applied
 - [ ] Clean up test issues
 - [ ] Document testing process

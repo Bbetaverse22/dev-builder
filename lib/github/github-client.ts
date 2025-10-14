@@ -98,7 +98,27 @@ export class GitHubClient {
       const response = await fetch(url, { ...options, headers });
 
       if (!response.ok) {
-        throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+        let errorMessage = `GitHub API error: ${response.status} ${response.statusText}`;
+        let responseBody: any = null;
+        try {
+          responseBody = await response.json();
+        } catch {
+          // ignore parse errors
+        }
+
+        const remaining = response.headers.get('x-ratelimit-remaining');
+        const reset = response.headers.get('x-ratelimit-reset');
+        if (response.status === 403 && remaining === '0') {
+          const resetDate = reset ? new Date(Number(reset) * 1000) : null;
+          const waitHint = resetDate ? ` Try again after ${resetDate.toLocaleTimeString()}.` : '';
+          errorMessage = `GitHub API rate limit exceeded.${waitHint} Configure a personal access token via GITHUB_TOKEN to increase your quota.`;
+        } else if (response.status === 401) {
+          errorMessage = 'GitHub API authentication failed. Please verify the configured GITHUB_TOKEN has valid scopes.';
+        } else if (responseBody?.message) {
+          errorMessage = responseBody.message;
+        }
+
+        throw new Error(errorMessage);
       }
 
       return await response.json();
@@ -309,4 +329,3 @@ export class GitHubClient {
 
 // Export a default instance
 export const githubClient = new GitHubClient();
-

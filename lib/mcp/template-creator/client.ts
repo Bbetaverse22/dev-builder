@@ -55,19 +55,21 @@ interface Boilerplate {
 export class TemplateCreatorClient {
   private client: Client | null = null;
   private transport: StdioClientTransport | null = null;
+  private isConnecting = false;
 
   /**
    * Connect to the Template Creator MCP server
    */
   async connect(): Promise<void> {
-    if (this.client) {
-      return; // Already connected
+    if (this.client || this.isConnecting) {
+      return; // Already connected or connection in progress
     }
 
     // Use tsx to run TypeScript directly (no build needed)
     // Fix: Use absolute path instead of require.resolve to avoid [project] placeholder issues
     const serverPath = join(process.cwd(), 'lib', 'mcp', 'template-creator', 'server.ts');
 
+    this.isConnecting = true;
     this.transport = new StdioClientTransport({
       command: 'npx',
       args: [
@@ -76,19 +78,35 @@ export class TemplateCreatorClient {
       ],
     });
 
-    this.client = new Client(
-      {
-        name: 'skillbridge-template-client',
-        version: '1.0.0',
-      },
-      {
-        capabilities: {
-          tools: {},
+    try {
+      this.client = new Client(
+        {
+          name: 'skillbridge-template-client',
+          version: '1.0.0',
         },
-      }
-    );
+        {
+          capabilities: {
+            tools: {},
+          },
+        }
+      );
 
-    await this.client.connect(this.transport);
+      await this.client.connect(this.transport);
+    } catch (error) {
+      // Reset state so the next call can retry
+      if (this.transport) {
+        try {
+          await this.transport.close();
+        } catch {
+          // ignore
+        }
+      }
+      this.client = null;
+      this.transport = null;
+      throw error;
+    } finally {
+      this.isConnecting = false;
+    }
   }
 
   /**
@@ -119,17 +137,20 @@ export class TemplateCreatorClient {
       throw new Error('Client not connected. Call connect() first.');
     }
 
-    const result = await this.client.callTool({
-      name: 'extract_template',
-      arguments: {
-        repoUrl,
-        filePatterns,
-        options: options || {},
+    return this.callToolWithRetry(
+      {
+        name: 'extract_template',
+        arguments: {
+          repoUrl,
+          filePatterns,
+          options: options || {},
+        },
       },
-    });
-
-    const responseText = ((result.content as any)[0] as any).text;
-    return JSON.parse(responseText);
+      (result) => {
+        const responseText = ((result.content as any)[0] as any).text;
+        return JSON.parse(responseText);
+      }
+    );
   }
 
   /**
@@ -147,16 +168,19 @@ export class TemplateCreatorClient {
       throw new Error('Client not connected. Call connect() first.');
     }
 
-    const result = await this.client.callTool({
-      name: 'analyze_structure',
-      arguments: {
-        repoUrl,
-        depth,
+    return this.callToolWithRetry(
+      {
+        name: 'analyze_structure',
+        arguments: {
+          repoUrl,
+          depth,
+        },
       },
-    });
-
-    const responseText = ((result.content as any)[0] as any).text;
-    return JSON.parse(responseText);
+      (result) => {
+        const responseText = ((result.content as any)[0] as any).text;
+        return JSON.parse(responseText);
+      }
+    );
   }
 
   /**
@@ -176,17 +200,20 @@ export class TemplateCreatorClient {
       throw new Error('Client not connected. Call connect() first.');
     }
 
-    const result = await this.client.callTool({
-      name: 'generate_boilerplate',
-      arguments: {
-        technology,
-        features,
-        typescript,
+    return this.callToolWithRetry(
+      {
+        name: 'generate_boilerplate',
+        arguments: {
+          technology,
+          features,
+          typescript,
+        },
       },
-    });
-
-    const responseText = ((result.content as any)[0] as any).text;
-    return JSON.parse(responseText);
+      (result) => {
+        const responseText = ((result.content as any)[0] as any).text;
+        return JSON.parse(responseText);
+      }
+    );
   }
 
   /**
@@ -214,6 +241,65 @@ export class TemplateCreatorClient {
     );
 
     return { analysis, template };
+  }
+
+  private async callToolWithRetry<T>(
+    request: {
+      name: string;
+      arguments: Record<string, unknown>;
+    },
+    parser: (result: any) => T,
+    attempt = 0
+  ): Promise<T> {
+    await this.connect();
+
+    if (!this.client) {
+      throw new Error('Template Creator MCP client not available');
+    }
+
+    try {
+      const result = await this.client.callTool(request);
+
+      if ((result as any).isError) {
+        const responseText = ((result.content as any)[0] as any)?.text ?? '{}';
+        let message = `Template Creator MCP returned an error for tool "${request.name}"`;
+        try {
+          const payload = JSON.parse(responseText);
+          message = payload.error ?? message;
+        } catch {
+          // Ignore JSON parse errors - fallback to default message
+        }
+        throw new Error(message);
+      }
+
+      return parser(result);
+    } catch (error) {
+      if (this.shouldRetry(error) && attempt === 0) {
+        await this.resetConnection();
+        return this.callToolWithRetry(request, parser, attempt + 1);
+      }
+      throw error;
+    }
+  }
+
+  private shouldRetry(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+    const message = error.message || '';
+    const connectionClosed =
+      message.includes('Not connected') ||
+      message.includes('Connection closed') ||
+      message.includes('EPIPE') ||
+      message.includes('ECONNRESET');
+
+    const code = (error as any).code;
+    return connectionClosed || code === -32000;
+  }
+
+  private async resetConnection(): Promise<void> {
+    await this.disconnect();
+    await this.connect();
   }
 }
 

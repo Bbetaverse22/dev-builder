@@ -5,9 +5,9 @@
  * Integrates with Template Creator MCP to provide ready-to-use code templates
  */
 
+import { buildFrameworkSkillPlan } from '@/lib/analysis/framework-skill-plan';
 import { GitHubClient } from '@/lib/github/github-client';
-import { getTemplateCreatorClient, closeTemplateCreatorClient } from '@/lib/mcp/template-creator/client';
-import type { GitHubAnalysis } from './gap-analyzer';
+import type { GitHubAnalysis, GapAnalysisResult, SkillGap } from './gap-analyzer';
 
 export interface PortfolioQualityAnalysis {
   repository: string;
@@ -21,11 +21,12 @@ export interface PortfolioQualityAnalysis {
 
 export interface PortfolioWeakness {
   id: string;
-  type: 'readme' | 'documentation' | 'testing' | 'cicd' | 'security' | 'structure';
+  type: 'readme' | 'documentation' | 'testing' | 'cicd' | 'security' | 'structure' | 'skill';
   severity: 'high' | 'medium' | 'low';
   title: string;
   description: string;
   impact: string;
+  optional?: boolean;
 }
 
 export interface PortfolioRecommendation {
@@ -39,6 +40,7 @@ export interface PortfolioRecommendation {
   templates?: ExtractedTemplate[]; // Templates from Template Creator MCP
   estimatedEffort: 'low' | 'medium' | 'high';
   priority: number;
+  skillGap?: SkillGap;
 }
 
 export interface ExtractedTemplate {
@@ -97,7 +99,11 @@ export class PortfolioBuilderAgent {
   /**
    * Analyze repository quality and identify improvement opportunities
    */
-  async analyzePortfolioQuality(repoUrl: string): Promise<PortfolioQualityAnalysis> {
+  async analyzePortfolioQuality(
+    repoUrl: string,
+    options?: { skillAssessment?: GapAnalysisResult }
+  ): Promise<PortfolioQualityAnalysis> {
+    const skillAssessment = options?.skillAssessment;
     try {
       // Extract owner and repo from URL
       const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
@@ -153,10 +159,11 @@ export class PortfolioBuilderAgent {
         weaknesses.push({
           id: 'cicd',
           type: 'cicd',
-          severity: 'medium',
-          title: 'No CI/CD Pipeline Detected',
-          description: 'No automated testing or deployment pipeline configuration found. Note: If you use Vercel, Netlify, or similar platforms with Git integration, they provide built-in CI/CD and you may not need additional configuration.',
-          impact: 'Without automated CI/CD, manual testing and deployment can increase errors and slow development. However, modern platforms like Vercel handle this automatically.',
+          severity: 'low',
+          optional: true,
+          title: 'No CI/CD Pipeline Detected (Optional)',
+          description: 'No automated testing or deployment pipeline configuration found. This is optional for personal/local projects or when hosting platforms already provide CI/CD.',
+          impact: 'Automating tests and deployments can help when collaborating or shipping to production, but it is not required for every personal project.',
         });
       }
 
@@ -178,6 +185,7 @@ export class PortfolioBuilderAgent {
           id: 'license',
           type: 'structure',
           severity: 'low',
+          optional: true,
           title: 'No License File',
           description: 'No LICENSE file found',
           impact: 'Unclear legal status for using and contributing to the project',
@@ -203,9 +211,9 @@ export class PortfolioBuilderAgent {
       const qualityFactors = {
         readme: hasReadme.isComprehensive ? 25 : (hasReadme.exists ? 15 : 0),
         testing: hasTests.exists ? 25 : 0,
-        cicd: hasCICD ? 20 : 0,
+        cicd: hasCICD ? 10 : 0, // Lower weight because CI/CD is optional for many personal projects
         documentation: hasDocumentation ? 15 : 0,
-        license: hasLicense ? 10 : 0,
+        license: hasLicense ? 5 : 0,
         description: repoData.description ? 5 : 0,
       };
 
@@ -213,6 +221,12 @@ export class PortfolioBuilderAgent {
 
       // Generate recommendations (without research results for now)
       const recommendations = this.generateBasicRecommendations(weaknesses);
+      const skillGapRecommendations = skillAssessment
+        ? this.generateSkillGapRecommendations(skillAssessment)
+        : [];
+      const combinedRecommendations = [...recommendations, ...skillGapRecommendations].sort(
+        (a, b) => b.priority - a.priority
+      );
 
       return {
         repository: repoUrl,
@@ -221,7 +235,7 @@ export class PortfolioBuilderAgent {
         overallQuality,
         weaknesses,
         strengths,
-        recommendations,
+        recommendations: combinedRecommendations,
       };
     } catch (error) {
       console.error('[Portfolio Builder] Analysis error:', error);
@@ -239,38 +253,77 @@ export class PortfolioBuilderAgent {
     recommendations: PortfolioRecommendation[],
     researchResults: ResearchResults
   ): Promise<PortfolioRecommendation[]> {
+    const usedResourceUrls = new Set<string>();
+    const usedExampleUrls = new Set<string>();
+
     const enrichedRecommendations = await Promise.all(
-      recommendations.map(async (rec) => {
+      recommendations.map(async (rec, index) => {
         const enrichedRec = { ...rec };
 
         // Add research resources to recommendations
         if (researchResults.resources && researchResults.resources.length > 0) {
-          enrichedRec.resources = researchResults.resources.slice(0, 3);
+          const keywords = this.getRecommendationKeywords(rec);
+          const filteredResources = researchResults.resources
+            .filter((resource) => {
+              if (!resource?.url || usedResourceUrls.has(resource.url)) {
+                return false;
+              }
+              if (!keywords.length) {
+                return true;
+              }
+              const haystack = `${resource.title ?? ''} ${resource.description ?? ''}`.toLowerCase();
+              return keywords.some((keyword) => haystack.includes(keyword));
+            })
+            .slice(0, 2);
+
+          // Fallback: allow generic resources for the first recommendation if none matched
+          if (filteredResources.length === 0 && index === 0) {
+            researchResults.resources.some((resource) => {
+              if (!resource?.url || usedResourceUrls.has(resource.url)) {
+                return false;
+              }
+              filteredResources.push(resource);
+              return filteredResources.length >= 2;
+            });
+          }
+
+          enrichedRec.resources = filteredResources;
+          filteredResources.forEach((resource) => {
+            if (resource?.url) usedResourceUrls.add(resource.url);
+          });
         }
 
         // Add GitHub examples
         if (researchResults.examples && researchResults.examples.length > 0) {
-          enrichedRec.examples = researchResults.examples.slice(0, 3);
+          const keywords = this.getRecommendationKeywords(rec);
+          const filteredExamples = researchResults.examples
+            .filter((example) => {
+              if (!example?.url || usedExampleUrls.has(example.url)) {
+                return false;
+              }
+              if (!keywords.length) {
+                return true;
+              }
+              const haystack = `${example.name ?? ''} ${example.description ?? ''}`.toLowerCase();
+              return keywords.some((keyword) => haystack.includes(keyword));
+            })
+            .slice(0, 2);
 
-          // Extract templates from top GitHub examples using Template Creator MCP
-          try {
-            const templates = await this.extractTemplatesFromExamples(
-              enrichedRec.examples,
-              rec.weakness.type
-            );
-            if (templates.length > 0) {
-              enrichedRec.templates = templates;
-              console.log(
-                `[Portfolio Builder] Extracted ${templates.length} templates for ${rec.weakness.type}`
-              );
-            }
-          } catch (error) {
-            console.error(
-              `[Portfolio Builder] Failed to extract templates for ${rec.weakness.type}:`,
-              error
-            );
-            // Continue without templates - not critical
+          if (filteredExamples.length === 0 && index === 0) {
+            researchResults.examples.some((example) => {
+              if (!example?.url || usedExampleUrls.has(example.url)) {
+                return false;
+              }
+              filteredExamples.push(example);
+              return filteredExamples.length >= 2;
+            });
           }
+
+          enrichedRec.examples = filteredExamples;
+          filteredExamples.forEach((example) => {
+            if (example?.url) usedExampleUrls.add(example.url);
+          });
+
         }
 
         return enrichedRec;
@@ -281,100 +334,205 @@ export class PortfolioBuilderAgent {
   }
 
   /**
-   * Extract templates from GitHub examples using Template Creator MCP
-   */
-  private async extractTemplatesFromExamples(
-    examples: GitHubExample[],
-    weaknessType: string
-  ): Promise<ExtractedTemplate[]> {
-    const templates: ExtractedTemplate[] = [];
-
-    try {
-      // Get Template Creator MCP client
-      const templateClient = await getTemplateCreatorClient();
-
-      // Only extract templates from the top 2 examples to avoid long wait times
-      const topExamples = examples.slice(0, 2);
-
-      for (const example of topExamples) {
-        try {
-          console.log(
-            `[Portfolio Builder] Analyzing template worthiness for ${example.name}...`
-          );
-
-          // Step 1: Analyze structure to check if it's worth extracting
-          const analysis = await templateClient.analyzeStructure(example.url);
-
-          // Only extract if template worthiness is >= 0.7 (70%)
-          if (analysis.templateWorthiness >= 0.7) {
-            console.log(
-              `[Portfolio Builder] Extracting template from ${example.name} (worthiness: ${analysis.templateWorthiness})...`
-            );
-
-            // Step 2: Extract template with recommended patterns
-            const template = await templateClient.extractTemplate(
-              example.url,
-              analysis.recommendedPatterns || this.getFilePatternsByWeaknessType(weaknessType),
-              {
-                preserveStructure: true,
-                keepComments: true,
-                includeTypes: true,
-                removeBusinessLogic: true,
-              }
-            );
-
-            templates.push({
-              sourceRepo: example.url,
-              ...template,
-            });
-
-            console.log(
-              `[Portfolio Builder] ✅ Successfully extracted template from ${example.name}`
-            );
-          } else {
-            console.log(
-              `[Portfolio Builder] ⏭️  Skipped ${example.name} (worthiness: ${analysis.templateWorthiness} < 0.7)`
-            );
-          }
-        } catch (error) {
-          console.error(
-            `[Portfolio Builder] Failed to extract template from ${example.name}:`,
-            error
-          );
-          // Continue with other examples
-        }
-      }
-    } catch (error) {
-      console.error('[Portfolio Builder] Template extraction failed:', error);
-    }
-
-    return templates;
-  }
-
-  /**
    * Get file patterns based on weakness type for template extraction
    */
   private getFilePatternsByWeaknessType(weaknessType: string): string[] {
     switch (weaknessType) {
       case 'readme':
-        return ['README.md', 'docs/**/*.md'];
+        return ['README.md', '**/README.md', 'docs/**/*.md'];
       case 'testing':
         return [
           '**/*.test.*',
           '**/*.spec.*',
           '__tests__/**/*',
+          'tests/**/*.ts',
+          'tests/**/*.tsx',
+          'tests/**/*.js',
+          'tests/**/*.jsx',
+          'tests/**/*.py',
+          '**/tests/**/*.ts',
+          '**/tests/**/*.tsx',
+          '**/tests/**/*.js',
+          '**/tests/**/*.jsx',
+          '**/tests/**/*.py',
+          '**/test_*.py',
+          '**/test_*.ts',
+          '**/test_*.tsx',
+          '**/test_*.js',
           'jest.config.*',
           'vitest.config.*',
           'pytest.ini',
+          'pytest.*',
+          'tox.ini',
+          'package.json',
         ];
       case 'cicd':
         return ['.github/workflows/**/*.yml', '.github/workflows/**/*.yaml'];
       case 'documentation':
-        return ['docs/**/*', '*.md', 'api/**/*'];
+        return ['docs/**/*', '**/docs/**/*.md', '*.md', '**/*.md', 'api/**/*'];
       case 'security':
         return ['.github/dependabot.yml', '.github/security.md', 'SECURITY.md'];
+      case 'skill':
+        return ['src/**/*.{ts,tsx,js,jsx,py,go}', '**/*.md'];
       default:
-        return ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', 'package.json'];
+        return ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.py', 'package.json'];
+    }
+  }
+
+  private buildExtractionPatterns(
+    recommendation: PortfolioRecommendation,
+    recommendedPatterns?: string[]
+  ): string[] {
+    const patternSet = new Set<string>(recommendedPatterns ?? []);
+    const fallbackPatterns = recommendation.skillGap
+      ? this.getFilePatternsForSkillGap(recommendation.skillGap)
+      : this.getFilePatternsByWeaknessType(recommendation.weakness.type);
+
+    fallbackPatterns.forEach((pattern) => patternSet.add(pattern));
+
+    if (patternSet.size === 0) {
+      patternSet.add('README.md');
+    }
+
+    return Array.from(patternSet);
+  }
+
+  private getRecommendationKeywords(recommendation: PortfolioRecommendation): string[] {
+    const keywords = new Set<string>();
+    const pushWords = (value?: string | null) => {
+      if (!value) return;
+      value
+        .toLowerCase()
+        .split(/[^a-z0-9+]+/)
+        .filter(Boolean)
+        .forEach((word) => {
+          if (word.length >= 3) {
+            keywords.add(word);
+          }
+        });
+    };
+
+    if (recommendation.skillGap) {
+      pushWords(recommendation.skillGap.skill.name);
+    } else {
+      pushWords(recommendation.title);
+    }
+
+    switch (recommendation.weakness.type) {
+      case 'testing':
+        ['test', 'testing', 'qa', 'jest', 'pytest', 'junit'].forEach((k) => keywords.add(k));
+        break;
+      case 'readme':
+      case 'documentation':
+        ['documentation', 'docs', 'readme', 'guide'].forEach((k) => keywords.add(k));
+        break;
+      case 'cicd':
+        ['ci', 'cd', 'deployment', 'pipeline', 'actions'].forEach((k) => keywords.add(k));
+        break;
+      case 'security':
+        ['security', 'dependabot', 'codeql'].forEach((k) => keywords.add(k));
+        break;
+      default:
+        break;
+    }
+
+    return Array.from(keywords);
+  }
+
+  private getFilePatternsForSkillGap(skillGap: SkillGap): string[] {
+    const skillId = skillGap.skill.id;
+    const name = skillGap.skill.name.toLowerCase();
+
+    switch (skillId) {
+      case 'testing':
+        return [
+          '**/*.test.*',
+          '**/*.spec.*',
+          '__tests__/**/*',
+          'tests/**/*',
+          'jest.config.*',
+          'vitest.config.*',
+          'pytest.ini',
+          'pytest.*',
+          'tox.ini',
+        ];
+      case 'devops':
+        return [
+          '.github/workflows/**/*.yml',
+          '.github/workflows/**/*.yaml',
+          'dockerfile',
+          '**/Dockerfile',
+          '**/*.dockerfile',
+          '**/*.tf',
+          'terraform/**/*',
+          'infra/**/*',
+          '**/k8s/**/*',
+          '**/helm/**/*',
+        ];
+      case 'cloud':
+        return [
+          'infra/**/*',
+          '**/cdk/**/*',
+          '**/cloudformation/**/*',
+          '**/serverless.*',
+          '.github/workflows/deploy*.yml',
+        ];
+      case 'databases':
+        return [
+          'prisma/**/*',
+          'migrations/**/*',
+          '**/*.sql',
+          '**/schema.prisma',
+          '**/database/**/*',
+        ];
+      case 'frameworks':
+        return [
+          'src/app/**/*',
+          'src/pages/**/*',
+          'src/components/**/*',
+          'app/**/*',
+        ];
+      case 'programming':
+        return [
+          'src/**/*.{ts,tsx,js,jsx,py,go,rs,java,cs}',
+          'lib/**/*.{ts,tsx,js,jsx,py,go,rs,java,cs}',
+        ];
+      case 'prompt-engineering':
+        return [
+          '**/prompts/**/*',
+          '**/*prompt*.{ts,tsx,js,jsx,py,md}',
+          '**/*.prompt.*',
+        ];
+      case 'context-engineering':
+        return [
+          '**/context/**/*',
+          '**/*rag*/**/*',
+          '**/*embedding*.*',
+          '**/*vector*.*',
+        ];
+      case 'security':
+        return [
+          '**/security/**/*',
+          'SECURITY.md',
+          '.github/dependabot.yml',
+          '.github/codeql/**/*',
+        ];
+      case 'architecture':
+        return [
+          'docs/architecture/**/*',
+          'docs/**/*.md',
+          '**/diagram*.*',
+          '**/design/**/*',
+        ];
+      default: {
+        if (name.includes('testing')) {
+          return this.getFilePatternsForSkillGap({ ...skillGap, skill: { ...skillGap.skill, id: 'testing' } });
+        }
+        if (name.includes('devops') || name.includes('ci/cd')) {
+          return this.getFilePatternsForSkillGap({ ...skillGap, skill: { ...skillGap.skill, id: 'devops' } });
+        }
+        return ['src/**/*.{ts,tsx,js,jsx,py,go,rs}', '**/*.md'];
+      }
     }
   }
 
@@ -384,11 +542,16 @@ export class PortfolioBuilderAgent {
   async createImprovementIssues(
     owner: string,
     repo: string,
-    recommendations: PortfolioRecommendation[]
+    recommendations: PortfolioRecommendation[],
+    options?: { includeOptional?: boolean }
   ): Promise<IssueCreationResult[]> {
     const results: IssueCreationResult[] = [];
+    const includeOptional = options?.includeOptional ?? false;
 
     for (const recommendation of recommendations) {
+      if (!includeOptional && recommendation.weakness.optional) {
+        continue;
+      }
       try {
         const issueBody = this.generateIssueBody(recommendation);
         const labels = this.getLabelsForRecommendation(recommendation);
@@ -427,6 +590,14 @@ export class PortfolioBuilderAgent {
     let body = `## 📋 Description\n\n${recommendation.description}\n\n`;
 
     body += `## 🎯 Impact\n\n${recommendation.weakness.impact}\n\n`;
+
+    if (recommendation.skillGap) {
+      const gap = recommendation.skillGap;
+      body += `## 📊 Current vs Target\n\n`;
+      body += `- Current Level: ${gap.skill.currentLevel}/5\n`;
+      body += `- Target Level: ${gap.skill.targetLevel}/5\n`;
+      body += `- Gap: ${gap.gap.toFixed(1)} levels\n\n`;
+    }
 
     body += `## ✅ Action Items\n\n`;
     recommendation.actionItems.forEach((item, index) => {
@@ -580,6 +751,9 @@ export class PortfolioBuilderAgent {
       case 'structure':
         labels.push('enhancement');
         break;
+      case 'skill':
+        labels.push('skill-gap');
+        break;
     }
 
     return labels;
@@ -684,6 +858,88 @@ export class PortfolioBuilderAgent {
 
     // Sort by priority
     return recommendations.sort((a, b) => b.priority - a.priority);
+  }
+
+  private generateSkillGapRecommendations(
+    skillAssessment: GapAnalysisResult,
+    limit = 3
+  ): PortfolioRecommendation[] {
+    if (!skillAssessment?.skillGaps?.length) {
+      return [];
+    }
+
+    const sortedGaps = [...skillAssessment.skillGaps]
+      .filter((gap) => gap.gap > 0.1)
+      .sort((a, b) => b.priority - a.priority)
+      .slice(0, limit);
+
+    return sortedGaps.map((gap) => {
+      const priorityScore = Math.round(gap.priority);
+      const severity: 'high' | 'medium' | 'low' = priorityScore >= 12
+        ? 'high'
+        : priorityScore >= 7
+          ? 'medium'
+          : 'low';
+
+      const effort: 'low' | 'medium' | 'high' = severity === 'high'
+        ? 'high'
+        : severity === 'medium'
+          ? 'medium'
+          : 'low';
+
+      const githubAnalysis = skillAssessment.githubAnalysis;
+
+      let title = `Strengthen ${gap.skill.name}`;
+      let description = `Close a ${gap.gap.toFixed(1)}-level gap in ${gap.skill.name}. Current level: ${gap.skill.currentLevel}/5, target level: ${gap.skill.targetLevel}/5.`;
+      let impact = `Improving ${gap.skill.name} increases your readiness for ${gap.skill.category} tasks and aligns with your target role.`;
+
+      let actionItems = (gap.recommendations?.length ? gap.recommendations : [
+        `Identify a practice project focused on ${gap.skill.name}.`,
+        `Schedule study or build time to progress from ${gap.skill.currentLevel} to ${gap.skill.targetLevel}.`,
+        `Document learnings and add relevant examples to this repository.`,
+      ]).slice(0, 5);
+
+      if (gap.skill.id === 'frameworks' && githubAnalysis) {
+        const frameworkPlan = buildFrameworkSkillPlan({
+          frameworks: githubAnalysis.frameworks,
+          languages: githubAnalysis.languages,
+        });
+        if (frameworkPlan.title) {
+          title = frameworkPlan.title;
+        }
+        if (frameworkPlan.description) {
+          description = frameworkPlan.description;
+        }
+        if (frameworkPlan.impact) {
+          impact = frameworkPlan.impact;
+        }
+        if (frameworkPlan.actionItems.length > 0) {
+          actionItems = frameworkPlan.actionItems;
+        }
+      }
+
+      actionItems = actionItems.slice(0, 5);
+
+      const weakness: PortfolioWeakness = {
+        id: `skill-${gap.skill.id}`,
+        type: 'skill',
+        severity,
+        title,
+        description,
+        impact,
+      };
+
+      return {
+        id: weakness.id,
+        weakness,
+        title,
+        description,
+        actionItems,
+        estimatedEffort: effort,
+        priority: Math.max(priorityScore, 6),
+        skillGap: gap,
+      };
+    });
   }
 
   /**

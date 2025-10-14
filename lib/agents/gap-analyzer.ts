@@ -1,3 +1,5 @@
+import { buildFrameworkSkillPlan } from '@/lib/analysis/framework-skill-plan';
+
 export interface SkillCategory {
   id: string;
   name: string;
@@ -13,11 +15,20 @@ export interface Skill {
   category: string;
 }
 
+export interface SkillGuidance {
+  currentState: string;
+  careerImpact: string;
+  marketContext: string;
+  recommendedSteps: string[];
+  highlightedFrameworks?: string[];
+}
+
 export interface SkillGap {
   skill: Skill;
   gap: number; // targetLevel - currentLevel
   priority: number; // calculated based on gap and importance
   recommendations: string[];
+  guidance: SkillGuidance;
 }
 
 export interface GitHubAnalysis {
@@ -98,7 +109,7 @@ export class GapAnalyzerAgent {
    */
   analyzeSkillGaps(
     skills: Skill[],
-    options: { includeCategories?: string[] } = {}
+    options: { includeCategories?: string[]; githubAnalysis?: GitHubAnalysis } = {}
   ): GapAnalysisResult {
     const includeSet = options.includeCategories?.length
       ? new Set(options.includeCategories)
@@ -120,7 +131,10 @@ export class GapAnalyzerAgent {
       };
 
       const gap = Math.max(0, normalizedSkill.targetLevel - normalizedSkill.currentLevel);
-      const recommendations = this.generateSkillRecommendations(normalizedSkill, gap);
+      const guidance = this.getSkillGuidance(normalizedSkill, gap, {
+        githubAnalysis: options.githubAnalysis,
+      });
+      const recommendations = guidance.recommendedSteps;
 
       const existing = aggregated.get(normalizedSkill.id);
 
@@ -137,14 +151,14 @@ export class GapAnalyzerAgent {
 
         const mergedGap = Math.max(0, mergedSkill.targetLevel - mergedSkill.currentLevel);
         const mergedPriority = mergedGap * mergedSkill.importance;
+        const mergedGuidance = this.mergeGuidance(existing.guidance, guidance);
 
         aggregated.set(normalizedSkill.id, {
           skill: mergedSkill,
           gap: mergedGap,
           priority: mergedPriority,
-          recommendations: Array.from(
-            new Set([...existing.recommendations, ...recommendations])
-          ),
+          recommendations: mergedGuidance.recommendedSteps,
+          guidance: mergedGuidance,
         });
       } else {
         aggregated.set(normalizedSkill.id, {
@@ -152,6 +166,7 @@ export class GapAnalyzerAgent {
           gap,
           priority: gap * normalizedSkill.importance,
           recommendations,
+          guidance,
         });
       }
     });
@@ -263,7 +278,10 @@ export class GapAnalyzerAgent {
     const skills = this.createSkillsFromTechnologies(githubAnalysis);
     
     // Analyze skill gaps automatically
-    const analysisResult = this.analyzeSkillGaps(skills, options);
+    const analysisResult = this.analyzeSkillGaps(skills, {
+      ...options,
+      githubAnalysis,
+    });
     
     // Enhance recommendations with GitHub-specific insights
     analysisResult.recommendations = [
@@ -999,41 +1017,155 @@ export class GapAnalyzerAgent {
     return recommendations.slice(0, 5); // Limit to 5 recommendations
   }
 
-  /**
-   * Generate skill-specific recommendations
-   */
-  private generateSkillRecommendations(skill: Skill, gap: number): string[] {
-    const recommendations: string[] = [];
-    
-    if (gap < 0.5) {
-      return [];
-    }
+  private getSkillGuidance(
+    skill: Skill,
+    gap: number,
+    context: { githubAnalysis?: GitHubAnalysis } = {}
+  ): SkillGuidance {
+    const roundLevel = (value: number) => Math.round(value * 10) / 10;
+    const formattedCurrent = roundLevel(skill.currentLevel);
+    const formattedTarget = roundLevel(skill.targetLevel);
+    const formattedGap = roundLevel(gap);
+    const priorityScore = gap * skill.importance;
+    const isHighPriority = priorityScore >= 12;
+    const isMediumPriority = priorityScore >= 7;
+    const isLargeGap = gap >= 2;
+    const isMediumGap = gap >= 1;
 
-    if (gap > 0) {
-      switch (skill.id) {
-        case 'frameworks':
-          recommendations.push('Follow official documentation and tutorials');
-          recommendations.push('Build a complete project using the framework');
-          recommendations.push('Join community forums and attend meetups');
-          break;
-        case 'communication':
-          recommendations.push('Practice presenting technical concepts to non-technical audiences');
-          recommendations.push('Join Toastmasters or similar public speaking groups');
-          recommendations.push('Write technical blog posts or documentation');
-          break;
-        case 'leadership':
-          recommendations.push('Take on mentoring opportunities');
-          recommendations.push('Lead small projects or initiatives');
-          recommendations.push('Read leadership books and apply concepts');
-          break;
-        default:
-          recommendations.push(`Set a focused improvement goal for ${skill.name}`);
-          recommendations.push('Design a mini-project to exercise this skill in context');
-          recommendations.push('Review feedback or code reviews related to this area');
+    const recommendedSteps = new Set<string>();
+    let highlightedFrameworks: string[] | undefined;
+
+    let currentState = `Currently at ${formattedCurrent}/5 with a ${formattedGap}-level gap to reach ${formattedTarget}/5.`;
+    let careerImpact = `Closing this ${formattedGap}-level gap strengthens your ability to contribute on ${skill.category} projects.`;
+    let marketContext = `While not always required, ${skill.name} proficiency is a common expectation in modern development environments.`;
+
+    if (skill.id === 'frameworks') {
+      const plan = buildFrameworkSkillPlan({
+        frameworks: context.githubAnalysis?.frameworks,
+        languages: context.githubAnalysis?.languages,
+      });
+      const levelSummary = `Currently at ${formattedCurrent}/5 with a ${formattedGap}-level gap to reach ${formattedTarget}/5.`;
+      currentState = `${levelSummary} ${plan.description}`.trim();
+
+      const severityAddendum = isHighPriority
+        ? ' Because this gap tops your priority list, shipping production patterns here unlocks senior scope faster.'
+        : isMediumPriority
+          ? ' Addressing it next keeps you competitive for cross-functional delivery work.'
+          : ' Strengthening framework depth rounds out your technical toolkit.';
+      careerImpact = `${plan.impact}${severityAddendum}`;
+
+      if (plan.usedFrameworks.length > 0) {
+        highlightedFrameworks = plan.usedFrameworks;
+        const frameworksSummary = this.formatList(plan.usedFrameworks);
+        const primaryLanguage = context.githubAnalysis?.languages?.[0];
+        marketContext = `${frameworksSummary} experience appears in most ${primaryLanguage ?? 'modern development'} job descriptions; demonstrating advanced usage eases hiring concerns.`;
+      } else if (context.githubAnalysis?.languages?.length) {
+        const languageSummary = this.formatList(context.githubAnalysis.languages);
+        marketContext = `Teams hiring for ${languageSummary} roles expect production-grade framework skills to accelerate onboarding and delivery.`;
+      } else {
+        marketContext = 'Modern engineering teams expect hands-on experience with mainstream frameworks to deliver features quickly and safely.';
+      }
+
+      plan.actionItems.forEach((item) => recommendedSteps.add(item));
+      if (gap >= 0.5 && recommendedSteps.size === 0) {
+        this.getDefaultRecommendations(skill).forEach((rec) => recommendedSteps.add(rec));
+      }
+    } else {
+      if (isHighPriority && isLargeGap) {
+        currentState = `You're currently at ${formattedCurrent}/5 proficiency, but the market expects ${formattedTarget}/5 for competitive roles.`;
+        careerImpact = `This ${formattedGap}-level gap is blocking access to senior positions and higher-paying opportunities.`;
+        marketContext = `${skill.name} is a core requirement in 70-85% of relevant job postings, with expertise directly correlating to salary bands.`;
+      } else if (isHighPriority && isMediumGap) {
+        currentState = `Your ${formattedCurrent}/5 proficiency is solid, but advancing to ${formattedTarget}/5 is crucial for career progression.`;
+        careerImpact = `Closing this ${formattedGap}-level gap unlocks leadership roles, technical decision-making authority, and competitive compensation.`;
+        marketContext = `Advanced ${skill.name} skills differentiate candidates in competitive hiring processes and enable you to mentor others.`;
+      } else if (isMediumPriority && isMediumGap) {
+        currentState = `You have ${formattedCurrent}/5 proficiency, but reaching ${formattedTarget}/5 enhances your versatility and market value.`;
+        careerImpact = `Addressing this ${formattedGap}-level gap broadens your project opportunities and makes you more competitive for cross-functional roles.`;
+        marketContext = `${skill.name} appears in 40-60% of relevant job descriptions and is increasingly valued as teams adopt modern practices.`;
+      } else {
+        currentState = `You're at ${formattedCurrent}/5, and improving to ${formattedTarget}/5 strengthens your technical foundation.`;
+        careerImpact = `This ${formattedGap}-level improvement ensures you can confidently work on diverse projects and contribute to team success.`;
+        marketContext = `While not always required, ${skill.name} proficiency is a common expectation in modern development environments.`;
+      }
+
+      if (gap >= 0.5) {
+        this.getDefaultRecommendations(skill).forEach((rec) => recommendedSteps.add(rec));
       }
     }
 
-    return recommendations;
+    const recommendationsArray = Array.from(recommendedSteps).slice(0, 8);
+
+    return {
+      currentState,
+      careerImpact,
+      marketContext,
+      recommendedSteps: recommendationsArray,
+      highlightedFrameworks,
+    };
+  }
+
+  private mergeGuidance(existing: SkillGuidance, incoming: SkillGuidance): SkillGuidance {
+    if (!existing) {
+      return incoming;
+    }
+
+    const combinedRecommendations = Array.from(
+      new Set([...existing.recommendedSteps, ...incoming.recommendedSteps])
+    );
+
+    return {
+      currentState: incoming.currentState || existing.currentState,
+      careerImpact: incoming.careerImpact || existing.careerImpact,
+      marketContext: incoming.marketContext || existing.marketContext,
+      recommendedSteps: combinedRecommendations.slice(0, 8),
+      highlightedFrameworks: incoming.highlightedFrameworks?.length
+        ? incoming.highlightedFrameworks
+        : existing.highlightedFrameworks,
+    };
+  }
+
+  private getDefaultRecommendations(skill: Skill): string[] {
+    switch (skill.id) {
+      case 'frameworks':
+        return [
+          'Follow official documentation and tutorials',
+          'Build a complete project using the framework',
+          'Join community forums and attend meetups',
+        ];
+      case 'communication':
+        return [
+          'Practice presenting technical concepts to non-technical audiences',
+          'Join Toastmasters or similar public speaking groups',
+          'Write technical blog posts or documentation',
+        ];
+      case 'leadership':
+        return [
+          'Take on mentoring opportunities',
+          'Lead small projects or initiatives',
+          'Read leadership books and apply concepts',
+        ];
+      default:
+        return [
+          `Set a focused improvement goal for ${skill.name}`,
+          'Design a mini-project to exercise this skill in context',
+          'Review feedback or code reviews related to this area',
+        ];
+    }
+  }
+
+  private formatList(items: string[], max = 3): string {
+    if (items.length === 0) {
+      return '';
+    }
+    const limited = items.slice(0, max);
+    if (limited.length === 1) {
+      return limited[0];
+    }
+    if (limited.length === 2) {
+      return `${limited[0]} and ${limited[1]}`;
+    }
+    return `${limited.slice(0, -1).join(', ')}, and ${limited[limited.length - 1]}`;
   }
 
   /**

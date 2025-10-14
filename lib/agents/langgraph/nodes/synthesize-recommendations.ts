@@ -19,7 +19,12 @@ import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { z } from "zod";
 
 const DEFAULT_MODEL = process.env.OPENAI_RESEARCH_MODEL ?? "gpt-4o-mini";
-const MAX_RECOMMENDATIONS = 10;
+const MAX_RECOMMENDATIONS = 6;
+const MAX_PER_TYPE: Record<Recommendation["type"], number> = {
+  resource: 3,
+  example: 2,
+  action: 2,
+};
 
 const synthesisSchema = z.object({
   recommendations: z.array(
@@ -143,7 +148,7 @@ async function generateRecommendations(
       return generateFallbackRecommendations(resources, examples);
     }
 
-    return validated.data.recommendations;
+    return limitRecommendations(validated.data.recommendations);
   } catch (error) {
     console.warn(
       "[synthesizeRecommendationsNode] LLM synthesis failed:",
@@ -201,7 +206,7 @@ function generateFallbackRecommendations(
     priority: "medium",
   });
 
-  return recommendations.slice(0, MAX_RECOMMENDATIONS);
+  return limitRecommendations(recommendations);
 }
 
 /**
@@ -221,6 +226,38 @@ function extractTextContent(content: unknown): string {
     return extractTextContent((content as { text: unknown }).text);
   }
   return "";
+}
+
+/**
+ * Deduplicate and limit recommendations by type.
+ */
+function limitRecommendations(recommendations: Recommendation[]): Recommendation[] {
+  const limited: Recommendation[] = [];
+  const seenTitles = new Set<string>();
+  const typeCounts: Record<Recommendation["type"], number> = {
+    resource: 0,
+    example: 0,
+    action: 0,
+  };
+
+  for (const rec of recommendations) {
+    if (limited.length >= MAX_RECOMMENDATIONS) {
+      break;
+    }
+    const normalizedTitle = rec.title.trim().toLowerCase();
+    if (seenTitles.has(normalizedTitle)) {
+      continue;
+    }
+    if (typeCounts[rec.type] >= (MAX_PER_TYPE[rec.type] ?? 2)) {
+      continue;
+    }
+
+    seenTitles.add(normalizedTitle);
+    typeCounts[rec.type] += 1;
+    limited.push(rec);
+  }
+
+  return limited;
 }
 
 /**
