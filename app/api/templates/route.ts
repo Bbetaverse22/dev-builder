@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TemplateExampleGenerator } from '@/lib/agents/template-example-generator';
 
+export const runtime = 'nodejs';
+
 const generator = new TemplateExampleGenerator();
 
 export async function POST(request: NextRequest) {

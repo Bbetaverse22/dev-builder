@@ -68,6 +68,10 @@ const nextConfig: NextConfig = {
       };
     }
 
+    // Exclude Next.js cache from serverless bundles
+    config.externalsPresets = config.externalsPresets || {};
+    config.module = config.module || { rules: [] } as any;
+    // No direct rule needed; rely on vercel.json excludeFiles
     return config;
   },
   

@@ -1,4 +1,12 @@
 {
+  "functions": {
+    "api/**/*": {
+      "excludeFiles": [
+        ".next/cache/**",
+        ".pnpm-store/**"
+      ]
+    }
+  },
   "build": {
     "env": {
       "NEXT_TELEMETRY_DISABLED": "1"

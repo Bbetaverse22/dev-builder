@@ -5,7 +5,7 @@
 .next/static/media
 .next/static/webpack
 
-# Ignore pnpm store and large dependencies
+# Ignore pnpm store and large dependencies (keep .pnpm-store out of upload)
 .pnpm-store
 node_modules/.pnpm
 node_modules/tsx
