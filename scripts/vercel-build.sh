@@ -3,6 +3,12 @@ set -euo pipefail
 
 echo "Starting Vercel build (safe mode)..."
 
+echo "Environment details:"
+echo "Node: $(node -v)"
+echo "pnpm: $(pnpm -v)"
+echo "Prisma: $(pnpm prisma --version | tr -d '\n')"
+echo "Next.js: $(pnpm exec next --version)"
+
 echo "Generating Prisma Client..."
 pnpm prisma generate
 
