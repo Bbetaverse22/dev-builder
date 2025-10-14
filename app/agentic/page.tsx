@@ -3,6 +3,8 @@
 import { AgenticSkillAnalyzer } from "@/components/skillbridge/agentic-skill-analyzer";
 import { AnimatedHero } from "@/components/skillbridge/animated-hero";
 
+export const dynamic = 'force-static';
+
 export default function AgenticAnalyzerPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900">
