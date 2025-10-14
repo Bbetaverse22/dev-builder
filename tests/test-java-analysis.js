@@ -1,5 +1,5 @@
 // Test script to verify our Java project analysis
-const { GapAnalyzerAgent } = require('./lib/agents/gap-analyzer.ts');
+const { GapAnalyzerAgent } = require('../lib/agents/gap-analyzer.ts');
 
 async function testJavaAnalysis() {
   const gapAnalyzer = new GapAnalyzerAgent();

@@ -5,8 +5,8 @@
  */
 
 import { config } from "dotenv";
-import { searchResourcesNode } from "./lib/agents/langgraph/nodes/search-resources";
-import type { ResearchState } from "./lib/agents/langgraph/research-agent";
+import { searchResourcesNode } from "../lib/agents/langgraph/nodes/search-resources";
+import type { ResearchState } from "../lib/agents/langgraph/research-agent";
 
 config({ path: ".env.local" });
 

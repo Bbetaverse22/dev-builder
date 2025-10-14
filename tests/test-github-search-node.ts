@@ -8,8 +8,8 @@
  */
 
 import { config } from 'dotenv';
-import { searchGitHubExamplesNode } from './lib/agents/langgraph/nodes/search-github-examples';
-import type { ResearchState } from './lib/agents/langgraph/research-agent';
+import { searchGitHubExamplesNode } from '../lib/agents/langgraph/nodes/search-github-examples';
+import type { ResearchState } from '../lib/agents/langgraph/research-agent';
 
 // Load environment variables
 config({ path: '.env.local' });

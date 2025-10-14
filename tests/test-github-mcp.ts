@@ -10,7 +10,7 @@
  */
 
 import { config } from 'dotenv';
-import { GitHubMCPClient } from './lib/mcp/github/client';
+import { GitHubMCPClient } from '../lib/mcp/github/client';
 
 // Load environment variables from .env.local
 config({ path: '.env.local' });

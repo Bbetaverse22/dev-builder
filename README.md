@@ -21,12 +21,13 @@ Built with advanced AI agents for intelligent career development and portfolio i
 ### 🤖 Portfolio Builder Agent
 - **Autonomous Improvement Loop**: Analyzes portfolio weaknesses and creates actionable tasks
 - **GitHub Integration**: Creates GitHub issues with prioritized action steps
+- **Template & PR Automation**: Extracts production-ready examples, saves them in `examples/generated/`, and can open a GitHub branch + PR via `/api/templates`
 - **README Guidance**: Highlights documentation gaps and suggests next actions
 - **Progress Monitoring (Planned)**: Upcoming tracking for completion and portfolio improvements
 
 ### 🔗 Tool Integrations
-- **GitHub REST API**: Repository analysis and issue creation (no MCP/Docker required)
-- **Template Creator MCP**: Custom MCP server for extracting reusable code templates
+- **GitHub REST API**: Repository analysis, issue creation, and optional template PR automation
+- **Template Creator MCP**: Custom MCP server for extracting reusable code templates with worthiness scoring
 - **Extensible Architecture**: Designed for additional tools like web research MCPs
 
 ### 🎨 Modern UI
@@ -106,6 +107,15 @@ Built with advanced AI agents for intelligent career development and portfolio i
 6. **Open your browser**
    - Next.js App: http://localhost:3000
    - LangGraph Platform: http://localhost:2024 (if running)
+
+### Optional: Template Workflow / PR Automation
+1. Ensure you have a GitHub PAT with `repo` scope set as `GITHUB_TOKEN` in `.env.local`.
+2. In the Analyzer UI, expand the **Research Results** panel and either:
+   - Click **Generate Template** on a suggested GitHub example, or
+   - Paste any GitHub repo URL into the manual template form.
+3. Review generated files under `examples/generated/<slug>-<timestamp>/`.
+4. Use **Create Pull Request** to let `/api/templates` create a branch + PR automatically, or follow the provided git commands manually.
+5. Generated examples are ignored by git (`examples/generated/` is in `.gitignore`).
 
 ## 💡 How It Works: The Agentic Loop
 
@@ -287,13 +297,13 @@ See `V1_DEVELOPMENT_PLAN.md` for implementation roadmap.
 
 ### ✅ V1 (Capstone - 3 Weeks)
 **Focus**: Research + Action fundamentals
-- ✅ LangGraph agent framework setup
+- ✅ LangGraph agent framework setup (state loader, search/evaluation/synthesis nodes)
 - ✅ Database schema and migrations (Prisma Postgres)
 - 🔄 GitHub OAuth integration (NextAuth wiring in progress)
-- 🚧 Research agent implementation (LangGraph)
-- 🚧 Portfolio Builder Agent
+- 🔄 Research agent refinement (confidence/retry logic pending)
+- ✅ Portfolio Builder Agent (quality scoring, research enrichment, template automation)
 - 🚧 Deep career research with web scraping
-- 🚧 Autonomous GitHub issue creation
+- ✅ Autonomous GitHub issue creation (REST API)
 - 🚧 Progress tracking and weekly check-ins
 
 **Deliverables**: Working demo with real GitHub integration, research capabilities, and autonomous actions
@@ -313,6 +323,8 @@ See `V1_DEVELOPMENT_PLAN.md` for implementation roadmap.
 
 - **`CAPSTONE_PROPOSAL.md`**: Complete project vision and academic context
 - **`V1_DEVELOPMENT_PLAN.md`**: 25-issue breakdown for V1 implementation
+- **`docs/CAPSTONE_PROGRESS_REPORT.md`**: Week 1–2 status summary
+- **`PORTFOLIO_BUILDER_STATUS.md`**: Detailed portfolio builder workflow notes
 - **`CLAUDE.md`**: Session context and development history
 
 ## 🤝 Contributing
