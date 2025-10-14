@@ -5,15 +5,20 @@
 .next/static/media
 .next/static/webpack
 
+# Ignore pnpm store and large dependencies
+.pnpm-store
+node_modules/.pnpm
+node_modules/tsx
+node_modules/@langchain
+node_modules/@langgraph
+node_modules/@modelcontextprotocol
+
 # Ignore development files
 examples/generated
 tests
 docs
 scripts
-node_modules/.pnpm
-.pnpm-store
 
-# Ignore large dependencies that cause bundle size issues
-node_modules/tsx
-node_modules/@langchain
-node_modules/@langgraph
+# Ignore MCP dependencies
+lib/mcp/template-creator/node_modules
+lib/mcp/template-creator/dist

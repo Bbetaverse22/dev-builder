@@ -10,7 +10,7 @@
       "NEXT_TELEMETRY_DISABLED": "1"
     }
   },
-  "buildCommand": "pnpm build",
+  "buildCommand": "bash scripts/vercel-build.sh",
   "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": ".next"
 }
