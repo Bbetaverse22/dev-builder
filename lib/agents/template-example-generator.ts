@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { Octokit } from '@octokit/rest';
-import { getTemplateCreatorClient } from '@/lib/mcp/template-creator/client';
+import { getServerlessTemplateCreatorClient } from '@/lib/mcp/template-creator/serverless-client';
 
 interface TemplateGenerationOptions {
   exampleUrl: string;
@@ -59,7 +59,7 @@ export class TemplateExampleGenerator {
   private octokit: Octokit | null = null;
 
   async generate(options: TemplateGenerationOptions): Promise<TemplateGenerationResponse> {
-    const client = await getTemplateCreatorClient();
+    const client = getServerlessTemplateCreatorClient();
     const exampleUrl = options.exampleUrl.trim();
 
     const analysis = await client.analyzeStructure(exampleUrl, 4);
