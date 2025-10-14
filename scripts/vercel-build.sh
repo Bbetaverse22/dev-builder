@@ -22,4 +22,8 @@ fi
 echo "Building Next.js app..."
 pnpm build
 
+echo "Pruning caches to reduce serverless bundle size..."
+rm -rf .next/cache || true
+rm -rf .pnpm-store || true
+
 echo "Build completed."
