@@ -251,14 +251,16 @@ export class ServerlessTemplateCreatorClient {
       owner,
       repo,
       tree_sha: 'HEAD',
-      recursive: 'true',
+      // GitHub API accepts `recursive=true` to fetch the entire tree
+      // Cast to satisfy varying Octokit type definitions across versions
+      recursive: true as any,
     });
 
     // Filter files by patterns
-    const matchingFiles = tree.tree.filter(item => 
+    const matchingFiles = tree.tree.filter((item): item is { path: string; type: 'blob'; sha?: string } => 
       item.type === 'blob' && 
-      typeof item.path === 'string' &&
-      patterns.some(pattern => minimatch(item.path as string, pattern))
+      typeof (item as any).path === 'string' &&
+      patterns.some(pattern => minimatch((item as any).path as string, pattern))
     );
 
     // Get file contents
@@ -270,10 +272,12 @@ export class ServerlessTemplateCreatorClient {
           file_sha: file.sha!,
         });
         
+        const filePath = file.path as string;
+        const decoded = Buffer.from((content as any).content as string, 'base64').toString('utf-8');
         files.push({
-          path: file.path,
-          content: Buffer.from(content.content!, 'base64').toString('utf-8'),
-          type: file.path.split('.').pop() || 'unknown',
+          path: filePath,
+          content: decoded,
+          type: filePath.split('.').pop() || 'unknown',
         });
       } catch (error) {
         console.warn(`Failed to get content for ${file.path}:`, error);
