@@ -4,6 +4,13 @@ import path from "path";
 const nextConfig: NextConfig = {
   // Enable standalone output for Vercel
   output: 'standalone',
+  experimental: {
+    // Prevent bundling caches into Serverless Functions
+    outputFileTracingIgnores: [
+      '**/.next/cache/**',
+      '**/.pnpm-store/**',
+    ],
+  },
   
   turbopack: {
     resolveAlias: {
