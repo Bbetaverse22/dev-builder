@@ -1,6 +1,6 @@
 import { jsonSchema, tool, type ToolSet } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { VectorizeService } from "@/lib/retrieval";
+// Vectorize service removed - not used in production
 import { GitHubAgent } from "./github-agent";
 import { skillGapStorage } from "@/lib/storage/skill-gap-storage";
 
@@ -17,14 +17,7 @@ export interface AgentResponse {
   agentType: string;
 }
 
-const vectorizeSingleton = (() => {
-  try {
-    return new VectorizeService();
-  } catch (error) {
-    console.error("Failed to initialize VectorizeService", error);
-    return null;
-  }
-})();
+// Vectorize service removed - not used in production
 
 const githubAgent = new GitHubAgent();
 
@@ -310,63 +303,7 @@ export class CoordinatorAgent {
       }),
     };
 
-    // Always include knowledge_base tool for all agents
-    if (vectorizeSingleton) {
-      tools.knowledge_base = tool({
-        description:
-          "Search the knowledge base for relevant information about programming languages, frameworks, and development concepts. Use this to find official documentation and examples.",
-        name: "knowledge_base",
-        inputSchema: jsonSchema({
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            query: {
-              type: "string",
-              description:
-                "Natural language query describing the information need",
-            },
-            topK: {
-              type: "number",
-              minimum: 1,
-              maximum: 20,
-              description: "Maximum number of documents to retrieve (default 5)",
-            },
-          },
-          required: ["query"],
-        }),
-        execute: async ({ query, topK }: { query: string; topK?: number }) => {
-          if (!query.trim()) {
-            return { context: "", sources: [] };
-          }
-
-          if (gateByKeywords) {
-            const normalizedQuery = query.toLowerCase();
-            const matchesKnowledgeBase = KNOWLEDGE_BASE_KEYWORDS.some((keyword) =>
-              normalizedQuery.includes(keyword)
-            );
-
-            if (!matchesKnowledgeBase) {
-              return { context: "", sources: [] };
-            }
-          }
-
-          const { context, sources } = await vectorizeSingleton!.search(query, {
-            topK,
-          });
-
-          console.log("Knowledge base tool result:", {
-            query,
-            contextLength: context.length,
-            sourcesCount: sources.length,
-          });
-
-          return {
-            context,
-            sources,
-          };
-        },
-      });
-    }
+    // Knowledge base tool removed - vectorize service not used in production
 
     return tools;
   }

@@ -1,0 +1,19 @@
+# Ignore webpack cache and build artifacts
+.next/cache
+.next/static/chunks
+.next/static/css
+.next/static/media
+.next/static/webpack
+
+# Ignore development files
+examples/generated
+tests
+docs
+scripts
+node_modules/.pnpm
+.pnpm-store
+
+# Ignore large dependencies that cause bundle size issues
+node_modules/tsx
+node_modules/@langchain
+node_modules/@langgraph

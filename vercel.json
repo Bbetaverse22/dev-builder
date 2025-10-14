@@ -1,0 +1,16 @@
+{
+  "functions": {
+    "app/api/templates/route.ts": {
+      "maxDuration": 60,
+      "memory": 3008
+    }
+  },
+  "build": {
+    "env": {
+      "NEXT_TELEMETRY_DISABLED": "1"
+    }
+  },
+  "buildCommand": "pnpm build",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "outputDirectory": ".next"
+}
