@@ -13,11 +13,10 @@ node_modules/@langchain
 node_modules/@langgraph
 node_modules/@modelcontextprotocol
 
-# Ignore development files
+# Ignore development files (keep scripts for Vercel build)
 examples/generated
 tests
 docs
-scripts
 
 # Ignore MCP dependencies
 lib/mcp/template-creator/node_modules
