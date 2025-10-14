@@ -214,7 +214,7 @@ export class TemplateExampleGenerator {
 
     const fileTree = generation.files.map((file, index) => ({
       path: file.path.split(path.sep).join('/'),
-      mode: '100644',
+      mode: '100644' as const,
       type: 'blob' as const,
       sha: blobs[index].data.sha,
     }));
