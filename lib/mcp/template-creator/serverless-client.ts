@@ -65,8 +65,11 @@ export class ServerlessTemplateCreatorClient {
         path: '',
       });
 
+      // Normalize to an array for analysis (GitHub API can return a single object)
+      const rootContents = Array.isArray(contents) ? contents : [contents];
+
       // Analyze the repository structure
-      const analysis = await this.analyzeRepositoryStructure(contents, repoData, depth);
+      const analysis = await this.analyzeRepositoryStructure(rootContents, repoData, depth);
       
       return {
         repoUrl,
@@ -254,7 +257,8 @@ export class ServerlessTemplateCreatorClient {
     // Filter files by patterns
     const matchingFiles = tree.tree.filter(item => 
       item.type === 'blob' && 
-      patterns.some(pattern => minimatch(item.path, pattern))
+      typeof item.path === 'string' &&
+      patterns.some(pattern => minimatch(item.path as string, pattern))
     );
 
     // Get file contents

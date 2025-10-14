@@ -1,30 +1,19 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "Starting Vercel build with dependency exclusions..."
+echo "Starting Vercel build (safe mode)..."
 
-# Remove large dependencies that cause bundle size issues
-echo "Removing large dependencies..."
-rm -rf .pnpm-store
-rm -rf node_modules/.pnpm
-rm -rf node_modules/tsx
-rm -rf node_modules/@langchain
-rm -rf node_modules/@langgraph
-rm -rf node_modules/@modelcontextprotocol
+echo "Generating Prisma Client..."
+pnpm prisma generate
 
-# Remove development files
-echo "Removing development files..."
-rm -rf examples/generated
-rm -rf tests
-rm -rf docs
-rm -rf scripts
+if [[ -n "${DATABASE_URL:-}" ]]; then
+  echo "Applying Prisma migrations..."
+  pnpm prisma migrate deploy
+else
+  echo "DATABASE_URL not set; skipping migrations."
+fi
 
-# Remove MCP dependencies
-echo "Removing MCP dependencies..."
-rm -rf lib/mcp/template-creator/node_modules
-rm -rf lib/mcp/template-creator/dist
-
-# Run the build
-echo "Running Next.js build..."
+echo "Building Next.js app..."
 pnpm build
 
-echo "Vercel build completed!"
+echo "Build completed."
