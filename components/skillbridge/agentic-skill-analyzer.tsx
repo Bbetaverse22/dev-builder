@@ -58,6 +58,12 @@ interface PortfolioTask {
   skillName?: string;
   description?: string;
   actionItems?: string[];
+  estimatedEffort?: string;
+  weakness?: {
+    severity: 'high' | 'medium' | 'low';
+    type: string;
+    optional?: boolean;
+  };
 }
 
 interface GeneratedTemplateSummary {
@@ -625,6 +631,8 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
             skillName: rec.skillGap?.skill?.name,
             description: rec.description,
             actionItems: rec.actionItems ?? [],
+            estimatedEffort: rec.estimatedEffort,
+            weakness: rec.weakness,
           }));
 
           setPortfolioTasks(tasks);
@@ -1211,7 +1219,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
                               className="rounded-sm border-slate-300 h-5 w-5 data-[state=checked]:bg-slate-900"
                             />
                           </div>
-                          {task.actionItems?.length > 0 && (
+                          {task.actionItems && task.actionItems.length > 0 && (
                             <div className="px-6 pb-4">
                               <ul className="text-xs text-slate-600 list-disc list-inside space-y-1">
                                 {task.actionItems.map((item, idx) => (
