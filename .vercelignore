@@ -1,0 +1,18 @@
+# Vercel Ignore - Only include what's needed for deployment
+# This supplements .gitignore, not replaces it
+
+# Webpack build cache (huge!)
+.next/cache/webpack
+
+# PNPM store
+.pnpm-store
+
+# Development files
+examples/generated
+*.log
+
+# MCP server files (separate deployment)
+lib/mcp/template-creator/api
+lib/mcp/template-creator/http-server.ts
+lib/mcp/template-creator/server.ts
+lib/mcp/template-creator/.vercel
