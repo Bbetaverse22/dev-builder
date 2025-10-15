@@ -1,5 +1,6 @@
 # Ignore webpack cache and build artifacts
 .next/cache
+.next/cache/webpack
 .next/static/chunks
 .next/static/css
 .next/static/media
