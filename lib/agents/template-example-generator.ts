@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { Octokit } from '@octokit/rest';
-import { getTemplateCreatorClient } from '@/lib/mcp/template-creator/client';
+import { getTemplateCreatorClient } from '@/lib/mcp/template-creator';
 
 interface TemplateGenerationOptions {
   exampleUrl: string;

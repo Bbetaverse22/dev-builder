@@ -5,7 +5,7 @@
  * reusable templates from example GitHub repositories found during research.
  */
 
-import { getTemplateCreatorClient } from '@/lib/mcp/template-creator/client';
+import { getTemplateCreatorClient } from '@/lib/mcp/template-creator';
 import * as fs from 'fs';
 import * as path from 'path';
 

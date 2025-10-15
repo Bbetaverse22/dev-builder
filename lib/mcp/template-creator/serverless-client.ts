@@ -59,11 +59,14 @@ export class ServerlessTemplateCreatorClient {
       const { data: repoData } = await octokit.repos.get({ owner, repo });
       
       // Get repository contents
-      const { data: contents } = await octokit.repos.getContent({
+      const { data: contentsResponse } = await octokit.repos.getContent({
         owner,
         repo,
         path: '',
       });
+
+      // Ensure we have an array of contents
+      const contents = Array.isArray(contentsResponse) ? contentsResponse : [contentsResponse];
 
       // Analyze the repository structure
       const analysis = await this.analyzeRepositoryStructure(contents, repoData, depth);
@@ -252,20 +255,23 @@ export class ServerlessTemplateCreatorClient {
     });
 
     // Filter files by patterns
-    const matchingFiles = tree.tree.filter(item => 
-      item.type === 'blob' && 
-      patterns.some(pattern => minimatch(item.path, pattern))
+    const matchingFiles = tree.tree.filter(item =>
+      item.type === 'blob' &&
+      item.path &&
+      patterns.some(pattern => minimatch(item.path!, pattern))
     );
 
     // Get file contents
     for (const file of matchingFiles.slice(0, 20)) { // Limit to 20 files
+      if (!file.path || !file.sha) continue;
+
       try {
         const { data: content } = await octokit.git.getBlob({
           owner,
           repo,
-          file_sha: file.sha!,
+          file_sha: file.sha,
         });
-        
+
         files.push({
           path: file.path,
           content: Buffer.from(content.content!, 'base64').toString('utf-8'),

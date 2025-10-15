@@ -1,30 +1,32 @@
 #!/bin/bash
+set -e  # Exit on error
 
-echo "Starting Vercel build with dependency exclusions..."
+echo "🚀 Starting Vercel build..."
 
-# Remove large dependencies that cause bundle size issues
-echo "Removing large dependencies..."
-rm -rf .pnpm-store
-rm -rf node_modules/.pnpm
-rm -rf node_modules/tsx
-rm -rf node_modules/@langchain
-rm -rf node_modules/@langgraph
-rm -rf node_modules/@modelcontextprotocol
+# Check for required environment variables
+if [ -z "$DATABASE_URL" ] && [ -z "$POSTGRES_PRISMA_URL" ]; then
+  echo "⚠️  Warning: No database URL found. Skipping Prisma generation."
+  SKIP_PRISMA=true
+fi
 
-# Remove development files
-echo "Removing development files..."
+# Generate Prisma client if database is configured
+if [ "$SKIP_PRISMA" != "true" ]; then
+  echo "📦 Generating Prisma client..."
+  pnpm prisma generate --no-engine || {
+    echo "⚠️  Prisma generation failed, continuing without database..."
+  }
+else
+  echo "⏭️  Skipping Prisma generation (no database configured)"
+fi
+
+# Clean up development artifacts (keep dependencies)
+echo "🧹 Cleaning development artifacts..."
 rm -rf examples/generated
-rm -rf tests
-rm -rf docs
-rm -rf scripts
-
-# Remove MCP dependencies
-echo "Removing MCP dependencies..."
 rm -rf lib/mcp/template-creator/node_modules
 rm -rf lib/mcp/template-creator/dist
 
 # Run the build
-echo "Running Next.js build..."
+echo "🏗️  Building Next.js application..."
 pnpm build
 
-echo "Vercel build completed!"
+echo "✅ Vercel build completed successfully!"
