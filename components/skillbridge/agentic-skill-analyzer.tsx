@@ -13,7 +13,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { GapAnalyzerAgent } from '@/lib/agents/gap-analyzer';
 import { StickyAgentStatus } from './sticky-agent-status';
@@ -936,49 +935,66 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
       </Card>
       </div>
 
-      {/* Main Results Grid */}
-      {actionLogs.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Column 1: Agent Action Logs */}
-          <Card id="activity-log">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Activity className="h-5 w-5" />
-                <span>Agent Activity</span>
-              </CardTitle>
-              <CardDescription>
-                Real-time agent actions and decisions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[400px] pr-4">
-                <div className="space-y-2">
-                  {actionLogs.map((log, index) => (
-                    <div 
-                      key={index} 
-                      className={`p-3 rounded-lg border text-sm ${
-                        log.type === 'success' ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' :
-                        log.type === 'error' ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' :
-                        log.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800' :
-                        'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
+      {/* Agent Activity */}
+      {(progress > 0 || actionLogs.length > 0) && (
+        <Card id="activity-log" className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Activity className="h-5 w-5" />
+              <span>Agent Activity</span>
+            </CardTitle>
+            <CardDescription>
+              Real-time agent actions and decisions
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-80 overflow-y-auto space-y-3 pr-2">
+                {actionLogs.length > 0 ? (
+                  actionLogs.map((log, index) => (
+                    <div
+                      key={index}
+                      className={`w-full rounded-xl border p-4 text-sm transition-all duration-300 ${
+                        log.type === 'success'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800'
+                          : log.type === 'error'
+                            ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
+                            : log.type === 'warning'
+                              ? 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800'
+                              : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
                       }`}
                     >
                       <div className="flex items-start space-x-2">
                         {log.icon}
                         <div className="flex-1 min-w-0">
-                          <p className="break-words">{log.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{log.timestamp}</p>
+                          <div className="text-[11px] uppercase tracking-wide text-slate-500 mb-1">
+                            Step {index + 1}
+                          </div>
+                          <p className="break-words font-medium text-slate-800 dark:text-slate-100">
+                            {log.message}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {log.timestamp}
+                          </p>
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+                  ))
+                ) : (
+                  <div className="w-full rounded-xl border border-blue-200/60 bg-blue-50/70 p-4 text-sm text-blue-900">
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500" />
+                      <span>Agent initializing...</span>
+                    </div>
+                  </div>
+                )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Column 2: Skill Gaps */}
-          <Card id="portfolio-builder-card">
+      {agentStatus === 'COMPLETE' && (
+        <>
+          <Card id="skill-gaps-card" className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Target className="h-5 w-5" />
@@ -997,7 +1013,6 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
                       skill={gap}
                       onStartLearning={(skillName) => {
                         console.log('Starting learning path for:', skillName);
-                        // Future: Navigate to learning resources or open modal
                       }}
                     />
                   ))}
@@ -1011,8 +1026,101 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
             </CardContent>
           </Card>
 
-          {/* Column 3: Portfolio Tasks */}
-          <Card>
+          {portfolioData && portfolioData.analysis && (
+            <Card
+              id="portfolio-quality"
+              className="mb-6 border-emerald-400/30 bg-gradient-to-br from-emerald-800/50 via-emerald-900/40 to-slate-950/70"
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-3 text-white text-3xl">
+                  <Target className="h-7 w-7" />
+                  <span>Portfolio Quality Analysis</span>
+                </CardTitle>
+                <CardDescription className="text-white/80 text-lg">
+                  AI-powered analysis of your repository quality and completeness
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="p-6 bg-emerald-200/10 rounded-lg border border-emerald-200/20">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-2xl font-semibold text-white">Overall Quality Score</h3>
+                    <div className="text-right">
+                      <div className={`text-5xl font-bold ${
+                        portfolioData.analysis.overallQuality >= 80 ? 'text-emerald-300' :
+                        portfolioData.analysis.overallQuality >= 60 ? 'text-yellow-300' :
+                        'text-red-300'
+                      }`}>
+                        {portfolioData.analysis.overallQuality}%
+                      </div>
+                      <p className="text-sm text-emerald-100/70 mt-1">
+                        {portfolioData.analysis.overallQuality >= 80 ? 'Excellent' :
+                         portfolioData.analysis.overallQuality >= 60 ? 'Good' :
+                         'Needs Improvement'}
+                      </p>
+                    </div>
+                  </div>
+                  <Progress
+                    value={portfolioData.analysis.overallQuality}
+                    className="h-3"
+                  />
+                </div>
+
+                {portfolioData.analysis.strengths && portfolioData.analysis.strengths.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
+                      <CheckCircle2 className="h-5 w-5 mr-2 text-emerald-300" />
+                      Strengths ({portfolioData.analysis.strengths.length})
+                    </h3>
+                    <div className="grid gap-2">
+                      {portfolioData.analysis.strengths.map((strength: string, index: number) => (
+                        <div
+                          key={index}
+                          className="p-3 bg-emerald-200/10 rounded-lg border border-emerald-200/20 flex items-start gap-2"
+                        >
+                          <CheckCircle2 className="h-4 w-4 text-emerald-300 mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-emerald-50">{strength}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {portfolioData.analysis.weaknesses && portfolioData.analysis.weaknesses.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
+                      <AlertCircle className="h-5 w-5 mr-2 text-red-300" />
+                      Areas for Improvement ({portfolioData.analysis.weaknesses.length})
+                    </h3>
+                    <div className="grid gap-2">
+                      {portfolioData.analysis.weaknesses.map((weakness: any, index: number) => (
+                        <div
+                          key={index}
+                          className="p-4 bg-red-200/10 rounded-lg border border-red-200/20"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <h4 className="font-semibold text-white">{weakness.title}</h4>
+                            <Badge
+                              variant={weakness.severity === 'high' ? 'destructive' : weakness.severity === 'medium' ? 'default' : 'outline'}
+                              className="text-xs"
+                            >
+                              {weakness.severity}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-red-100/70 mb-2">{weakness.description}</p>
+                          <div className="flex items-start gap-2 mt-2 p-2 bg-red-200/10 rounded">
+                            <AlertCircle className="h-4 w-4 text-red-300 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-red-100/80"><strong>Impact:</strong> {weakness.impact}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card id="portfolio-builder-card" className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Rocket className="h-5 w-5" />
@@ -1038,85 +1146,71 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
                                 ? true
                                 : 'indeterminate'
                         }
-                        onCheckedChange={(value) => selectAllRecommendations(portfolioTasks, value === true)}
-                        disabled={isCreatingIssues || portfolioTasks.length === 0}
-                        className="border-purple-200/60"
+                        onCheckedChange={(checked) =>
+                          selectAllRecommendations(portfolioTasks, checked === true)
+                        }
+                        className="rounded-sm border-slate-300 data-[state=checked]:bg-slate-900"
                       />
-                      <span className="text-slate-700">Select all</span>
+                      <span>
+                        {selectedRecommendations.length} / {portfolioTasks.length} selected
+                      </span>
                     </div>
                   </div>
-
-                  <div className="space-y-3">
+                  <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
                     {portfolioTasks.map((task) => {
                       const isSelected = selectedRecommendations.includes(task.id);
-                      const isExpanded = expandedTasks[task.id] ?? false;
-                      const toggleExpanded = () =>
-                        setExpandedTasks((prev) => ({ ...prev, [task.id]: !isExpanded }));
-
+                      const severity = task.priority;
+                      const severityVariant =
+                        severity === 'high'
+                          ? 'destructive'
+                          : severity === 'medium'
+                            ? 'default'
+                            : 'outline';
+                      const focusArea = task.type;
                       return (
                         <div
                           key={task.id}
-                          className={`border rounded-lg transition-colors shadow-sm ${
+                          className={`rounded-xl border transition-all ${
                             isSelected
-                              ? 'border-purple-300/60 bg-white'
-                              : 'border-slate-300 bg-white hover:border-purple-200/30'
+                              ? 'border-emerald-400/80 bg-emerald-50/60 shadow-[0_10px_30px_rgba(16,185,129,0.2)]'
+                              : 'border-slate-200 hover:border-emerald-300/60 bg-white/70'
                           }`}
                         >
-                          <div
-                            className="px-3 py-3 flex items-start gap-3 cursor-pointer"
-                            onClick={toggleExpanded}
-                          >
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={(value) => toggleRecommendationSelection(task.id, value === true)}
-                              disabled={isCreatingIssues}
-                              className="mt-1 border-purple-200/60"
-                              onClick={(event) => event.stopPropagation()}
-                            />
-                            <div className="flex-1 space-y-1">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  {task.type === 'issue' && <GitPullRequest className="h-4 w-4 text-blue-500" />}
-                                  {task.type === 'readme' && <FileText className="h-4 w-4 text-green-500" />}
-                                  {task.type === 'documentation' && <FileText className="h-4 w-4 text-purple-400" />}
-                                  {task.type === 'test' && <Code className="h-4 w-4 text-orange-400" />}
-                                  {task.type === 'skill' && <Target className="h-4 w-4 text-pink-400" />}
-                                  <p className="text-sm font-semibold text-slate-900">{task.title}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {task.type === 'skill' && task.skillName && (
-                                    <Badge variant="outline" className="text-xs text-pink-600 border-pink-400/60 bg-pink-50">
-                                      {task.skillName}
-                                    </Badge>
-                                  )}
-                                  {task.optional && (
-                                    <Badge variant="outline" className="text-xs text-slate-600 border-slate-300 bg-slate-100">
-                                      Optional
-                                    </Badge>
-                                  )}
-                                  <Badge variant="outline" className="text-xs uppercase">
-                                    {task.priority}
-                                  </Badge>
-                                </div>
-                              </div>
-                              {task.description && (
-                                <p className="text-xs text-slate-600">
-                                  {task.description}
-                                </p>
-                              )}
-                              <div className="flex items-center justify-between text-xs text-slate-500">
-                                <span>
-                                  {Array.isArray(task.actionItems) && task.actionItems.length > 0
-                                    ? `${task.actionItems.length} action item${task.actionItems.length === 1 ? '' : 's'}`
-                                    : 'No action items'}
-                                </span>
-                                <Badge variant="secondary" className="text-[10px] uppercase">
-                                  {isExpanded ? 'Hide Details' : 'Show Details'}
+                          <div className="flex items-start justify-between p-5">
+                            <div className="space-y-2 pr-4">
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant={severityVariant}
+                                  className="uppercase tracking-wide text-[10px] px-2 py-1"
+                                >
+                                  {task.weakness?.severity ? `${task.weakness.severity} impact` : 'Impact'}
                                 </Badge>
+                                <span className="text-[11px] uppercase tracking-widest text-slate-500">
+                                  Effort: {task.estimatedEffort}
+                                </span>
+                              </div>
+                              <h3 className="text-lg font-semibold text-slate-900 leading-tight">{task.title}</h3>
+                              <p className="text-sm text-slate-600 leading-relaxed">{task.description}</p>
+                              <div className="flex items-center gap-3 text-xs text-slate-500">
+                                <div className="inline-flex items-center gap-1">
+                                  <Sparkles className="h-3 w-3 text-emerald-500" />
+                                  Priority {task.priority}
+                                </div>
+                                <div className="inline-flex items-center gap-1">
+                                  <Target className="h-3 w-3 text-slate-500" />
+                                  Focus: {focusArea}
+                                </div>
                               </div>
                             </div>
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(checked) =>
+                                toggleRecommendationSelection(task.id, checked === true)
+                              }
+                              className="rounded-sm border-slate-300 h-5 w-5 data-[state=checked]:bg-slate-900"
+                            />
                           </div>
-                          {isExpanded && Array.isArray(task.actionItems) && task.actionItems.length > 0 && (
+                          {task.actionItems?.length > 0 && (
                             <div className="px-6 pb-4">
                               <ul className="text-xs text-slate-600 list-disc list-inside space-y-1">
                                 {task.actionItems.map((item, idx) => (
@@ -1174,111 +1268,10 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
               )}
             </CardContent>
           </Card>
-        </div>
+        </>
       )}
 
-      {/* Portfolio Quality Visualization */}
-      {portfolioData && portfolioData.analysis && (
-        <Card
-          id="portfolio-quality"
-          className="border-emerald-400/30 bg-gradient-to-br from-emerald-800/50 via-emerald-900/40 to-slate-950/70"
-        >
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-3 text-white text-3xl">
-              <Target className="h-7 w-7" />
-              <span>Portfolio Quality Analysis</span>
-            </CardTitle>
-            <CardDescription className="text-white/80 text-lg">
-              AI-powered analysis of your repository quality and completeness
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Overall Quality Score */}
-            <div className="p-6 bg-emerald-200/10 rounded-lg border border-emerald-200/20">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-semibold text-white">Overall Quality Score</h3>
-                <div className="text-right">
-                  <div className={`text-5xl font-bold ${
-                    portfolioData.analysis.overallQuality >= 80 ? 'text-emerald-300' :
-                    portfolioData.analysis.overallQuality >= 60 ? 'text-yellow-300' :
-                    'text-red-300'
-                  }`}>
-                    {portfolioData.analysis.overallQuality}%
-                  </div>
-                  <p className="text-sm text-emerald-100/70 mt-1">
-                    {portfolioData.analysis.overallQuality >= 80 ? 'Excellent' :
-                     portfolioData.analysis.overallQuality >= 60 ? 'Good' :
-                     'Needs Improvement'}
-                  </p>
-                </div>
-              </div>
-              <Progress
-                value={portfolioData.analysis.overallQuality}
-                className="h-3"
-              />
-            </div>
-
-            {/* Strengths */}
-            {portfolioData.analysis.strengths && portfolioData.analysis.strengths.length > 0 && (
-              <div>
-                <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
-                  <CheckCircle2 className="h-5 w-5 mr-2 text-emerald-300" />
-                  Strengths ({portfolioData.analysis.strengths.length})
-                </h3>
-                <div className="grid gap-2">
-                  {portfolioData.analysis.strengths.map((strength: string, index: number) => (
-                    <div
-                      key={index}
-                      className="p-3 bg-emerald-200/10 rounded-lg border border-emerald-200/20 flex items-start gap-2"
-                    >
-                      <CheckCircle2 className="h-4 w-4 text-emerald-300 mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-emerald-50">{strength}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Weaknesses */}
-            {portfolioData.analysis.weaknesses && portfolioData.analysis.weaknesses.length > 0 && (
-              <div>
-                <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
-                  <AlertCircle className="h-5 w-5 mr-2 text-red-300" />
-                  Areas for Improvement ({portfolioData.analysis.weaknesses.length})
-                </h3>
-                <div className="grid gap-2">
-                  {portfolioData.analysis.weaknesses.map((weakness: any, index: number) => (
-                    <div
-                      key={index}
-                      className="p-4 bg-red-200/10 rounded-lg border border-red-200/20"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-semibold text-white">{weakness.title}</h4>
-                        <Badge
-                          variant={weakness.severity === 'high' ? 'destructive' : weakness.severity === 'medium' ? 'default' : 'outline'}
-                          className="text-xs"
-                        >
-                          {weakness.severity}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-red-100/70 mb-2">{weakness.description}</p>
-                      <div className="flex items-start gap-2 mt-2 p-2 bg-red-200/10 rounded">
-                        <AlertCircle className="h-4 w-4 text-red-300 mt-0.5 flex-shrink-0" />
-                        <p className="text-xs text-red-100/80"><strong>Impact:</strong> {weakness.impact}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Improvement Recommendations removed to avoid duplication. See Portfolio Builder column. */}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Research Results Section */}
-      {researchResults && (
+      {agentStatus === 'COMPLETE' && researchResults && (
         <Card className="border-blue-400/30 bg-gradient-to-br from-blue-800/50 via-blue-900/40 to-slate-950/70">
           <CardHeader>
             <CardTitle className="flex items-center space-x-3 text-white text-3xl">
@@ -1290,7 +1283,6 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Learning Resources */}
             {researchResults.resources && researchResults.resources.length > 0 && (
               <div>
                 <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
@@ -1343,7 +1335,6 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
               </div>
             )}
 
-            {/* Manual Template Generation */}
             <div className="p-4 bg-blue-900/40 border border-blue-200/30 rounded-lg space-y-3">
               <div className="flex items-center gap-2 text-blue-100">
                 <Sparkles className="h-4 w-4" />
@@ -1471,7 +1462,6 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
               </div>
             </div>
 
-            {/* GitHub Examples */}
             {researchResults.examples && researchResults.examples.length > 0 && (
               <div>
                 <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
@@ -1486,122 +1476,35 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
                         key={index}
                         className="p-4 bg-blue-200/10 rounded-lg border border-blue-200/20 hover:bg-blue-200/20 transition-colors group space-y-3"
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center gap-2">
-                              <a
-                                href={example.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors flex items-center gap-2"
-                              >
-                                {example.name}
-                                <Badge variant="secondary" className="text-xs">{example.stars}⭐</Badge>
-                              </a>
-                            </div>
-                            <p className="text-sm text-blue-100/70">{example.description}</p>
-                            <div className="flex flex-wrap items-center gap-2">
-                              {example.language && (
-                                <Badge variant="outline" className="text-xs text-blue-200 border-blue-200/30">
-                                  {example.language}
-                                </Badge>
-                              )}
-                              {typeof example.templateWorthiness === 'number' && (
-                                <Badge variant="outline" className="text-xs text-blue-200 border-blue-200/30">
-                                  Worthiness: {example.templateWorthiness.toFixed(2)}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
+                        <div className="space-y-2">
                           <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-blue-200/50 text-blue-100 hover:text-blue-900 hover:bg-blue-100/80"
-                              onClick={() => generateTemplateFromExample(example)}
-                              disabled={templateGenerationLoading[example.url]}
+                            <a
+                              href={example.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors flex items-center gap-2"
                             >
-                              {templateGenerationLoading[example.url] ? (
-                                <>
-                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-300 mr-2" />
-                                  Generating...
-                                </>
-                              ) : (
-                                <>
-                                  <Sparkles className="h-4 w-4 mr-2" />
-                                  {generatedTemplates[example.url] ? 'Regenerate Template' : 'Generate Template'}
-                                </>
-                              )}
-                            </Button>
-                            {generatedTemplates[example.url] && (
-                              generatedTemplates[example.url].pullRequestUrl ? (
-                                <a
-                                  href={generatedTemplates[example.url].pullRequestUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-md bg-blue-100 text-blue-900 hover:bg-blue-200"
-                                >
-                                  <GitPullRequest className="h-4 w-4" />
-                                  View Pull Request
-                                </a>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  onClick={() => createTemplatePullRequest(example)}
-                                  disabled={templatePrLoading[example.url]}
-                                >
-                                  {templatePrLoading[example.url] ? (
-                                    <>
-                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2" />
-                                      Creating PR...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <GitPullRequest className="h-4 w-4 mr-2" />
-                                      Create Pull Request
-                                    </>
-                                  )}
-                                </Button>
-                              )
+                              {example.name}
+                              <Badge variant="secondary" className="text-xs">{example.stars}⭐</Badge>
+                            </a>
+                          </div>
+                          <p className="text-sm text-blue-100/70">{example.description}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {example.language && (
+                              <Badge variant="outline" className="text-xs text-blue-200 border-blue-200/30">
+                                {example.language}
+                              </Badge>
+                            )}
+                            {typeof example.templateWorthiness === 'number' && (
+                              <Badge variant="outline" className="text-xs text-blue-200 border-blue-200/30">
+                                Worthiness: {example.templateWorthiness.toFixed(2)}
+                              </Badge>
                             )}
                           </div>
+                          <p className="text-xs text-blue-100/60 italic">
+                            Use "Generate template from a specific repo" above to import this example.
+                          </p>
                         </div>
-                        {templateGenerationErrors[example.url] && (
-                          <div className="text-xs text-red-200">
-                            {templateGenerationErrors[example.url]}
-                          </div>
-                        )}
-                        {templatePrErrors[example.url] && (
-                          <div className="text-xs text-red-200">
-                            {templatePrErrors[example.url]}
-                          </div>
-                        )}
-                        {generatedTemplates[example.url] && (
-                          <div className="space-y-2 p-3 border border-emerald-200/40 rounded-lg bg-emerald-300/10">
-                            <p className="text-sm text-emerald-100">
-                              Template saved to <code className="text-emerald-200">{generatedTemplates[example.url].templateDirectory}</code>.
-                              Suggested branch: <code className="text-emerald-200">{generatedTemplates[example.url].branchName}</code>
-                            </p>
-                            <div className="space-y-1">
-                              <p className="text-xs text-emerald-100 font-semibold uppercase tracking-wide">Next Steps</p>
-                              <ol className="list-decimal list-inside text-xs text-emerald-100 space-y-1">
-                                {generatedTemplates[example.url].instructions.map((instruction, idx) => (
-                                  <li key={idx}>{instruction}</li>
-                                ))}
-                              </ol>
-                            </div>
-                            {generatedTemplates[example.url].analysisSummary.insights?.length > 0 && (
-                              <div className="space-y-1">
-                                <p className="text-xs text-emerald-100 font-semibold uppercase tracking-wide">Insights</p>
-                                <ul className="list-disc list-inside text-xs text-emerald-100/80 space-y-1">
-                                  {generatedTemplates[example.url].analysisSummary.insights.slice(0, 3).map((insight, idx) => (
-                                    <li key={idx}>{insight}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
                     ))}
                 </div>
@@ -1618,29 +1521,9 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
                 )}
               </div>
             )}
-
-            {/* Recommendations */}
-            {groupedResearchRecommendations.action.length > 0 && (
-              <div className="p-4 bg-white/5 border border-slate-700/60 rounded-lg space-y-2">
-                <div className="flex items-center gap-2 text-slate-100">
-                  <Sparkles className="h-4 w-4 text-emerald-300" />
-                  <p className="text-sm font-semibold">Actionable tasks generated</p>
-                </div>
-                <p className="text-xs text-slate-300/80">
-                  We added {groupedResearchRecommendations.action.length} personalized task{groupedResearchRecommendations.action.length === 1 ? '' : 's'} to the <button
-                    type="button"
-                    onClick={() => document.getElementById('portfolio-builder-card')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="underline text-emerald-200 hover:text-emerald-100"
-                  >
-                    Portfolio Builder
-                  </button>. Review them there and create GitHub issues for the ones you want to tackle.
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
-
       {/* Career Insights Section */}
       {careerInsights && (
         <Card className="border-purple-400/30 bg-gradient-to-br from-purple-800/50 via-purple-900/40 to-slate-950/70">
