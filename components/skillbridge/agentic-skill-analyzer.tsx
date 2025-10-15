@@ -167,6 +167,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
     });
   };
 
+
   const selectAllRecommendations = (items: any[], checked: boolean) => {
     if (!items || items.length === 0) {
       setSelectedRecommendations([]);

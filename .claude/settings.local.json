@@ -23,7 +23,8 @@
       "Bash(curl -X POST https://template-creator-lm4cabtsu-betulbogrek-6515s-projects.vercel.app/api/analyze -H \"Content-Type: application/json\" -d '{\"\"repoUrl\"\":\"\"https://github.com/vercel/next.js\"\",\"\"depth\"\":2}')",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

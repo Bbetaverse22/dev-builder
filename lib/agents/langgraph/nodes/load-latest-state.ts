@@ -1,4 +1,5 @@
 import type { ResearchState } from "../research-agent";
+import { skillGapStoragePrisma } from "@/lib/storage/skill-gap-storage-prisma";
 import { skillGapStorage } from "@/lib/storage/skill-gap-storage";
 
 /**
@@ -8,33 +9,47 @@ export async function loadLatestStateNode(
   state: ResearchState
 ): Promise<Partial<ResearchState>> {
   const userId = state.userId ?? "user_123";
+  const iterationCount = state.iterationCount ?? 0;
 
   try {
-    const seed = skillGapStorage.getResearchStateSeed(userId);
+    const seed = await skillGapStoragePrisma.getResearchStateSeed(userId);
 
-    if (!seed) {
-      console.warn(
-        `[loadLatestStateNode] No stored research seed found for user ${userId}`
-      );
+    if (seed) {
       return {
-        loadedFromStorage: false,
-        iterationCount: state.iterationCount ?? 0,
+        ...seed,
+        loadedFromStorage: true,
+        iterationCount,
       };
     }
 
-    return {
-      ...seed,
-      loadedFromStorage: true,
-      iterationCount: state.iterationCount ?? 0,
-    };
+    console.warn(
+      `[loadLatestStateNode] No Prisma-backed research seed found for user ${userId}, falling back to legacy storage`
+    );
   } catch (error) {
     console.error(
-      `[loadLatestStateNode] Failed to load stored research seed for user ${userId}:`,
+      `[loadLatestStateNode] Failed to load Prisma research seed for user ${userId}:`,
       error
     );
-    return {
-      loadedFromStorage: false,
-      iterationCount: state.iterationCount ?? 0,
-    };
   }
+
+  try {
+    const legacySeed = skillGapStorage.getResearchStateSeed(userId);
+    if (legacySeed) {
+      return {
+        ...legacySeed,
+        loadedFromStorage: true,
+        iterationCount,
+      };
+    }
+  } catch (legacyError) {
+    console.error(
+      `[loadLatestStateNode] Legacy storage fallback failed for user ${userId}:`,
+      legacyError
+    );
+  }
+
+  return {
+    loadedFromStorage: false,
+    iterationCount,
+  };
 }
