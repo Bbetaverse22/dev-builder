@@ -58,7 +58,10 @@ const nextConfig: NextConfig = {
     '@langchain/core',
     '@langchain/langgraph', 
     '@langchain/openai',
-    '@modelcontextprotocol/sdk'
+    '@modelcontextprotocol/sdk',
+    '@octokit/rest',
+    'fs',
+    'path'
   ],
   
   // Reduce bundle size

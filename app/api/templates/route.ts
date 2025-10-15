@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TemplateExampleGenerator } from '@/lib/agents/template-example-generator';
 
-const generator = new TemplateExampleGenerator();
+// Use your hosted MCP template generator service
+const MCP_TEMPLATE_SERVICE_URL = process.env.MCP_TEMPLATE_SERVICE_URL || 'https://your-mcp-template-service.vercel.app';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,76 +14,37 @@ export async function POST(request: NextRequest) {
 
     const action = body.action === 'create-pr' ? 'create-pr' : 'preview';
 
-    const result = await generator.generate({
-      exampleUrl,
-      featureName: body.featureName,
-      skillName: body.skillName,
-      repositoryUrl: body.repositoryUrl,
+    // Forward request to your hosted MCP template service
+    const mcpResponse = await fetch(`${MCP_TEMPLATE_SERVICE_URL}/api/templates`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        exampleUrl,
+        featureName: body.featureName,
+        skillName: body.skillName,
+        repositoryUrl: body.repositoryUrl,
+        action,
+        pullRequestTitle: body.pullRequestTitle,
+        pullRequestBody: body.pullRequestBody,
+      }),
     });
 
-    if (!result.success) {
+    if (!mcpResponse.ok) {
+      const errorData = await mcpResponse.json().catch(() => ({ message: 'MCP service error' }));
       return NextResponse.json(
         {
           success: false,
-          message: result.reason,
+          message: errorData.message || 'Failed to connect to template service',
         },
-        { status: 422 }
+        { status: mcpResponse.status }
       );
     }
 
-    if (action === 'create-pr') {
-      try {
-        const pr = await generator.createPullRequest(result, {
-          exampleUrl,
-          featureName: body.featureName,
-          skillName: body.skillName,
-          repositoryUrl: body.repositoryUrl,
-          pullRequestTitle: body.pullRequestTitle,
-          pullRequestBody: body.pullRequestBody,
-        });
+    const result = await mcpResponse.json();
+    return NextResponse.json(result, { status: 200 });
 
-        return NextResponse.json(
-          {
-            success: true,
-            templateDirectory: result.templateDirectory,
-            branchName: pr.branchName,
-            instructions: result.instructions,
-            analysisSummary: result.analysisSummary,
-            sourceUrl: result.sourceUrl,
-            sourceName: result.sourceName,
-            pullRequest: pr,
-          },
-          { status: 200 }
-        );
-      } catch (prError) {
-        console.error('[Template Generator API] PR creation error:', prError);
-        return NextResponse.json(
-          {
-            success: false,
-            message: prError instanceof Error ? prError.message : 'Failed to create pull request',
-          },
-          { status: 500 }
-        );
-      }
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        templateDirectory: result.templateDirectory,
-        branchName: result.branchName,
-        instructions: result.instructions,
-        analysisSummary: result.analysisSummary,
-        sourceUrl: result.sourceUrl,
-        sourceName: result.sourceName,
-        files: result.files.map((file) => ({
-          path: file.path,
-          description: file.description,
-          placeholders: file.placeholders,
-        })),
-      },
-      { status: 200 }
-    );
   } catch (error) {
     console.error('[Template Generator API] Error:', error);
     return NextResponse.json(
