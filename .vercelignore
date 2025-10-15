@@ -23,5 +23,6 @@ scripts
 lib/mcp/template-creator/node_modules
 lib/mcp/template-creator/dist
 lib/mcp/template-creator/api
+lib/mcp/template-creator/http-server.ts
 lib/mcp/template-creator/vercel.json
 lib/mcp/template-creator/.vercel
