@@ -2,9 +2,6 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
-  // Enable standalone output for Vercel
-  output: 'standalone',
-  
   turbopack: {
     resolveAlias: {
       "property-information/find": "property-information/lib/find.js",
