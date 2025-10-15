@@ -4,6 +4,5 @@
       "NEXT_TELEMETRY_DISABLED": "1"
     }
   },
-  "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "rm -rf .next/cache/webpack .pnpm-store && pnpm run build"
+  "installCommand": "pnpm install --frozen-lockfile"
 }

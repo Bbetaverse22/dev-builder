@@ -34,32 +34,16 @@ const nextConfig: NextConfig = {
         config.cache = false;
       }
 
-      // More aggressive bundle splitting for Vercel
+      // Simplified bundle splitting for Vercel
       config.optimization = config.optimization || {};
       config.optimization.splitChunks = {
         chunks: 'all',
-        maxSize: 100000, // 100KB per chunk to stay under 300MB total
         cacheGroups: {
-          mcp: {
-            test: /[\\/]node_modules[\\/]@modelcontextprotocol[\\/]/,
-            name: 'mcp',
-            chunks: 'all',
-            priority: 20,
-            maxSize: 50000, // 50KB max for MCP
-          },
-          langchain: {
-            test: /[\\/]node_modules[\\/]@langchain[\\/]/,
-            name: 'langchain',
-            chunks: 'all',
-            priority: 15,
-            maxSize: 100000, // 100KB max for LangChain
-          },
           vendor: {
             test: /[\\/]node_modules[\\/]/,
             name: 'vendors',
             chunks: 'all',
             priority: 10,
-            maxSize: 100000, // 100KB max for other vendors
           },
         },
       };
