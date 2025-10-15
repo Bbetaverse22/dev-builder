@@ -36,6 +36,9 @@
   ],
   "exclude": [
     "node_modules",
-    ".next"
+    ".next",
+    "lib/mcp/template-creator/api",
+    "lib/mcp/template-creator/http-server.ts",
+    "lib/mcp/template-creator/server.ts"
   ]
 }
