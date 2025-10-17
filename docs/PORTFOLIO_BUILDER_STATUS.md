@@ -1,7 +1,7 @@
 # Portfolio Builder Agent - Implementation Status
 
-**Status**: ✅ **Core Workflow Complete** (PR automation & templates live)
-**Date**: October 14, 2025
+**Status**: ✅ **Core Workflow Complete** (UI polish pending)
+**Date**: October 12, 2025
 
 ## 🎉 What Was Implemented
 
@@ -46,15 +46,6 @@ Integrated Portfolio Builder into the main workflow:
 - ✅ Shows actual weaknesses detected
 - ✅ Generates improvement tasks from recommendations
 - ✅ Enriches recommendations with research agent results
-- ✅ Lets users generate templates from research examples or manual URLs
-- ✅ Provides direct “Create Pull Request” actions once templates are generated
-
-### 5. **Template Example Workflow** (`lib/agents/template-example-generator.ts`, `/api/templates`)
-
-- ✅ Extracts production-ready code templates into `examples/generated/…`
-- ✅ Supports both preview mode and automated branch/PR creation
-- ✅ Shares a framework-specific plan helper with the Portfolio Builder to keep guidance consistent
-- ✅ Ignores generated examples from source control via updated `.gitignore`
 
 ## 📊 Complete Workflow (Analysis → Research → Action)
 

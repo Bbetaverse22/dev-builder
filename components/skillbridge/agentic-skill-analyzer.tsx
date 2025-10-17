@@ -21,9 +21,10 @@ import { LandingExplanation } from './landing-explanation';
 import { AnimatedHero } from './animated-hero';
 import { AnimatedFeatures } from './animated-features';
 import { AnimatedHowItWorks } from './animated-how-it-works';
-import { 
-  Github, 
-  Brain, 
+import { useAnalysis } from '@/lib/contexts/analysis-context';
+import {
+  Github,
+  Brain,
   Rocket,
   Target,
   TrendingUp,
@@ -36,8 +37,11 @@ import {
   FileText,
   Activity,
   Zap,
-  Search
+  Search,
+  BookOpen,
+  ArrowRight
 } from 'lucide-react';
+import Link from 'next/link';
 
 type AgentStatus = 'IDLE' | 'ANALYZING' | 'RESEARCHING' | 'PLANNING' | 'ACTING' | 'MONITORING' | 'COMPLETE' | 'ERROR';
 
@@ -88,7 +92,9 @@ interface AgenticSkillAnalyzerProps {
 const MAX_DISPLAY_RESOURCES = 3;
 const MAX_DISPLAY_EXAMPLES = 3;
 export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnalyzerProps) {
+  const { setAnalysisResults } = useAnalysis();
   const [githubUsername, setGithubUsername] = useState('');
+  const [repoUrlInput, setRepoUrlInput] = useState('');
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('IDLE');
   const [progress, setProgress] = useState(0);
   const [actionLogs, setActionLogs] = useState<ActionLog[]>([]);
@@ -377,8 +383,10 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
   };
 
   const runAgenticWorkflow = async () => {
-    const input = githubUsername.trim();
-    if (!input) {
+    const username = githubUsername.trim();
+    const directRepoUrl = repoUrlInput.trim();
+
+    if (!username && !directRepoUrl) {
       setError('Please enter a GitHub username or repository URL');
       return;
     }
@@ -405,34 +413,41 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
       // Phase 1: REAL GitHub Analysis (using existing tool integrations)
       let repoUrl: string | null = null;
 
-      const repoMatch = input.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+?)(?:\/|$)/i);
-      if (repoMatch) {
-        const [, owner, repo] = repoMatch;
-        repoUrl = `https://github.com/${owner}/${repo.replace(/\.git$/, "")}`;
-        addLog('info', `Analyzing repository: ${owner}/${repo}`, <Code className="h-4 w-4" />);
-        setProgress(20);
-      } else {
+      // Priority 1: Use direct repository URL if provided
+      if (directRepoUrl) {
+        const repoMatch = directRepoUrl.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+?)(?:\/|$)/i);
+        if (repoMatch) {
+          const [, owner, repo] = repoMatch;
+          repoUrl = `https://github.com/${owner}/${repo.replace(/\.git$/, "")}`;
+          addLog('info', `Analyzing repository: ${owner}/${repo}`, <Code className="h-4 w-4" />);
+          setProgress(20);
+        } else {
+          throw new Error('Invalid GitHub repository URL format');
+        }
+      }
+      // Priority 2: Fetch latest repo from username if no direct URL provided
+      else if (username) {
         addLog('info', 'Starting GitHub profile analysis...', <Github className="h-4 w-4" />);
         setProgress(10);
 
-        addLog('info', `Fetching repositories for @${input}`, <Search className="h-4 w-4" />);
+        addLog('info', `Fetching repositories for @${username}`, <Search className="h-4 w-4" />);
         setProgress(15);
 
-        const reposResponse = await fetch(`https://api.github.com/users/${input}/repos?sort=updated&per_page=1`);
-        
+        const reposResponse = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=1`);
+
         if (!reposResponse.ok) {
           if (reposResponse.status === 404) {
-            throw new Error(`GitHub user "${input}" not found`);
+            throw new Error(`GitHub user "${username}" not found`);
           } else if (reposResponse.status === 403) {
             throw new Error('GitHub API rate limit exceeded. Please try again in a few minutes.');
           } else {
             throw new Error(`Failed to fetch GitHub profile (Status: ${reposResponse.status})`);
           }
         }
-        
+
         const repos = await reposResponse.json();
         if (!repos || repos.length === 0) {
-          throw new Error(`No public repositories found for user "${input}"`);
+          throw new Error(`No public repositories found for user "${username}"`);
         }
 
         repoUrl = repos[0].html_url;
@@ -445,7 +460,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
 
       // Ensure we have a repository before proceeding
       if (!repoUrl) {
-        throw new Error('Unable to determine a repository to analyze. Please provide a direct repo URL or ensure the profile has public repositories.');
+        throw new Error('Unable to determine a repository to analyze. Please provide a GitHub username or repository URL.');
       }
 
       // Store repo URL for later use
@@ -687,6 +702,55 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
       setAgentStatus('COMPLETE');
       addLog('success', '✅ Agentic analysis complete! Ready to level up.', <Sparkles className="h-4 w-4" />);
 
+      // Save results to context for other pages to access
+      if (repoUrl) {
+        const agentLogsForContext = actionLogs.map(log => ({
+          agent: 'Skill Analyzer',
+          status: log.type,
+          message: log.message,
+          timestamp: new Date()
+        }));
+
+        setAnalysisResults({
+          repoUrl,
+          portfolioQuality: portfolioData?.analysis ? {
+            overallScore: portfolioData.analysis.overallQuality,
+            strengths: portfolioData.analysis.strengths || [],
+            weaknesses: portfolioData.analysis.weaknesses || [],
+            recommendations: portfolioData.recommendations || []
+          } : null,
+          skillGaps: skillGaps.map(gap => ({
+            skill: gap.name,
+            importance: String(gap.priority),
+            reasoning: gap.guidance?.reasoning || gap.gap
+          })),
+          portfolioActions: portfolioTasks.map(task => ({
+            id: task.id,
+            title: task.title,
+            description: task.description || '',
+            priority: task.priority,
+            estimatedTime: task.estimatedEffort || 'Unknown',
+            category: task.type
+          })),
+          researchResults: researchResults?.resources?.map((resource: any) => ({
+            title: resource.title,
+            url: resource.url,
+            description: resource.description,
+            type: 'article' as const,
+            relevance: resource.score ? `${(resource.score * 100).toFixed(0)}%` : undefined
+          })) || [],
+          githubExamples: researchResults?.examples?.map((example: any) => ({
+            name: example.name,
+            url: example.url,
+            description: example.description,
+            stars: example.stars,
+            language: example.language
+          })) || [],
+          templates: [],
+          agentLogs: agentLogsForContext
+        });
+      }
+
     } catch (err) {
       setAgentStatus('ERROR');
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
@@ -830,10 +894,10 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
                 <Brain className="h-6 w-6 text-white" />
               </div>
               <div>
-                <CardTitle className="text-3xl flex items-center space-x-2">
+                <CardTitle className="text-xl flex items-center space-x-2">
                   <span className="text-white">Agentic Skill Analyzer</span>
                 </CardTitle>
-                <CardDescription className="text-2xl text-white/90 leading-relaxed">
+                <CardDescription className="text-base text-white/80 leading-relaxed mt-1">
                   Drop a GitHub username or repository URL and let autonomous agents audit your work, map skill gaps, and build a market-aligned learning plan.
                 </CardDescription>
               </div>
@@ -848,24 +912,44 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
             </Alert>
           )}
 
-          <div className="flex flex-col lg:flex-row lg:items-center lg:space-x-4 space-y-3 lg:space-y-0">
-            <Input
-              placeholder="GitHub username or repository URL"
-              value={githubUsername}
-              onChange={(e) => setGithubUsername(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && githubUsername.trim() && canEditInputs) {
-                  runAgenticWorkflow();
-                }
-              }}
-              className="flex-1 h-16 text-2xl bg-purple-200/10 border-purple-300/30 text-white placeholder:text-purple-200/70 focus-visible:ring-purple-200/40 rounded-xl px-6"
-              disabled={!canEditInputs}
-            />
-            <Button 
-              size="lg" 
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-purple-100/90 tracking-wide">GitHub Username</label>
+                <Input
+                  placeholder="e.g. octocat"
+                  value={githubUsername}
+                  onChange={(e) => setGithubUsername(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (githubUsername.trim() || repoUrlInput.trim()) && canEditInputs) {
+                      runAgenticWorkflow();
+                    }
+                  }}
+                  className="h-14 text-xl bg-purple-200/10 border-purple-300/30 text-white placeholder:text-purple-200/70 focus-visible:ring-purple-200/40 rounded-xl px-5"
+                  disabled={!canEditInputs}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-purple-100/90 tracking-wide">Repository URL (Optional)</label>
+                <Input
+                  placeholder="https://github.com/owner/repo"
+                  value={repoUrlInput}
+                  onChange={(e) => setRepoUrlInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (githubUsername.trim() || repoUrlInput.trim()) && canEditInputs) {
+                      runAgenticWorkflow();
+                    }
+                  }}
+                  className="h-14 text-xl bg-purple-200/10 border-purple-300/30 text-white placeholder:text-purple-200/70 focus-visible:ring-purple-200/40 rounded-xl px-5"
+                  disabled={!canEditInputs}
+                />
+              </div>
+            </div>
+            <Button
+              size="lg"
               onClick={runAgenticWorkflow}
-              disabled={!githubUsername.trim() || !canEditInputs}
-              className="h-16 px-10 text-xl font-semibold rounded-xl bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-600 hover:to-fuchsia-500 text-white shadow-[0_10px_30px_rgba(168,85,247,0.35)] transition-all"
+              disabled={(!githubUsername.trim() && !repoUrlInput.trim()) || !canEditInputs}
+              className="w-full h-14 text-xl font-semibold rounded-xl bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-600 hover:to-fuchsia-500 text-white shadow-[0_10px_30px_rgba(168,85,247,0.35)] transition-all"
             >
               {!canEditInputs ? (
                 <>
@@ -1003,13 +1087,65 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
 
       {agentStatus === 'COMPLETE' && (
         <>
-          <Card id="skill-gaps-card" className="mb-6">
+          {/* Overall Skill Score Card */}
+          {skillAssessment && (
+            <Card className="mb-6 border-2 border-blue-400/40 bg-gradient-to-br from-blue-700/40 via-indigo-900/30 to-slate-950/60 shadow-[0_0_40px_rgba(59,130,246,0.25)] backdrop-blur-md">
+              <CardContent className="pt-8">
+                <div className="text-center space-y-4">
+                  <div className="flex justify-center">
+                    <div className="relative w-32 h-32 flex items-center justify-center">
+                      <svg className="transform -rotate-90" viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="45"
+                          fill="none"
+                          stroke="rgba(59, 130, 246, 0.2)"
+                          strokeWidth="8"
+                        />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="45"
+                          fill="none"
+                          stroke="rgb(59, 130, 246)"
+                          strokeWidth="8"
+                          strokeDasharray={`${2.827 * skillAssessment.overallScore} ${282.7}`}
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className="absolute text-center">
+                        <div className={`text-5xl font-bold ${
+                          skillAssessment.overallScore >= 80 ? 'text-emerald-300' :
+                          skillAssessment.overallScore >= 60 ? 'text-yellow-300' :
+                          'text-red-300'
+                        }`}>
+                          {skillAssessment.overallScore}%
+                        </div>
+                        <p className="text-sm text-blue-200/70 mt-1">Overall Ready</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-2xl font-bold text-white">Your Skill Assessment</h3>
+                    <p className="text-blue-100/70 text-base">
+                      {skillAssessment.overallScore >= 80 ? 'You are excellent shape to pursue your target role!' :
+                       skillAssessment.overallScore >= 60 ? 'You have a solid foundation. Focus on closing skill gaps to accelerate your growth.' :
+                       'Start with the skill gaps below to build the foundation needed for your target role.'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card id="skill-gaps-card" className="mb-6 border-2 border-blue-400/40 bg-gradient-to-br from-blue-700/40 via-indigo-900/30 to-slate-950/60 shadow-[0_0_40px_rgba(59,130,246,0.25)] backdrop-blur-md">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
+              <CardTitle className="flex items-center space-x-2 text-white">
                 <Target className="h-5 w-5" />
                 <span>Skill Gaps Identified</span>
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-white/80">
                 Based on market research and job requirements
               </CardDescription>
             </CardHeader>
@@ -1035,558 +1171,52 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
             </CardContent>
           </Card>
 
-          {portfolioData && portfolioData.analysis && (
-            <Card
-              id="portfolio-quality"
-              className="mb-6 border-emerald-400/30 bg-gradient-to-br from-emerald-800/50 via-emerald-900/40 to-slate-950/70"
-            >
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-3 text-white text-3xl">
-                  <Target className="h-7 w-7" />
-                  <span>Portfolio Quality Analysis</span>
-                </CardTitle>
-                <CardDescription className="text-white/80 text-lg">
-                  AI-powered analysis of your repository quality and completeness
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="p-6 bg-emerald-200/10 rounded-lg border border-emerald-200/20">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-2xl font-semibold text-white">Overall Quality Score</h3>
-                    <div className="text-right">
-                      <div className={`text-5xl font-bold ${
-                        portfolioData.analysis.overallQuality >= 80 ? 'text-emerald-300' :
-                        portfolioData.analysis.overallQuality >= 60 ? 'text-yellow-300' :
-                        'text-red-300'
-                      }`}>
-                        {portfolioData.analysis.overallQuality}%
-                      </div>
-                      <p className="text-sm text-emerald-100/70 mt-1">
-                        {portfolioData.analysis.overallQuality >= 80 ? 'Excellent' :
-                         portfolioData.analysis.overallQuality >= 60 ? 'Good' :
-                         'Needs Improvement'}
-                      </p>
-                    </div>
-                  </div>
-                  <Progress
-                    value={portfolioData.analysis.overallQuality}
-                    className="h-3"
-                  />
-                </div>
-
-                {portfolioData.analysis.strengths && portfolioData.analysis.strengths.length > 0 && (
-                  <div>
-                    <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
-                      <CheckCircle2 className="h-5 w-5 mr-2 text-emerald-300" />
-                      Strengths ({portfolioData.analysis.strengths.length})
-                    </h3>
-                    <div className="grid gap-2">
-                      {portfolioData.analysis.strengths.map((strength: string, index: number) => (
-                        <div
-                          key={index}
-                          className="p-3 bg-emerald-200/10 rounded-lg border border-emerald-200/20 flex items-start gap-2"
-                        >
-                          <CheckCircle2 className="h-4 w-4 text-emerald-300 mt-0.5 flex-shrink-0" />
-                          <p className="text-sm text-emerald-50">{strength}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {portfolioData.analysis.weaknesses && portfolioData.analysis.weaknesses.length > 0 && (
-                  <div>
-                    <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
-                      <AlertCircle className="h-5 w-5 mr-2 text-red-300" />
-                      Areas for Improvement ({portfolioData.analysis.weaknesses.length})
-                    </h3>
-                    <div className="grid gap-2">
-                      {portfolioData.analysis.weaknesses.map((weakness: any, index: number) => (
-                        <div
-                          key={index}
-                          className="p-4 bg-red-200/10 rounded-lg border border-red-200/20"
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-semibold text-white">{weakness.title}</h4>
-                            <Badge
-                              variant={weakness.severity === 'high' ? 'destructive' : weakness.severity === 'medium' ? 'default' : 'outline'}
-                              className="text-xs"
-                            >
-                              {weakness.severity}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-red-100/70 mb-2">{weakness.description}</p>
-                          <div className="flex items-start gap-2 mt-2 p-2 bg-red-200/10 rounded">
-                            <AlertCircle className="h-4 w-4 text-red-300 mt-0.5 flex-shrink-0" />
-                            <p className="text-xs text-red-100/80"><strong>Impact:</strong> {weakness.impact}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          <Card id="portfolio-builder-card" className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Rocket className="h-5 w-5" />
-                <span>Portfolio Builder</span>
-              </CardTitle>
-              <CardDescription>
-                Autonomous improvement tasks created by the agent — select the ones you want to publish
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {portfolioTasks.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs text-slate-600">
-                    <span className="font-medium">Select tasks to publish as GitHub issues.</span>
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={
-                          portfolioTasks.length === 0
-                            ? false
-                            : selectedRecommendations.length === 0
-                              ? false
-                              : selectedRecommendations.length === portfolioTasks.length
-                                ? true
-                                : 'indeterminate'
-                        }
-                        onCheckedChange={(checked) =>
-                          selectAllRecommendations(portfolioTasks, checked === true)
-                        }
-                        className="rounded-sm border-slate-300 data-[state=checked]:bg-slate-900"
-                      />
-                      <span>
-                        {selectedRecommendations.length} / {portfolioTasks.length} selected
-                      </span>
-                    </div>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
-                    {portfolioTasks.map((task) => {
-                      const isSelected = selectedRecommendations.includes(task.id);
-                      const severity = task.priority;
-                      const severityVariant =
-                        severity === 'high'
-                          ? 'destructive'
-                          : severity === 'medium'
-                            ? 'default'
-                            : 'outline';
-                      const focusArea = task.type;
-                      return (
-                        <div
-                          key={task.id}
-                          className={`rounded-xl border transition-all ${
-                            isSelected
-                              ? 'border-emerald-400/80 bg-emerald-50/60 shadow-[0_10px_30px_rgba(16,185,129,0.2)]'
-                              : 'border-slate-200 hover:border-emerald-300/60 bg-white/70'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between p-5">
-                            <div className="space-y-2 pr-4">
-                              <div className="flex items-center gap-2">
-                                <Badge
-                                  variant={severityVariant}
-                                  className="uppercase tracking-wide text-[10px] px-2 py-1"
-                                >
-                                  {task.weakness?.severity ? `${task.weakness.severity} impact` : 'Impact'}
-                                </Badge>
-                                <span className="text-[11px] uppercase tracking-widest text-slate-500">
-                                  Effort: {task.estimatedEffort}
-                                </span>
-                              </div>
-                              <h3 className="text-lg font-semibold text-slate-900 leading-tight">{task.title}</h3>
-                              <p className="text-sm text-slate-600 leading-relaxed">{task.description}</p>
-                              <div className="flex items-center gap-3 text-xs text-slate-500">
-                                <div className="inline-flex items-center gap-1">
-                                  <Sparkles className="h-3 w-3 text-emerald-500" />
-                                  Priority {task.priority}
-                                </div>
-                                <div className="inline-flex items-center gap-1">
-                                  <Target className="h-3 w-3 text-slate-500" />
-                                  Focus: {focusArea}
-                                </div>
-                              </div>
-                            </div>
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={(checked) =>
-                                toggleRecommendationSelection(task.id, checked === true)
-                              }
-                              className="rounded-sm border-slate-300 h-5 w-5 data-[state=checked]:bg-slate-900"
-                            />
-                          </div>
-                          {task.actionItems && task.actionItems.length > 0 && (
-                            <div className="px-6 pb-4">
-                              <ul className="text-xs text-slate-600 list-disc list-inside space-y-1">
-                                {task.actionItems.map((item, idx) => (
-                                  <li key={idx}>{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {createdIssues.length > 0 ? (
-                    <div className="space-y-2 mt-4">
-                      <Button
-                        className="w-full"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => createdIssues[0]?.issueUrl && window.open(createdIssues[0].issueUrl.split('/issues/')[0] + '/issues', '_blank')}
-                      >
-                        <Github className="h-4 w-4 mr-2" />
-                        View {createdIssues.length} Issues on GitHub
-                      </Button>
-                      <div className="text-xs text-muted-foreground text-center">
-                        ✅ Issues created successfully!
+          {/* Navigation CTA to Portfolio and Learning Pages */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <Link href="/agentic/portfolio">
+              <Card className="h-full border-2 border-emerald-400/40 bg-gradient-to-br from-emerald-700/40 via-emerald-900/30 to-slate-950/60 shadow-[0_0_40px_rgba(16,185,129,0.25)] backdrop-blur-md hover:shadow-[0_0_50px_rgba(16,185,129,0.35)] transition-all cursor-pointer">
+                <CardContent className="pt-8">
+                  <div className="text-center space-y-4">
+                    <div className="flex justify-center">
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500">
+                        <Rocket className="h-8 w-8 text-white" />
                       </div>
                     </div>
-                  ) : (
-                    <Button
-                      className="w-full mt-4"
-                      size="sm"
-                      onClick={handleCreateGitHubIssues}
-                      disabled={isCreatingIssues || !repoUrl || !portfolioData || selectedRecommendations.length === 0}
-                    >
-                      {isCreatingIssues ? (
-                        <>
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2" />
-                          Creating Issues...
-                        </>
-                      ) : (
-                        <>
-                          <Rocket className="h-4 w-4 mr-2" />
-                          Create {selectedRecommendations.length} Issue{selectedRecommendations.length === 1 ? '' : 's'}
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Rocket className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Portfolio tasks will appear here</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    <h3 className="text-xl font-bold text-white">Portfolio Builder</h3>
+                    <p className="text-emerald-100/70 text-sm">
+                      Review your portfolio quality and create GitHub issues for improvements
+                    </p>
+                    <div className="flex items-center justify-center gap-2 text-emerald-300">
+                      <span className="text-sm font-medium">Continue</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/agentic/learning">
+              <Card className="h-full border-2 border-indigo-400/40 bg-gradient-to-br from-indigo-700/40 via-indigo-900/30 to-slate-950/60 shadow-[0_0_40px_rgba(99,102,241,0.25)] backdrop-blur-md hover:shadow-[0_0_50px_rgba(99,102,241,0.35)] transition-all cursor-pointer">
+                <CardContent className="pt-8">
+                  <div className="text-center space-y-4">
+                    <div className="flex justify-center">
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500">
+                        <BookOpen className="h-8 w-8 text-white" />
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-bold text-white">Learning Resources</h3>
+                    <p className="text-indigo-100/70 text-sm">
+                      Access AI-curated learning materials tailored to your skill gaps
+                    </p>
+                    <div className="flex items-center justify-center gap-2 text-indigo-300">
+                      <span className="text-sm font-medium">Continue</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
         </>
-      )}
-
-      {agentStatus === 'COMPLETE' && researchResults && (
-        <Card className="border-blue-400/30 bg-gradient-to-br from-blue-800/50 via-blue-900/40 to-slate-950/70">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-3 text-white text-3xl">
-              <Brain className="h-7 w-7" />
-              <span>Research Results</span>
-            </CardTitle>
-            <CardDescription className="text-white/80 text-lg">
-              AI-curated learning resources and examples for your skill gaps
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {researchResults.resources && researchResults.resources.length > 0 && (
-              <div>
-                <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
-                  <FileText className="h-5 w-5 mr-2" />
-                  Learning Resources ({Math.min(researchResults.resources.length, resourcesExpanded ? researchResults.resources.length : MAX_DISPLAY_RESOURCES)})
-                </h3>
-                <div className="grid gap-3">
-                  {researchResults.resources
-                    .slice(0, resourcesExpanded ? researchResults.resources.length : MAX_DISPLAY_RESOURCES)
-                    .map((resource: any, index: number) => (
-                      <a
-                        key={index}
-                        href={resource.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-4 bg-blue-200/10 rounded-lg border border-blue-200/20 hover:bg-blue-200/20 transition-colors group"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h4 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">
-                              {resource.title}
-                            </h4>
-                            <p className="text-sm text-blue-100/70 mt-1">{resource.description}</p>
-                            {resource.score && (
-                              <div className="flex items-center gap-2 mt-2">
-                                <div className="flex">
-                                  {[...Array(5)].map((_, i) => (
-                                    <span key={i} className={i < (resource.rating || 3) ? 'text-yellow-400' : 'text-gray-600'}>⭐</span>
-                                  ))}
-                                </div>
-                                <span className="text-xs text-blue-200/60">Score: {(resource.score * 100).toFixed(0)}%</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </a>
-                    ))}
-                </div>
-                {researchResults.resources.length > MAX_DISPLAY_RESOURCES && (
-                  <div className="mt-2 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setResourcesExpanded((prev) => !prev)}
-                      className="text-xs text-blue-200 hover:text-blue-100 underline"
-                    >
-                      {resourcesExpanded ? 'Show fewer resources' : `Show ${researchResults.resources.length - MAX_DISPLAY_RESOURCES} more`}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="p-4 bg-blue-900/40 border border-blue-200/30 rounded-lg space-y-3">
-              <div className="flex items-center gap-2 text-blue-100">
-                <Sparkles className="h-4 w-4" />
-                <h3 className="text-sm font-semibold">Generate template from a specific repo</h3>
-              </div>
-              <p className="text-xs text-blue-100/80">
-                Paste any GitHub repository URL to pull a full example feature into your current project.
-              </p>
-              <div className="grid gap-2 md:grid-cols-[2fr,1fr]">
-                <Input
-                  value={customTemplateRepo}
-                  onChange={(event) => setCustomTemplateRepo(event.target.value)}
-                  placeholder="https://github.com/owner/repo"
-                  className="bg-blue-200/10 border-blue-200/30 text-white placeholder:text-blue-200/60"
-                />
-                <Input
-                  value={customTemplateFeature}
-                  onChange={(event) => setCustomTemplateFeature(event.target.value)}
-                  placeholder="Optional feature name"
-                  className="bg-blue-200/10 border-blue-200/30 text-white placeholder:text-blue-200/60"
-                />
-              </div>
-              {customTemplateError && (
-                <p className="text-xs text-red-200">{customTemplateError}</p>
-              )}
-              {customTemplateFailure && !customTemplateError && (
-                <p className="text-xs text-red-200">{customTemplateFailure}</p>
-              )}
-              {customTemplateSuccess && (
-                <div className="text-xs text-emerald-200 space-y-2 border border-emerald-300/30 rounded-md p-3 bg-emerald-900/30">
-                  <div>
-                    <p>
-                      Saved to{' '}
-                      <code className="text-emerald-100">{customTemplateSuccess.templateDirectory}</code>.
-                    </p>
-                    <p>
-                      Suggested branch:{' '}
-                      <code className="text-emerald-100">{customTemplateSuccess.branchName}</code>
-                    </p>
-                  </div>
-                  {customTemplateSuccess.instructions?.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="uppercase tracking-wide text-emerald-200/80 font-semibold">Branch Steps</p>
-                      <ol className="list-decimal list-inside space-y-1">
-                        {customTemplateSuccess.instructions.map((instruction, idx) => (
-                          <li key={idx}>{instruction}</li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
-                  {customTemplateSuccess.analysisSummary.insights?.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="uppercase tracking-wide text-emerald-200/80 font-semibold">Insights</p>
-                      <ul className="list-disc list-inside space-y-1 text-emerald-100/80">
-                        {customTemplateSuccess.analysisSummary.insights.slice(0, 4).map((insight, idx) => (
-                          <li key={idx}>{insight}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {customTemplatePrError && (
-                    <p className="text-red-200">{customTemplatePrError}</p>
-                  )}
-                  {customTemplateSuccess.pullRequestUrl && (
-                    <div className="flex items-center gap-2 text-emerald-100">
-                      <GitPullRequest className="h-4 w-4" />
-                      <a
-                        href={customTemplateSuccess.pullRequestUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline hover:text-emerald-200"
-                      >
-                        View pull request #{customTemplateSuccess.pullRequestNumber ?? ''}
-                      </a>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="flex items-center justify-end gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-blue-200/50 text-blue-100 hover:text-blue-900 hover:bg-blue-100/80"
-                  onClick={handleManualTemplateGeneration}
-                  disabled={customTemplateLoading}
-                >
-                  {customTemplateLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-300 mr-2" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      {customTemplateSuccess ? 'Regenerate Template' : 'Generate Template'}
-                    </>
-                  )}
-                </Button>
-                {customTemplateSuccess && (
-                  customTemplateSuccess.pullRequestUrl ? null : (
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        createTemplatePullRequest({
-                          url: normalizedCustomRepo,
-                          name: customTemplateFeature || normalizedCustomRepo,
-                        })
-                      }
-                      disabled={customTemplatePrLoading}
-                    >
-                      {customTemplatePrLoading ? (
-                        <>
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2" />
-                          Creating PR...
-                        </>
-                      ) : (
-                        <>
-                          <GitPullRequest className="h-4 w-4 mr-2" />
-                          Create Pull Request
-                        </>
-                      )}
-                    </Button>
-                  )
-                )}
-              </div>
-            </div>
-
-            {researchResults.examples && researchResults.examples.length > 0 && (
-              <div>
-                <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
-                  <Github className="h-5 w-5 mr-2" />
-                  GitHub Examples ({Math.min(researchResults.examples.length, examplesExpanded ? researchResults.examples.length : MAX_DISPLAY_EXAMPLES)})
-                </h3>
-                <div className="grid gap-3">
-                  {researchResults.examples
-                    .slice(0, examplesExpanded ? researchResults.examples.length : MAX_DISPLAY_EXAMPLES)
-                    .map((example: any, index: number) => (
-                      <div
-                        key={index}
-                        className="p-4 bg-blue-200/10 rounded-lg border border-blue-200/20 hover:bg-blue-200/20 transition-colors group space-y-3"
-                      >
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={example.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors flex items-center gap-2"
-                            >
-                              {example.name}
-                              <Badge variant="secondary" className="text-xs">{example.stars}⭐</Badge>
-                            </a>
-                          </div>
-                          <p className="text-sm text-blue-100/70">{example.description}</p>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {example.language && (
-                              <Badge variant="outline" className="text-xs text-blue-200 border-blue-200/30">
-                                {example.language}
-                              </Badge>
-                            )}
-                            {typeof example.templateWorthiness === 'number' && (
-                              <Badge variant="outline" className="text-xs text-blue-200 border-blue-200/30">
-                                Worthiness: {example.templateWorthiness.toFixed(2)}
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-blue-100/60 italic">
-                            Use "Generate template from a specific repo" above to import this example.
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-                {researchResults.examples.length > MAX_DISPLAY_EXAMPLES && (
-                  <div className="mt-2 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setExamplesExpanded((prev) => !prev)}
-                      className="text-xs text-blue-200 hover:text-blue-100 underline"
-                    >
-                      {examplesExpanded ? 'Show fewer examples' : `Show ${researchResults.examples.length - MAX_DISPLAY_EXAMPLES} more`}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-      {/* Career Insights Section */}
-      {careerInsights && (
-        <Card className="border-purple-400/30 bg-gradient-to-br from-purple-800/50 via-purple-900/40 to-slate-950/70">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-3 text-white text-3xl">
-              <TrendingUp className="h-7 w-7" />
-              <span>Career Intelligence</span>
-            </CardTitle>
-            <CardDescription className="text-white/80 text-lg">
-              Market-driven insights based on 150+ job postings
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-5 bg-purple-200/10 rounded-lg border border-purple-200/20">
-                <p className="text-sm text-purple-100/80 mb-2 tracking-wide uppercase">Target Role</p>
-                <p className="text-xl font-semibold text-white">{careerInsights.targetRole}</p>
-                {careerInsights.targetIndustry && (
-                  <p className="text-sm text-purple-100/70 mt-2">
-                    Industry Focus: {careerInsights.targetIndustry}
-                  </p>
-                )}
-              </div>
-              <div className="p-5 bg-purple-200/10 rounded-lg border border-purple-200/20">
-                <p className="text-sm text-purple-100/80 mb-2 tracking-wide uppercase">Avg. Salary Range</p>
-                <p className="text-xl font-semibold text-emerald-300">{careerInsights.avgSalary}</p>
-              </div>
-              <div className="p-5 bg-purple-200/10 rounded-lg border border-purple-200/20">
-                <p className="text-sm text-purple-100/80 mb-2 tracking-wide uppercase">Time to Ready</p>
-                <p className="text-xl font-semibold text-white">{careerInsights.timeToReady}</p>
-              </div>
-              <div className="p-5 bg-purple-200/10 rounded-lg border border-purple-200/20">
-                <p className="text-sm text-purple-100/80 mb-2 tracking-wide uppercase">Top Companies Hiring</p>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {careerInsights.topCompanies.slice(0, 3).map((company: string) => (
-                    <Badge key={company} variant="secondary" className="text-xs bg-purple-400/30 text-white border-purple-200/30">{company}</Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-5 bg-purple-200/10 rounded-lg border border-purple-200/20">
-              <p className="text-xl font-semibold text-white mb-4">📚 Recommended Learning Path</p>
-              <ul className="space-y-2">
-                {careerInsights.recommendedCourses.map((course: string, index: number) => (
-                  <li key={index} className="text-base flex items-center space-x-3 text-purple-50">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-                    <span className="text-base md:text-lg">{course}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
       )}
     </div>
   );

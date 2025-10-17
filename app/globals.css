@@ -208,3 +208,21 @@
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
+
+@keyframes flow-lines {
+  0% {
+    transform: translateX(-15%);
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(15%);
+    opacity: 0.6;
+  }
+}
+
+.animate-flow-lines {
+  animation: flow-lines 12s ease-in-out infinite alternate;
+}

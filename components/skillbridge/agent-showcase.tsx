@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 
 interface AgentShowcaseProps {
-  agentType: 'sanitizer' | 'coordinator' | 'gap_analyzer' | 'learning' | 'career' | 'progress';
+  agentType: 'sanitizer' | 'gap_analyzer' | 'learning' | 'career' | 'progress';
   title: string;
   description: string;
   icon: React.ReactNode;

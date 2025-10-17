@@ -12,7 +12,7 @@ import { ChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { z } from "zod";
 
-type SearchProvider = "firecrawl" | "openai";
+type SearchProvider = "firecrawl" | "openai" | "scraper";
 
 const DEFAULT_MODEL = process.env.OPENAI_RESEARCH_MODEL ?? "gpt-4o-mini";
 const MAX_FIRECRAWL_RESULTS = 10;
@@ -45,6 +45,8 @@ export async function searchResourcesNode(
   const seenUrls = new Set<string>();
   const sourcesUsed = new Set<string>();
   const iterationLogs: string[] = [];
+  const iterationRecords: SearchIteration[] = [];
+  const scrapedContent: Map<string, string> = new Map();
 
   console.log("🔍 Running searchResourcesNode");
   console.log(`   Skill gap: ${state.skillGap}`);

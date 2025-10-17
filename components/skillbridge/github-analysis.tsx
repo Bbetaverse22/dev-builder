@@ -6,12 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import { GitHubAnalysis, GapAnalyzerAgent } from '@/lib/agents/gap-analyzer';
 import { Github, ExternalLink, Code, Database, Cloud, Wrench, AlertCircle } from 'lucide-react';
 
 interface GitHubAnalysisProps {
   onAnalysisComplete?: (analysis: GitHubAnalysis) => void;
   onSkillAssessmentComplete?: (skillAssessment: any) => void;
+  onAnalysisStart?: () => void;
+  onAnalysisError?: (message: string) => void;
   showContainer?: boolean;
   showHeader?: boolean;
   selectedCategories?: string[];
@@ -21,6 +25,8 @@ interface GitHubAnalysisProps {
 export function GitHubAnalysisComponent({
   onAnalysisComplete,
   onSkillAssessmentComplete,
+  onAnalysisStart,
+  onAnalysisError,
   showContainer = true,
   showHeader = true,
   selectedCategories,
@@ -39,12 +45,14 @@ export function GitHubAnalysisComponent({
   };
 
   const handleAnalyze = async () => {
-    if (!repoUrl.trim()) {
+    const trimmedRepo = repoUrl.trim();
+
+    if (!trimmedRepo) {
       setError('Please enter a GitHub repository URL');
       return;
     }
 
-    if (!isValidGitHubUrl(repoUrl)) {
+    if (!isValidGitHubUrl(trimmedRepo)) {
       setError('Please enter a valid GitHub repository URL (e.g., https://github.com/user/repo)');
       return;
     }
@@ -52,12 +60,13 @@ export function GitHubAnalysisComponent({
     setIsAnalyzing(true);
     setError(null);
     setAnalysis(null); // Clear previous analysis
+    onAnalysisStart?.();
 
     try {
-      const result = await gapAnalyzer.analyzeGitHubRepository(repoUrl);
+      const result = await gapAnalyzer.analyzeGitHubRepository(trimmedRepo);
       setAnalysis(result);
       onAnalysisComplete?.(result);
-      
+
       if (autoGenerateAssessment) {
         const skillAssessment = await gapAnalyzer.generateAutomaticSkillAssessment(result, {
           includeCategories: selectedCategories,
@@ -68,6 +77,7 @@ export function GitHubAnalysisComponent({
       const errorMessage = err instanceof Error ? err.message : 'Failed to analyze repository. Please try again.';
       setError(errorMessage);
       console.error('GitHub analysis error:', err);
+      onAnalysisError?.(errorMessage);
     } finally {
       setIsAnalyzing(false);
     }
@@ -112,24 +122,37 @@ export function GitHubAnalysisComponent({
   );
 
   const analysisContent = (
-    <div className="space-y-4">
-      <div className="flex space-x-2">
-        <Input
-          placeholder="https://github.com/username/repository"
-          value={repoUrl}
-          onChange={(e) => setRepoUrl(e.target.value)}
-          className="flex-1"
-        />
-        <Button 
-          onClick={handleAnalyze} 
-          disabled={isAnalyzing || !repoUrl.trim()}
-        >
-          {isAnalyzing ? 'Analyzing...' : 'Analyze'}
-        </Button>
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 lg:flex-row">
+        <div className="flex-1 space-y-2">
+          <Label
+            htmlFor="github-repo-url"
+            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+          >
+            <Github className="h-3.5 w-3.5" />
+            GitHub username or repository URL
+          </Label>
+          <Input
+            id="github-repo-url"
+            placeholder="https://github.com/username or https://github.com/username/repository"
+            value={repoUrl}
+            onChange={(e) => setRepoUrl(e.target.value)}
+            className="h-12 rounded-2xl border border-white/20 bg-white/15 text-white placeholder:text-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-purple-200/60 focus-visible:ring-offset-0"
+          />
+        </div>
+        <div className="flex items-end lg:w-auto">
+          <Button
+            onClick={handleAnalyze}
+            disabled={isAnalyzing || !repoUrl.trim()}
+            className="h-12 w-full rounded-2xl bg-gradient-to-r from-purple-400 via-fuchsia-400 to-pink-400 text-sm font-semibold text-slate-900 shadow-xl transition hover:from-purple-300 hover:via-fuchsia-300 hover:to-pink-300 lg:w-auto lg:px-6"
+          >
+            {isAnalyzing ? 'Activating...' : 'Activate Agent'}
+          </Button>
+        </div>
       </div>
 
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="border-red-400/40 bg-red-500/10 text-red-100">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -145,101 +168,78 @@ export function GitHubAnalysisComponent({
       {analysis && !isAnalyzing && (
         <div className="space-y-6">
           {/* Repository Info */}
-          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <Github className="h-5 w-5" />
+          <div className="flex items-center justify-between rounded-2xl border border-white/15 bg-white/10 p-4 text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
+            <div className="flex items-center space-x-2 text-white">
+              <Github className="h-5 w-5 text-white" />
               <span className="font-medium">{analysis.repository}</span>
             </div>
-            <Badge className={getSkillLevelColor(analysis.skillLevel)}>
+            <Badge className={cn(getSkillLevelColor(analysis.skillLevel), 'border-none')}>
               {getSkillLevelIcon(analysis.skillLevel)} {analysis.skillLevel}
             </Badge>
           </div>
 
           {/* Technologies Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Code className="h-4 w-4 text-blue-600" />
-                <span className="font-medium text-sm">Languages</span>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[{ title: "Languages", data: analysis.languages, icon: <Code className="h-4 w-4" /> },
+              { title: "Frameworks", data: analysis.frameworks, icon: <Wrench className="h-4 w-4" /> },
+              { title: "Technologies", data: analysis.technologies, icon: <Database className="h-4 w-4" /> },
+              { title: "Tools", data: analysis.tools, icon: <Cloud className="h-4 w-4" /> }].map((section) => (
+              <div
+                key={section.title}
+                className="space-y-3 rounded-2xl border border-white/15 bg-white/10 p-4 text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]"
+              >
+                <div className="flex items-center space-x-2 text-white">
+                  {section.icon}
+                  <span className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-100">
+                    {section.title}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1 text-slate-200">
+                  {section.data.map((item, index) => (
+                    <Badge
+                      key={index}
+                      variant="outline"
+                      className="rounded-full border-white/30 bg-white/10 text-xs text-white"
+                    >
+                      {item}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-1">
-                {analysis.languages.map((lang, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {lang}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Wrench className="h-4 w-4 text-green-600" />
-                <span className="font-medium text-sm">Frameworks</span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {analysis.frameworks.map((framework, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {framework}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Database className="h-4 w-4 text-purple-600" />
-                <span className="font-medium text-sm">Technologies</span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {analysis.technologies.map((tech, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {tech}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Wrench className="h-4 w-4 text-orange-600" />
-                <span className="font-medium text-sm">Tools</span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {analysis.tools.map((tool, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {tool}
-                  </Badge>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
 
           {/* Learning Recommendations */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Learning Opportunities</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <h3 className="text-lg font-semibold text-white">Learning Opportunities</h3>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {analysis.recommendations.map((rec, index) => (
-                <div key={index} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0" />
-                    <span className="text-sm">{rec}</span>
-                  </div>
+                <div
+                  key={index}
+                  className="flex items-start space-x-3 rounded-xl border border-white/10 bg-slate-900/30 p-3 text-slate-200"
+                >
+                  <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-gradient-to-r from-blue-300 to-emerald-300" />
+                  <span className="text-sm">{rec}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline" size="sm">
+          <div className="flex flex-wrap gap-2 text-white">
+            <Button
+              asChild
+              size="sm"
+              className="rounded-xl border border-white/30 bg-white/10 text-white hover:bg-white/20"
+            >
               <a href={analysis.repository} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4 mr-2" />
                 View Repository
               </a>
             </Button>
             <Button 
-              variant="outline" 
               size="sm"
+              className="rounded-xl border border-white/30 bg-white/10 text-white hover:bg-white/20"
               onClick={() => {
                 const text = `GitHub Analysis for ${analysis.repository}\n\n` +
                   `Technologies: ${analysis.technologies.join(', ')}\n` +
