@@ -140,14 +140,28 @@ model Recommendation {
 
 model ResearchResult {
   id         String   @id @default(cuid())
-  skillGapId String   @unique
+  skillGapId String
+  cacheKey   String   @unique
   confidence Float // 0.0 - 1.0
+  confidenceBreakdown Json?
   resources  Json // Array of { title, url, rating, description }
+  scrapedResources Json?
   examples   Json // Array of { name, url, stars, description }
+  recommendations Json?
+  comparativeInsights Json?
+  learningPath Json?
+  queries Json?
+  searchSources Json?
+  searchNotes Json?
+  searchIterations Json?
+  summaryNotes Json?
+  iterationCount Int?
   createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
   skillGap   SkillGap @relation(fields: [skillGapId], references: [id], onDelete: Cascade)
 
   @@index([skillGapId])
+  @@index([cacheKey])
 }
 
 // ============================================================================

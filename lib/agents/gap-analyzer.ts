@@ -232,12 +232,23 @@ export class GapAnalyzerAgent {
       const [, owner, repo] = match;
       const cleanRepo = repo.replace(/\.git$/, ''); // Remove .git suffix if present
 
+      console.log(`[GapAnalyzer] Analyzing repository: ${owner}/${cleanRepo}`);
+
       // Fetch repository data from GitHub API
-      const [repoData, languagesData, contentsData] = await Promise.all([
-        this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}`),
-        this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}/languages`),
-        this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}/contents`)
-      ]);
+      let repoData, languagesData, contentsData;
+
+      try {
+        [repoData, languagesData, contentsData] = await Promise.all([
+          this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}`),
+          this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}/languages`),
+          this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}/contents`)
+        ]);
+      } catch (apiError) {
+        console.error('[GapAnalyzer] GitHub API error:', apiError);
+        throw apiError;
+      }
+
+      console.log(`[GapAnalyzer] Repository data fetched successfully`);
 
       // Extract technologies and frameworks
       const technologies = this.extractTechnologies(repoData, languagesData, contentsData);
@@ -245,11 +256,15 @@ export class GapAnalyzerAgent {
       const languages = Object.keys(languagesData).sort((a, b) => languagesData[b] - languagesData[a]);
       const tools = this.extractTools(contentsData);
 
+      console.log(`[GapAnalyzer] Extracted - Languages: ${languages.join(', ')}, Frameworks: ${frameworks.join(', ')}`);
+
       // Determine skill level based on repository complexity
       const skillLevel = this.determineSkillLevel(repoData, languagesData, contentsData);
 
       // Generate recommendations based on actual technologies found
       const recommendations = this.generateTechnologyRecommendations(languages, frameworks, technologies);
+
+      console.log(`[GapAnalyzer] Analysis complete - Skill level: ${skillLevel}`);
 
       return {
         repository: repoUrl,
@@ -262,8 +277,9 @@ export class GapAnalyzerAgent {
       };
 
     } catch (error) {
-      console.error('GitHub analysis error:', error);
-      throw new Error(`Failed to analyze repository: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[GapAnalyzer] GitHub analysis error:', errorMessage);
+      throw new Error(`Failed to analyze repository: ${errorMessage}`);
     }
   }
 

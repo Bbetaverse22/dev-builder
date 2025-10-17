@@ -75,5 +75,11 @@ export function buildResearchStateSeed({
     learningObjectives: skillAssessment.learningPath ?? [],
     queries,
     examples,
+    searchIterations: [],
+    scrapedResources: [],
+    comparativeInsights: [],
+    learningPath: [],
+    confidenceBreakdown: undefined,
+    searchNotes: [],
   };
 }

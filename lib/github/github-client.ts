@@ -322,6 +322,8 @@ export class GitHubClient {
       await this.getRepositoryContents(owner, repo, path);
       return true;
     } catch (error) {
+      // Silently return false on any error (404, network errors, etc.)
+      // This is expected behavior when checking for optional files
       return false;
     }
   }

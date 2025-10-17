@@ -9,7 +9,12 @@
  * - Practical applicability
  */
 
-import type { ResearchState, Resource, ScoredResource } from "../research-agent";
+import type {
+  ResearchState,
+  Resource,
+  ScoredResource,
+  ConfidenceBreakdown,
+} from "../research-agent";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { z } from "zod";
@@ -69,12 +74,18 @@ export async function evaluateQualityNode(
     const evaluation = evaluations[index] ?? getDefaultEvaluation();
     const score = calculateCompositeScore(evaluation);
 
-    return {
+    const enriched: ScoredResource = {
       ...resource,
       score,
       rating: Math.round(score * 5), // Convert to 1-5 star rating
       recency: evaluation.recency > 0.7 ? "recent" : "older",
-    } as ScoredResource;
+    };
+
+    if (!enriched.summary && evaluation.reasoning) {
+      enriched.summary = evaluation.reasoning.slice(0, 300);
+    }
+
+    return enriched;
   });
 
   // Sort by score (descending) and take top N
@@ -86,6 +97,11 @@ export async function evaluateQualityNode(
   const avgScore = topResources.reduce((sum, r) => sum + r.score, 0) / topResources.length;
   const confidence = Math.min(avgScore * 1.1, 1.0); // Slight boost, capped at 1.0
 
+  const confidenceBreakdown = buildConfidenceBreakdown(
+    topResources,
+    evaluations
+  );
+
   console.log(`✅ evaluateQualityNode complete`);
   console.log(`   Top resource score: ${topResources[0]?.score.toFixed(2) ?? 'N/A'}`);
   console.log(`   Average score: ${avgScore.toFixed(2)}`);
@@ -94,6 +110,7 @@ export async function evaluateQualityNode(
   return {
     evaluatedResults: topResources,
     confidence,
+    confidenceBreakdown,
   };
 }
 
@@ -115,37 +132,35 @@ async function evaluateWithLLM(
       temperature: 0.1, // Low temperature for consistent scoring
     });
 
+    const systemPrompt = [
+      "You are a learning resource evaluator.",
+      "Evaluate each resource on 5 criteria (0-1 scale):",
+      "- relevance: How well it matches the skill gap",
+      "- authority: Source credibility (official docs = 1.0, blog posts = 0.6, etc.)",
+      "- recency: Estimated timeliness (recent = 0.9+, older = 0.5-)",
+      "- comprehensiveness: Depth and completeness",
+      "- practicality: Hands-on, actionable content",
+      "",
+      "IMPORTANT: Return ONLY valid JSON with this exact structure:",
+      '{"evaluations": [{"url": "...", "relevance": 0.8, "authority": 0.9, "recency": 0.7, "comprehensiveness": 0.8, "practicality": 0.7}]}',
+      "",
+      "Do not include any explanatory text, only the JSON object.",
+    ].join("\n");
+
+    const humanPrompt = [
+      `Skill gap: ${state.skillGap}`,
+      `Language: ${state.detectedLanguage || "unknown"}`,
+      `User context: ${state.userContext}`,
+      "",
+      "Resources to evaluate:",
+      ...resources.map((r, i) => `${i + 1}. ${r.title}\n   URL: ${r.url}\n   Description: ${r.description}`),
+      "",
+      "Return JSON with an 'evaluations' array containing one object per resource.",
+    ].join("\n");
+
     const prompt = ChatPromptTemplate.fromMessages([
-      [
-        "system",
-        [
-          "You are a learning resource evaluator.",
-          "Evaluate each resource on 5 criteria (0-1 scale):",
-          "- relevance: How well it matches the skill gap",
-          "- authority: Source credibility (official docs = 1.0, blog posts = 0.6, etc.)",
-          "- recency: Estimated timeliness (recent = 0.9+, older = 0.5-)",
-          "- comprehensiveness: Depth and completeness",
-          "- practicality: Hands-on, actionable content",
-          "",
-          "IMPORTANT: Return ONLY valid JSON with this exact structure:",
-          '{"evaluations": [{"url": "...", "relevance": 0.8, "authority": 0.9, "recency": 0.7, "comprehensiveness": 0.8, "practicality": 0.7}]}',
-          "",
-          "Do not include any explanatory text, only the JSON object.",
-        ].join("\n"),
-      ],
-      [
-        "human",
-        [
-          `Skill gap: ${state.skillGap}`,
-          `Language: ${state.detectedLanguage || "unknown"}`,
-          `User context: ${state.userContext}`,
-          "",
-          "Resources to evaluate:",
-          ...resources.map((r, i) => `${i + 1}. ${r.title}\n   URL: ${r.url}\n   Description: ${r.description}`),
-          "",
-          "Return JSON with an 'evaluations' array containing one object per resource.",
-        ].join("\n"),
-      ],
+      ["system", systemPrompt],
+      ["human", humanPrompt],
     ]);
 
     const aiMessage = await llm.invoke(await prompt.formatMessages({}));
@@ -235,5 +250,86 @@ function parseLLMJson(rawText: string): unknown {
       (error as Error)?.message ?? error
     );
     return null;
+  }
+}
+
+function buildConfidenceBreakdown(
+  resources: ScoredResource[],
+  evaluations: EvaluationResult[]
+): ConfidenceBreakdown {
+  if (!resources.length || !evaluations.length) {
+    return {
+      overall: 0,
+      relevance: 0,
+      coverage: 0,
+      recency: 0,
+      practicality: 0,
+      confidenceNotes: ["No evaluated resources"],
+    };
+  }
+
+  const evalMap = new Map<string, EvaluationResult>();
+  evaluations.forEach((evaluation) => {
+    if (evaluation.url) {
+      evalMap.set(normalizeUrl(evaluation.url) ?? evaluation.url, evaluation);
+    }
+  });
+
+  let relevance = 0;
+  let recency = 0;
+  let practicality = 0;
+  let coverage = 0;
+
+  resources.forEach((resource) => {
+    const evaluation = evalMap.get(normalizeUrl(resource.url) ?? resource.url);
+    if (evaluation) {
+      relevance += evaluation.relevance;
+      recency += evaluation.recency;
+      practicality += evaluation.practicality;
+      coverage += evaluation.comprehensiveness;
+    }
+  });
+
+  const count = resources.length;
+  const breakdown: ConfidenceBreakdown = {
+    overall: Math.min(
+      (relevance / count + coverage / count + recency / count) / 3,
+      1
+    ),
+    relevance: clamp(relevance / count),
+    coverage: clamp(coverage / count),
+    recency: clamp(recency / count),
+    practicality: clamp(practicality / count),
+    confidenceNotes: [],
+  };
+
+  if (breakdown.relevance < 0.5) {
+    breakdown.confidenceNotes?.push(
+      "Limited relevance signals across evaluated resources"
+    );
+  }
+  if (breakdown.recency < 0.5) {
+    breakdown.confidenceNotes?.push(
+      "Most resources appear older; consider refreshing queries"
+    );
+  }
+  if (!breakdown.confidenceNotes?.length) {
+    breakdown.confidenceNotes?.push("Resource quality signals are balanced");
+  }
+
+  return breakdown;
+}
+
+function clamp(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function normalizeUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const normalized = new URL(url, url.startsWith("http") ? undefined : "https://").href;
+    return normalized.toLowerCase();
+  } catch {
+    return url.toLowerCase();
   }
 }

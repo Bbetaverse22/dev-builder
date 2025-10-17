@@ -61,9 +61,10 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Gap analysis API error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Gap analysis API error:', errorMessage);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: errorMessage || 'Internal server error' },
       { status: 500 }
     );
   }
@@ -73,15 +74,16 @@ export async function GET() {
   try {
     const gapAnalyzer = new GapAnalyzerAgent();
     const categories = gapAnalyzer.getDefaultSkillCategories();
-    
+
     return NextResponse.json({
       success: true,
       result: categories
     });
   } catch (error) {
-    console.error('Gap analysis API error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Gap analysis API error:', errorMessage);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: errorMessage || 'Internal server error' },
       { status: 500 }
     );
   }

@@ -586,6 +586,9 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
       addLog('info', 'Portfolio Builder Agent activated', <Rocket className="h-4 w-4" />);
       setProgress(70);
 
+      let portfolioDataForContext: any = null;
+      let portfolioTasksForContext: PortfolioTask[] = [];
+
       try {
         // Analyze repository quality
         addLog('info', 'Analyzing portfolio quality and completeness...', <Activity className="h-4 w-4" />);
@@ -605,8 +608,12 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
           if (portfolioResponse.ok) {
             const portfolioDataResult = await portfolioResponse.json();
 
+            console.log('[Portfolio API Response]', portfolioDataResult);
+
             // Store portfolio data for later use
             setPortfolioData(portfolioDataResult);
+            portfolioDataForContext = portfolioDataResult; // Keep reference for context
+
             const defaultSelected = (portfolioDataResult.recommendations || [])
               .filter((rec: any) => !rec.weakness?.optional)
               .map((rec: any) => rec.id);
@@ -651,6 +658,8 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
           }));
 
           setPortfolioTasks(tasks);
+          portfolioTasksForContext = tasks; // Keep reference for context
+
           addLog('success', `Generated ${tasks.length} improvement tasks (awaiting your approval to create GitHub issues)`, <CheckCircle2 className="h-4 w-4" />);
           const skillTaskCount = portfolioDataResult.recommendations.filter((rec: any) => rec.weakness?.type === 'skill').length;
           if (skillTaskCount > 0) {
@@ -711,27 +720,33 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
           timestamp: new Date()
         }));
 
+        console.log('[Context] Setting analysis results with portfolioData:', portfolioDataForContext);
+        console.log('[Context] portfolioTasks:', portfolioTasksForContext);
+        console.log('[Context] researchResults:', researchResults);
+        console.log('[Context] Learning resources count:', researchResults?.resources?.length || 0);
+        console.log('[Context] GitHub examples count:', researchResults?.examples?.length || 0);
+
         setAnalysisResults({
           repoUrl,
-          portfolioQuality: portfolioData?.analysis ? {
-            overallScore: portfolioData.analysis.overallQuality,
-            strengths: portfolioData.analysis.strengths || [],
-            weaknesses: portfolioData.analysis.weaknesses || [],
-            recommendations: portfolioData.recommendations || []
+          portfolioQuality: portfolioDataForContext?.analysis ? {
+            overallScore: portfolioDataForContext.analysis.overallQuality,
+            strengths: portfolioDataForContext.analysis.strengths || [],
+            weaknesses: portfolioDataForContext.analysis.weaknesses || [],
+            recommendations: portfolioDataForContext.recommendations || []
           } : null,
           skillGaps: skillGaps.map(gap => ({
             skill: gap.name,
             importance: String(gap.priority),
             reasoning: gap.guidance?.reasoning || gap.gap
           })),
-          portfolioActions: portfolioTasks.map(task => ({
+          portfolioActions: portfolioTasksForContext.length > 0 ? portfolioTasksForContext.map(task => ({
             id: task.id,
             title: task.title,
             description: task.description || '',
             priority: task.priority,
             estimatedTime: task.estimatedEffort || 'Unknown',
             category: task.type
-          })),
+          })) : [],
           researchResults: researchResults?.resources?.map((resource: any) => ({
             title: resource.title,
             url: resource.url,

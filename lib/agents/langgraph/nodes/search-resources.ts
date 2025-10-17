@@ -6,7 +6,12 @@
  * additional resource generation when needed.
  */
 
-import type { ResearchState, Resource, SearchIteration } from "../research-agent";
+import type {
+  ResearchState,
+  Resource,
+  SearchIteration,
+  ScrapedResource,
+} from "../research-agent";
 import FirecrawlApp from "@mendable/firecrawl-js";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
@@ -17,6 +22,13 @@ type SearchProvider = "firecrawl" | "openai";
 const DEFAULT_MODEL = process.env.OPENAI_RESEARCH_MODEL ?? "gpt-4o-mini";
 const MAX_FIRECRAWL_RESULTS = 10;
 const MAX_TOTAL_RESULTS = 20;
+const MAX_SCRAPE_COUNT = 5;
+const MAX_SUMMARY_CHARS = 600;
+const SUMMARY_KEYPOINT_LIMIT = 5;
+const SUMMARY_RETRY_LIMIT = 2;
+const SCRAPE_TIMEOUT_MS = 20_000;
+const SEARCH_ITERATION_LIMIT = 3;
+const MIN_RESULTS_TARGET = 12;
 
 const llmResponseSchema = z.object({
   resources: z
@@ -42,65 +54,139 @@ export async function searchResourcesNode(
   const queries = Array.from(querySet);
   const resources: Resource[] = [];
   const usedProviders: Set<SearchProvider> = new Set();
-  const seenUrls = new Set<string>();
-  const sourcesUsed = new Set<string>();
+  const seenUrls = new Set<string>(
+    (state.searchResults ?? []).map((res) => normalizeUrl(res.url) ?? res.url)
+  );
+  const sourcesUsed = new Set<string>(state.searchSources ?? []);
   const iterationLogs: string[] = [];
+  const searchIterations: SearchIteration[] = [...(state.searchIterations ?? [])];
+  const scrapeCandidates: Resource[] = [];
+  const scrapedResources: ScrapedResource[] = [];
+  const startTime = Date.now();
 
   console.log("🔍 Running searchResourcesNode");
   console.log(`   Skill gap: ${state.skillGap}`);
   console.log(`   Primary language: ${state.detectedLanguage || "unknown"}`);
   console.log(`   Seed queries: ${queries.join(" | ")}`);
 
-  // 1. Use Firecrawl for web search (primary method)
   const firecrawl = await createFirecrawlClient();
-  if (firecrawl) {
-    const firecrawlResults = await runFirecrawlSearch(
-      firecrawl,
-      queries,
-      seenUrls,
-      state
-    );
-    if (firecrawlResults.length) {
-      firecrawlResults.forEach((resource) => {
-        resources.push(resource);
-        sourcesUsed.add(resource.source ?? "firecrawl");
-      });
-      usedProviders.add("firecrawl");
-      iterationLogs.push(
-        `Firecrawl search returned ${firecrawlResults.length} items`
-      );
-    } else {
-      iterationLogs.push("Firecrawl search returned no new items");
-    }
-  } else {
-    iterationLogs.push("Skipped Firecrawl (no API key)");
-  }
+  let pass = 0;
+  let continueSearching = true;
 
-  // 2. Fallback to an LLM-assisted search if we still need more coverage
-  if (resources.length < 8) {
-    const { resources: llmResources, supplementalQueries } =
-      await runLLMFallback(state, queries, resources);
+  while (continueSearching && pass < SEARCH_ITERATION_LIMIT) {
+    pass += 1;
+    const iterationStart = Date.now();
+    const iteration: SearchIteration = {
+      number: (state.iterationCount ?? 0) + pass,
+      queries: queries.slice(0, 6),
+      sources: [],
+      notes: undefined,
+      resultsFound: 0,
+      scrapedCount: 0,
+      durationMs: 0,
+      errors: [],
+    };
 
-    if (llmResources.length) {
-      llmResources.forEach((resource) => {
-        const normalized = normalizeUrl(resource.url);
-        if (!normalized || seenUrls.has(normalized)) {
-          return;
+    const iterationNotes: string[] = [];
+
+    if (firecrawl) {
+      try {
+        const firecrawlResults = await runFirecrawlSearch(
+          firecrawl,
+          queries,
+          seenUrls,
+          state,
+          pass
+        );
+        if (firecrawlResults.length) {
+          firecrawlResults.forEach((resource) => {
+            resources.push(resource);
+            if (!scrapeCandidates.some((r) => r.url === resource.url)) {
+              scrapeCandidates.push(resource);
+            }
+            sourcesUsed.add(resource.source ?? "firecrawl");
+          });
+          usedProviders.add("firecrawl");
+          iterationNotes.push(
+            `Firecrawl (pass ${pass}) returned ${firecrawlResults.length} items`
+          );
+        } else {
+          iterationNotes.push(`Firecrawl (pass ${pass}) returned no new items`);
         }
-        const resourceWithSource = {
-          ...resource,
-          source: resource.source ?? "openai",
-        };
-        resources.push(resourceWithSource);
-        seenUrls.add(normalized);
-      });
-      usedProviders.add("openai");
-      iterationLogs.push(
-        `LLM fallback generated ${llmResources.length} items`
-      );
+        iteration.sources.push("firecrawl");
+        iteration.resultsFound += firecrawlResults.length;
+      } catch (error) {
+        const message =
+          (error as Error)?.message ?? "Firecrawl search failed";
+        iteration.errors?.push(message);
+        iterationNotes.push(message);
+      }
+    } else if (pass === 1) {
+      iterationNotes.push("Skipped Firecrawl (no API key)");
     }
 
-    supplementalQueries.forEach((query) => querySet.add(query));
+    if (resources.length < MIN_RESULTS_TARGET) {
+      const { resources: llmResources, supplementalQueries } =
+        await runLLMFallback(state, queries, resources);
+
+      if (llmResources.length) {
+        llmResources.forEach((resource) => {
+          const normalized = normalizeUrl(resource.url);
+          if (!normalized || seenUrls.has(normalized)) {
+            return;
+          }
+          const resourceWithSource = {
+            ...resource,
+            source: resource.source ?? "openai",
+          };
+          resources.push(resourceWithSource);
+          scrapeCandidates.push(resourceWithSource);
+          seenUrls.add(normalized);
+        });
+        usedProviders.add("openai");
+        iterationNotes.push(
+          `LLM fallback generated ${llmResources.length} items`
+        );
+      }
+
+      supplementalQueries.forEach((query) => querySet.add(query));
+      iteration.sources.push("openai");
+      iteration.resultsFound += llmResources.length;
+    }
+
+    const scrapeBatch = scrapeCandidates
+      .filter((candidate) =>
+        (state.scrapedResources ?? []).every(
+          (scraped) => scraped.url !== candidate.url
+        )
+      )
+      .slice(0, MAX_SCRAPE_COUNT - scrapedResources.length);
+
+    if (scrapeBatch.length > 0 && firecrawl) {
+      try {
+        const scraped = await scrapeAndSummarizeResources(
+          firecrawl,
+          scrapeBatch,
+          state
+        );
+        scrapedResources.push(...scraped);
+        iteration.scrapedCount = (iteration.scrapedCount ?? 0) + scraped.length;
+        iterationNotes.push(`Scraped ${scraped.length} resources`);
+      } catch (error) {
+        const message =
+          (error as Error)?.message ?? "Scraping failed";
+        iteration.errors?.push(message);
+        iterationNotes.push(message);
+      }
+    }
+
+    iteration.durationMs = Date.now() - iterationStart;
+    iteration.notes = iterationNotes.join(" | ");
+    searchIterations.push(iteration);
+    iterationLogs.push(iteration.notes ?? "");
+
+    continueSearching =
+      resources.length < MIN_RESULTS_TARGET && pass < SEARCH_ITERATION_LIMIT;
   }
 
   const finalResources = dedupeAndTrim(resources, seenUrls);
@@ -111,10 +197,15 @@ export async function searchResourcesNode(
     }
   });
 
+  const mergedScrapedResources = mergeScrapedResources(
+    state.scrapedResources ?? [],
+    scrapedResources
+  );
+
   console.log(
     `✅ searchResourcesNode returning ${finalResources.length} resources (providers: ${
       usedProviders.size ? Array.from(usedProviders).join(", ") : "none"
-    })`
+    }) after ${pass} passes`
   );
 
   return {
@@ -122,6 +213,12 @@ export async function searchResourcesNode(
     searchResults: finalResources,
     queries: finalQueries,
     searchSources: Array.from(sourcesUsed),
+    searchIterations,
+    searchNotes: [...(state.searchNotes ?? []), ...iterationLogs],
+    scrapedResources: mergedScrapedResources,
+    iterationCount: (state.iterationCount ?? 0) + pass,
+    summaryNotes: [...(state.summaryNotes ?? []), buildSummaryNote(finalResources)],
+    searchIterationLog: [...(state.searchIterationLog ?? []), ...iterationLogs],
   };
 }
 
@@ -210,7 +307,8 @@ async function runFirecrawlSearch(
   firecrawl: FirecrawlApp,
   queries: string[],
   seenUrls: Set<string>,
-  state: ResearchState
+  state: ResearchState,
+  pass: number
 ): Promise<Resource[]> {
   const collected: Resource[] = [];
   const categories = chooseFirecrawlCategories(state, collected.length);
@@ -344,6 +442,7 @@ function firecrawlResultToResource(item: any): Resource {
     title: (item.title || "Learning Resource").slice(0, 180),
     url: item.url || "",
     description: (item.description || item.content || "Relevant learning material.").slice(0, 500),
+    snippet: (item.content || "").slice(0, MAX_SUMMARY_CHARS),
   };
 }
 
@@ -505,4 +604,168 @@ function dedupeAndTrim(
   used.forEach((url) => seenUrls.add(url));
 
   return unique;
+}
+
+async function scrapeAndSummarizeResources(
+  firecrawl: FirecrawlApp,
+  resources: Resource[],
+  state: ResearchState
+): Promise<ScrapedResource[]> {
+  const summaries: ScrapedResource[] = [];
+  for (const resource of resources) {
+    try {
+      const scraped = await firecrawl.scrape(
+        resource.url,
+        {
+          formats: ["markdown"],
+          timeout: SCRAPE_TIMEOUT_MS,
+        }
+      );
+
+      if (!scraped || !scraped.markdown) {
+        continue;
+      }
+
+      const content = truncateMarkdown(scraped.markdown, MAX_SUMMARY_CHARS * 4);
+      const snippet = content.slice(0, MAX_SUMMARY_CHARS);
+      const summaryPayload = await summarizeScrapedContent(
+        resource,
+        content,
+        state
+      );
+
+      summaries.push({
+        url: resource.url,
+        content,
+        snippet,
+        summary: summaryPayload.summary,
+        keyPoints: summaryPayload.keyPoints,
+        recommendedAudience: summaryPayload.recommendedAudience,
+        scrapedAt: new Date().toISOString(),
+        source: resource.source,
+      });
+    } catch (error) {
+      console.warn(
+        `[searchResourcesNode] Failed to scrape ${resource.url}:`,
+        (error as Error)?.message ?? error
+      );
+    }
+  }
+
+  return summaries;
+}
+
+function truncateMarkdown(content: string, maxChars: number): string {
+  if (content.length <= maxChars) {
+    return content;
+  }
+  return `${content.slice(0, maxChars)}...`;
+}
+
+async function summarizeScrapedContent(
+  resource: Resource,
+  content: string,
+  state: ResearchState
+): Promise<{ summary: string; keyPoints: string[]; recommendedAudience?: string }> {
+  if (!process.env.OPENAI_API_KEY) {
+    return {
+      summary: resource.description.slice(0, MAX_SUMMARY_CHARS),
+      keyPoints: [],
+      recommendedAudience: undefined,
+    };
+  }
+
+  const llm = new ChatOpenAI({
+    model: DEFAULT_MODEL,
+    temperature: 0.2,
+  });
+
+  const summaryPrompt = ChatPromptTemplate.fromMessages([
+    [
+      "system",
+      [
+        "Summarize the following resource content.",
+        `Limit summary to ${MAX_SUMMARY_CHARS} characters.`,
+        `Return JSON with keys summary (string), keyPoints (string[] up to ${SUMMARY_KEYPOINT_LIMIT}), recommendedAudience (string).`,
+        "Focus on actionable insights aligned with the skill gap and detected language.",
+      ].join(" \n"),
+    ],
+    [
+      "human",
+      [
+        `Skill gap: ${state.skillGap}`,
+        `Primary language: ${state.detectedLanguage}`,
+        `Resource title: ${resource.title}`,
+        `URL: ${resource.url}`,
+        `CONTENT:\n${content.slice(0, MAX_SUMMARY_CHARS * 6)}`,
+      ].join("\n"),
+    ],
+  ]);
+
+  let attempts = 0;
+  while (attempts < SUMMARY_RETRY_LIMIT) {
+    attempts += 1;
+    try {
+      const aiMessage = await llm.invoke(await summaryPrompt.formatMessages({}));
+      const rawText = extractTextContent(aiMessage.content);
+      const parsed = parseLLMJson(rawText);
+
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        "summary" in parsed &&
+        typeof (parsed as any).summary === "string"
+      ) {
+        const keyPoints = Array.isArray((parsed as any).keyPoints)
+          ? (parsed as any).keyPoints.slice(0, SUMMARY_KEYPOINT_LIMIT)
+          : [];
+        const recommendedAudience = (parsed as any).recommendedAudience;
+
+        return {
+          summary: ((parsed as any).summary as string).slice(0, MAX_SUMMARY_CHARS),
+          keyPoints: keyPoints.filter((kp: any) => typeof kp === "string"),
+          recommendedAudience:
+            typeof recommendedAudience === "string"
+              ? recommendedAudience.slice(0, 180)
+              : undefined,
+        };
+      }
+    } catch (error) {
+      console.warn(
+        `[searchResourcesNode] Summarization attempt ${attempts} failed for ${resource.url}:`,
+        (error as Error)?.message ?? error
+      );
+    }
+  }
+
+  return {
+    summary: resource.description.slice(0, MAX_SUMMARY_CHARS),
+    keyPoints: [],
+    recommendedAudience: undefined,
+  };
+}
+
+function mergeScrapedResources(
+  existing: ScrapedResource[],
+  incoming: ScrapedResource[]
+): ScrapedResource[] {
+  const byUrl = new Map<string, ScrapedResource>();
+  existing.forEach((resource) => {
+    byUrl.set(resource.url, resource);
+  });
+  incoming.forEach((resource) => {
+    byUrl.set(resource.url, resource);
+  });
+  return Array.from(byUrl.values()).slice(0, MAX_SCRAPE_COUNT);
+}
+
+function buildSummaryNote(resources: Resource[]): string {
+  if (!resources.length) {
+    return "No resources discovered";
+  }
+  const topTitles = resources
+    .slice(0, 5)
+    .map((r) => r.title)
+    .join(", ");
+  return `Identified ${resources.length} resources. Highlights: ${topTitles}`;
 }

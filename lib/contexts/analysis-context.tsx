@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 
 // Types
 export interface SkillGap {
@@ -31,6 +31,9 @@ export interface ResearchResult {
   description: string;
   type: "article" | "course" | "tutorial" | "documentation" | "video";
   relevance?: string;
+  summary?: string;
+  keyPoints?: string[];
+  recommendedAudience?: string;
 }
 
 export interface GitHubExample {
@@ -60,8 +63,39 @@ interface AnalysisContextType {
 
 const AnalysisContext = createContext<AnalysisContextType | undefined>(undefined);
 
+const STORAGE_KEY = 'skillbridge_analysis_results';
+
 export function AnalysisProvider({ children }: { children: ReactNode }) {
   const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        setAnalysisResults(JSON.parse(stored));
+      }
+    } catch (error) {
+      console.warn('Failed to load analysis results from localStorage:', error);
+    }
+    setIsHydrated(true);
+  }, []);
+
+  // Save to localStorage when results change
+  useEffect(() => {
+    if (isHydrated) {
+      try {
+        if (analysisResults) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(analysisResults));
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      } catch (error) {
+        console.warn('Failed to save analysis results to localStorage:', error);
+      }
+    }
+  }, [analysisResults, isHydrated]);
 
   const hasCompletedAnalysis = analysisResults !== null;
 

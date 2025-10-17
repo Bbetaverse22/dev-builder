@@ -26,6 +26,15 @@ export interface ResearchState {
   searchSources?: string[];
   searchNotes?: string[];
   searchIterations?: SearchIteration[];
+  scrapedResources?: ScrapedResource[];
+  comparativeInsights?: ComparativeInsight[];
+  learningPath?: LearningPathStep[];
+  confidenceBreakdown?: ConfidenceBreakdown;
+  searchIterationLog?: string[];
+  researchCacheKey?: string;
+  recommendedAudience?: AudienceSegment[];
+  summaryNotes?: string[];
+  forceRefresh?: boolean;
 
   // Search phase
   searchQuery?: string;
@@ -34,6 +43,7 @@ export interface ResearchState {
   // Evaluation phase
   evaluatedResults?: ScoredResource[];
   examples?: GitHubProject[];
+  evaluationNotes?: string[];
 
   // Decision phase
   confidence?: number;
@@ -56,6 +66,10 @@ export interface Resource {
   source?: "firecrawl" | "openai" | "github";
   summary?: string;
   scrapedContent?: string;
+  snippet?: string;
+  recommendedAudience?: string;
+  keyPoints?: string[];
+  lastScrapedAt?: string;
 }
 
 export interface ScoredResource extends Resource {
@@ -70,6 +84,9 @@ export interface SearchIteration {
   sources: string[];
   notes?: string;
   resultsFound: number;
+  scrapedCount?: number;
+  durationMs?: number;
+  errors?: string[];
 }
 
 export interface GitHubProject {
@@ -107,6 +124,48 @@ export interface ActionItem {
   description: string;
   rationale?: string;
   effort?: "low" | "medium" | "high";
+}
+
+export interface ScrapedResource {
+  url: string;
+  content: string;
+  snippet: string;
+  summary: string;
+  keyPoints: string[];
+  recommendedAudience?: string;
+  scrapedAt: string;
+  source?: Resource["source"];
+}
+
+export interface ComparativeInsight {
+  title: string;
+  insight: string;
+  supportingResources: string[];
+  confidence: "low" | "medium" | "high";
+}
+
+export interface LearningPathStep {
+  order: number;
+  title: string;
+  description: string;
+  estimatedTimeHours?: number;
+  difficulty: "beginner" | "intermediate" | "advanced";
+  resourceUrl?: string;
+  resourceTitle?: string;
+}
+
+export interface ConfidenceBreakdown {
+  overall: number;
+  relevance: number;
+  coverage: number;
+  recency: number;
+  practicality: number;
+  confidenceNotes?: string[];
+}
+
+export interface AudienceSegment {
+  label: string;
+  description: string;
 }
 
 /**

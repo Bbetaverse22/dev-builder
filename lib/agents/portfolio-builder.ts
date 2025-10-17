@@ -79,6 +79,9 @@ export interface ResearchResults {
   examples?: GitHubExample[];
   recommendations?: any[];
   confidence?: number;
+  comparativeInsights?: any[];
+  learningPath?: any[];
+  confidenceBreakdown?: any;
 }
 
 export interface IssueCreationResult {
@@ -122,10 +125,10 @@ export class PortfolioBuilderAgent {
 
       // Run checks in parallel
       const [hasReadme, hasTests, hasCICD, hasDocumentation] = await Promise.all([
-        this.checkReadmeQuality(owner, cleanRepo),
-        this.checkTestingCoverage(owner, cleanRepo, contents),
-        this.checkCICDSetup(owner, cleanRepo, contents),
-        this.checkDocumentation(owner, cleanRepo, contents),
+        this.checkReadmeQuality(owner, cleanRepo).catch(() => ({ exists: false, isComprehensive: false })),
+        this.checkTestingCoverage(owner, cleanRepo, contents).catch(() => ({ exists: false })),
+        this.checkCICDSetup(owner, cleanRepo, contents).catch(() => false),
+        this.checkDocumentation(owner, cleanRepo, contents).catch(() => false),
       ]);
 
       // Identify weaknesses
@@ -179,7 +182,7 @@ export class PortfolioBuilderAgent {
       }
 
       // Check for additional quality indicators
-      const hasLicense = await this.githubClient.fileExists(owner, cleanRepo, 'LICENSE');
+      const hasLicense = await this.githubClient.fileExists(owner, cleanRepo, 'LICENSE').catch(() => false);
       if (!hasLicense) {
         weaknesses.push({
           id: 'license',
@@ -1000,7 +1003,13 @@ export class PortfolioBuilderAgent {
   private async checkCICDSetup(owner: string, repo: string, contents: any): Promise<boolean> {
     try {
       // Check for .github/workflows directory (GitHub Actions)
-      const hasGithubActions = await this.githubClient.fileExists(owner, repo, '.github/workflows');
+      let hasGithubActions = false;
+      try {
+        hasGithubActions = await this.githubClient.fileExists(owner, repo, '.github/workflows');
+      } catch {
+        hasGithubActions = false;
+      }
+
       if (hasGithubActions) {
         console.log('[Portfolio Builder] ✅ Detected GitHub Actions CI/CD');
         return true;
@@ -1130,7 +1139,12 @@ export class PortfolioBuilderAgent {
   private async checkDocumentation(owner: string, repo: string, contents: any): Promise<boolean> {
     try {
       // Check for /docs folder
-      const hasDocs = await this.githubClient.fileExists(owner, repo, 'docs');
+      let hasDocs = false;
+      try {
+        hasDocs = await this.githubClient.fileExists(owner, repo, 'docs');
+      } catch {
+        hasDocs = false;
+      }
       if (hasDocs) return true;
 
       // Check for common documentation files

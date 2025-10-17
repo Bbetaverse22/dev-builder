@@ -5,17 +5,90 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle2, Target, Rocket, ArrowRight } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { AlertCircle, CheckCircle2, Target, Rocket, ArrowRight, GitPullRequest } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export function PortfolioDisplay() {
   const { analysisResults, hasCompletedAnalysis } = useAnalysis();
+  const [selectedActions, setSelectedActions] = useState<Set<string>>(new Set());
+  const [isCreatingIssues, setIsCreatingIssues] = useState(false);
+  const [createdIssues, setCreatedIssues] = useState<any[]>([]);
+  const [creationMessage, setCreationMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
     console.log('[PortfolioDisplay] hasCompletedAnalysis:', hasCompletedAnalysis);
     console.log('[PortfolioDisplay] analysisResults:', analysisResults);
   }, [hasCompletedAnalysis, analysisResults]);
+
+  const toggleActionSelection = (actionId: string) => {
+    const newSelected = new Set(selectedActions);
+    if (newSelected.has(actionId)) {
+      newSelected.delete(actionId);
+    } else {
+      newSelected.add(actionId);
+    }
+    setSelectedActions(newSelected);
+  };
+
+  const selectAllActions = (actions: any[], checked: boolean) => {
+    if (checked) {
+      setSelectedActions(new Set(actions.map(a => a.id)));
+    } else {
+      setSelectedActions(new Set());
+    }
+  };
+
+  const createGitHubIssues = async () => {
+    if (selectedActions.size === 0) {
+      setCreationMessage({ type: 'error', text: 'Select at least one action to create issues' });
+      return;
+    }
+
+    if (!analysisResults?.repoUrl) {
+      setCreationMessage({ type: 'error', text: 'Repository URL not found' });
+      return;
+    }
+
+    setIsCreatingIssues(true);
+    setCreationMessage(null);
+    setCreatedIssues([]);
+
+    try {
+      const selectedIds = Array.from(selectedActions);
+
+      const response = await fetch('/api/portfolio-builder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoUrl: analysisResults.repoUrl,
+          recommendationIds: selectedIds,
+          createIssues: true,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.issues) {
+          const successfulIssues = result.issues.filter((issue: any) => issue.success);
+          setCreatedIssues(successfulIssues);
+          setCreationMessage({
+            type: 'success',
+            text: `Successfully created ${successfulIssues.length} GitHub issue${successfulIssues.length !== 1 ? 's' : ''}!`
+          });
+          setSelectedActions(new Set());
+        }
+      } else {
+        setCreationMessage({ type: 'error', text: 'Failed to create GitHub issues' });
+      }
+    } catch (error) {
+      console.error('Error creating issues:', error);
+      setCreationMessage({ type: 'error', text: 'An error occurred while creating issues' });
+    } finally {
+      setIsCreatingIssues(false);
+    }
+  };
 
   if (!hasCompletedAnalysis) {
     return (
@@ -144,43 +217,117 @@ export function PortfolioDisplay() {
       {portfolioActions.length > 0 && (
         <Card className="border-2 border-emerald-400/40 bg-gradient-to-br from-emerald-700/40 via-emerald-900/30 to-slate-950/60 shadow-[0_0_40px_rgba(16,185,129,0.25)] backdrop-blur-md">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-3 text-white text-2xl">
-              <Rocket className="h-6 w-6" />
-              <span>Improvement Actions</span>
-            </CardTitle>
-            <CardDescription className="text-white/80 text-base">
-              Prioritized tasks to enhance your portfolio
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Rocket className="h-6 w-6" />
+                <div>
+                  <CardTitle className="text-white text-2xl">Improvement Actions</CardTitle>
+                  <CardDescription className="text-white/80 text-base">
+                    Prioritized tasks to enhance your portfolio
+                  </CardDescription>
+                </div>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Select All Checkbox */}
+            <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+              <Checkbox
+                checked={selectedActions.size === portfolioActions.length && portfolioActions.length > 0}
+                onCheckedChange={(checked) => selectAllActions(portfolioActions, checked as boolean)}
+                className="h-4 w-4"
+              />
+              <label className="text-sm text-white cursor-pointer flex-1">
+                Select all actions ({selectedActions.size}/{portfolioActions.length})
+              </label>
+            </div>
+
+            {/* Action List */}
             <div className="space-y-3">
               {portfolioActions.map((action: any) => (
                 <div
                   key={action.id}
-                  className="p-4 bg-white/5 rounded-lg border border-white/10 hover:border-emerald-400/30 transition-colors"
+                  className="p-4 bg-white/5 rounded-lg border border-white/10 hover:border-emerald-400/30 transition-colors flex gap-3"
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-semibold text-white">{action.title}</h4>
-                    <Badge
-                      variant={action.priority === 'high' ? 'destructive' : action.priority === 'medium' ? 'default' : 'outline'}
-                      className="text-xs"
-                    >
-                      {action.priority}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-slate-300/80 mb-2">{action.description}</p>
-                  <div className="flex items-center gap-4 text-xs text-slate-400">
-                    <span>⏱️ {action.estimatedTime}</span>
-                    <span>📂 {action.category}</span>
+                  <Checkbox
+                    checked={selectedActions.has(action.id)}
+                    onCheckedChange={() => toggleActionSelection(action.id)}
+                    className="h-4 w-4 mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-semibold text-white">{action.title}</h4>
+                      <Badge
+                        variant={action.priority === 'high' ? 'destructive' : action.priority === 'medium' ? 'default' : 'outline'}
+                        className="text-xs"
+                      >
+                        {action.priority}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-slate-300/80 mb-2">{action.description}</p>
+                    <div className="flex items-center gap-4 text-xs text-slate-400">
+                      <span>⏱️ {action.estimatedTime}</span>
+                      <span>📂 {action.category}</span>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-6 p-4 bg-blue-900/20 border border-blue-400/30 rounded-lg">
-              <p className="text-sm text-blue-100/80">
-                💡 <strong>Tip:</strong> Return to the Skill Gap Analysis page to create GitHub issues for selected improvements.
-              </p>
-            </div>
+
+            {/* Creation Status Message */}
+            {creationMessage && (
+              <div className={`p-4 rounded-lg border ${
+                creationMessage.type === 'success'
+                  ? 'bg-emerald-900/20 border-emerald-400/30'
+                  : 'bg-red-900/20 border-red-400/30'
+              }`}>
+                <p className={`text-sm ${creationMessage.type === 'success' ? 'text-emerald-100' : 'text-red-100'}`}>
+                  {creationMessage.type === 'success' ? '✅' : '❌'} {creationMessage.text}
+                </p>
+              </div>
+            )}
+
+            {/* Created Issues List */}
+            {createdIssues.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-semibold text-white text-sm">Created GitHub Issues:</h4>
+                {createdIssues.map((issue: any, index: number) => (
+                  <div key={index} className="p-3 bg-emerald-900/20 rounded-lg border border-emerald-400/30">
+                    <a
+                      href={issue.issueUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-emerald-300 hover:text-emerald-200 transition-colors"
+                    >
+                      <GitPullRequest className="h-4 w-4" />
+                      <span className="text-sm font-medium">#{issue.issueNumber}: {issue.title}</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Create Issues Button */}
+            {selectedActions.size > 0 && (
+              <Button
+                onClick={createGitHubIssues}
+                disabled={isCreatingIssues}
+                className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold h-11 rounded-lg"
+              >
+                {isCreatingIssues ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Creating Issues...
+                  </>
+                ) : (
+                  <>
+                    <GitPullRequest className="h-4 w-4 mr-2" />
+                    Create {selectedActions.size} GitHub Issue{selectedActions.size !== 1 ? 's' : ''}
+                  </>
+                )}
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}

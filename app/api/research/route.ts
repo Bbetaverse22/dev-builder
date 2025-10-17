@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Run the research agent
-    const result = await graph.invoke(input as any) as ResearchState;
+    const result = (await graph.invoke(input as any)) as ResearchState;
 
     console.log("[Research Agent] Workflow complete");
     console.log(`  Resources: ${result.searchResults?.length || 0}`);
@@ -48,10 +48,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       resources: result.evaluatedResults || result.searchResults || [],
+      scrapedResources: result.scrapedResources || [],
       examples: result.examples || [],
       recommendations: result.recommendations || [],
+      comparativeInsights: result.comparativeInsights || [],
+      learningPath: result.learningPath || [],
       confidence: result.confidence || 0,
+      confidenceBreakdown: result.confidenceBreakdown || null,
       queries: result.queries || [],
+      iterationCount: result.iterationCount ?? 0,
+      searchIterations: result.searchIterations || [],
+      searchNotes: result.searchNotes || [],
+      searchSources: result.searchSources || [],
+      searchQuery: result.searchQuery,
     }, { status: 200 });
 
   } catch (error) {
