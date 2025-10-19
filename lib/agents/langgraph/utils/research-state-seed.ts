@@ -14,14 +14,43 @@ function normalizeKeyword(keyword: string): string {
 }
 
 function buildFocusSkills(skillAssessment: GapAnalysisResult): FocusSkill[] {
-  return (skillAssessment.skillGaps ?? [])
+  const focusMap = new Map<string, FocusSkill>();
+
+  (skillAssessment.skillGaps ?? [])
     .filter((gap) => gap?.skill?.name)
     .slice(0, 5)
-    .map((gap) => ({
-      name: gap.skill.name,
-      gap: gap.gap,
-      priority: gap.priority,
-    }));
+    .forEach((gap) => {
+      const name = gap.skill.name;
+      const existing = focusMap.get(name);
+      const blended: FocusSkill = {
+        name,
+        gap: Math.max(existing?.gap ?? 0, gap.gap ?? 0),
+        priority: Math.max(existing?.priority ?? 0, gap.priority ?? 0),
+      };
+      focusMap.set(name, blended);
+    });
+
+  return Array.from(focusMap.values());
+}
+
+function inferLanguageFromSkill(skillName: string): string | null {
+  const normalized = normalizeKeyword(skillName);
+  if (normalized.includes("typescript")) return "TypeScript";
+  if (normalized.includes("javascript")) return "JavaScript";
+  if (normalized.includes("react")) return "JavaScript";
+  if (normalized.includes("node")) return "JavaScript";
+  if (normalized.includes("express")) return "JavaScript";
+  if (normalized.includes("nestjs")) return "TypeScript";
+  if (normalized.includes("next.js") || normalized.includes("nextjs")) return "JavaScript";
+  if (normalized.includes("java")) return "Java";
+  if (normalized.includes("spring")) return "Java";
+  if (normalized.includes("kotlin")) return "Kotlin";
+  if (normalized.includes("python")) return "Python";
+  if (normalized.includes("django")) return "Python";
+  if (normalized.includes("flask")) return "Python";
+  if (normalized.includes("css")) return "CSS";
+  if (normalized.includes("html")) return "HTML";
+  return null;
 }
 
 
@@ -63,6 +92,14 @@ export function buildResearchStateSeed({
 }: ResearchStateSeedOptions): Partial<ResearchState> {
   const focusSkills = buildFocusSkills(skillAssessment);
   const queries = suggestQueries(focusSkills, context);
+  const languageCandidates = [
+    ...(githubAnalysis?.languages ?? []),
+    ...new Set(
+      focusSkills
+        .map((skill) => inferLanguageFromSkill(skill.name))
+        .filter(Boolean) as string[]
+    ),
+  ].filter(Boolean);
 
   return {
     skillGap: skillAssessment.skillGaps?.[0]?.skill?.name ?? "",
@@ -74,12 +111,18 @@ export function buildResearchStateSeed({
     focusSkills,
     learningObjectives: skillAssessment.learningPath ?? [],
     queries,
+    languageCandidates,
     examples,
+    // Explicitly initialize all search-related fields as empty
+    // to ensure fresh research on each run
+    searchResults: [],
+    evaluatedResults: [],
     searchIterations: [],
     scrapedResources: [],
     comparativeInsights: [],
     learningPath: [],
     confidenceBreakdown: undefined,
     searchNotes: [],
+    recommendations: [],
   };
 }

@@ -68,6 +68,8 @@ async function runTest(scenario: TestScenario) {
     console.log(`  GitHub examples: ${result.examples?.length ?? 0}`);
     console.log(`  Confidence: ${((result.confidence ?? 0) * 100).toFixed(0)}%`);
     console.log(`  Recommendations: ${result.recommendations?.length ?? 0}`);
+    console.log(`  Comparative insights: ${result.comparativeInsights?.length ?? 0}`);
+    console.log(`  Learning path steps: ${result.learningPath?.length ?? 0}`);
 
     // Show top 3 resources
     if (result.evaluatedResults && result.evaluatedResults.length > 0) {
@@ -77,6 +79,26 @@ async function runTest(scenario: TestScenario) {
         console.log(`   Score: ${r.score.toFixed(2)} | Rating: ${"⭐".repeat(r.rating ?? 0)}`);
         console.log(`   URL: ${r.url}`);
         console.log(`   ${r.description.slice(0, 120)}...`);
+      });
+    }
+
+    if (result.comparativeInsights && result.comparativeInsights.length > 0) {
+      console.log("\n🧭 Comparative Insights:");
+      result.comparativeInsights.slice(0, 3).forEach((insight, i) => {
+        console.log(`\n${i + 1}. ${insight.title} [${insight.confidence}]`);
+        console.log(`   ${insight.insight}`);
+        console.log(`   Sources: ${insight.supportingResources.join(", ")}`);
+      });
+    }
+
+    if (result.learningPath && result.learningPath.length > 0) {
+      console.log("\n🛤️  Learning Path:");
+      result.learningPath.slice(0, 5).forEach((step) => {
+        console.log(`\nStep ${step.order}: ${step.title} (${step.difficulty})`);
+        console.log(`   ${step.description}`);
+        if (step.resourceUrl) {
+          console.log(`   Resource: ${step.resourceUrl}`);
+        }
       });
     }
 

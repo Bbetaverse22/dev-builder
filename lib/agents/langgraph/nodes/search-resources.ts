@@ -16,6 +16,7 @@ import FirecrawlApp from "@mendable/firecrawl-js";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { z } from "zod";
+import { escapePromptText } from "../utils/prompt-utils";
 
 type SearchProvider = "firecrawl" | "openai";
 
@@ -29,6 +30,11 @@ const SUMMARY_RETRY_LIMIT = 2;
 const SCRAPE_TIMEOUT_MS = 20_000;
 const SEARCH_ITERATION_LIMIT = 3;
 const MIN_RESULTS_TARGET = 12;
+const FIRECRAWL_MIN_INTERVAL_MS = Number(
+  process.env.FIRECRAWL_MIN_INTERVAL_MS ?? 1500
+);
+
+let lastFirecrawlRequestAt = 0;
 
 const llmResponseSchema = z.object({
   resources: z
@@ -91,7 +97,7 @@ export async function searchResourcesNode(
 
     if (firecrawl) {
       try {
-        const firecrawlResults = await runFirecrawlSearch(
+        const { resources: firecrawlResults, rateLimitHit } = await runFirecrawlSearch(
           firecrawl,
           queries,
           seenUrls,
@@ -115,6 +121,12 @@ export async function searchResourcesNode(
         }
         iteration.sources.push("firecrawl");
         iteration.resultsFound += firecrawlResults.length;
+        if (rateLimitHit) {
+          iterationNotes.push(
+            "Firecrawl rate limit detected; pausing further search iterations"
+          );
+          continueSearching = false;
+        }
       } catch (error) {
         const message =
           (error as Error)?.message ?? "Firecrawl search failed";
@@ -309,7 +321,7 @@ async function runFirecrawlSearch(
   seenUrls: Set<string>,
   state: ResearchState,
   pass: number
-): Promise<Resource[]> {
+): Promise<{ resources: Resource[]; rateLimitHit: boolean }> {
   const collected: Resource[] = [];
   const categories = chooseFirecrawlCategories(state, collected.length);
   if (categories) {
@@ -317,11 +329,14 @@ async function runFirecrawlSearch(
       `   [Firecrawl] Using categories: ${categories.join(", ")}`
     );
   }
+  let rateLimitHit = false;
 
   // Use the first 3 queries for better coverage
   for (const query of queries.slice(0, 3)) {
     try {
       console.log(`   [Firecrawl] Searching: "${query}"`);
+
+      await enforceFirecrawlThrottle();
 
       // Firecrawl search returns web results
       const searchOptions: Record<string, unknown> = {
@@ -368,14 +383,32 @@ async function runFirecrawlSearch(
         }
       }
     } catch (error) {
+      const message = (error as Error)?.message ?? String(error);
       console.warn(
         `[searchResourcesNode] Firecrawl search failed for "${query}":`,
-        (error as Error)?.message ?? error
+        message
       );
+      if (/rate limit/i.test(message)) {
+        rateLimitHit = true;
+        break;
+      }
     }
   }
 
-  return collected;
+  return { resources: collected, rateLimitHit };
+}
+
+async function enforceFirecrawlThrottle(): Promise<void> {
+  const now = Date.now();
+  const elapsed = now - lastFirecrawlRequestAt;
+  if (elapsed < FIRECRAWL_MIN_INTERVAL_MS) {
+    await sleep(FIRECRAWL_MIN_INTERVAL_MS - elapsed);
+  }
+  lastFirecrawlRequestAt = Date.now();
+}
+
+function sleep(durationMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, durationMs));
 }
 
 function chooseFirecrawlCategories(
@@ -693,11 +726,11 @@ async function summarizeScrapedContent(
     [
       "human",
       [
-        `Skill gap: ${state.skillGap}`,
-        `Primary language: ${state.detectedLanguage}`,
-        `Resource title: ${resource.title}`,
+        `Skill gap: ${escapePromptText(state.skillGap)}`,
+        `Primary language: ${escapePromptText(state.detectedLanguage || "unknown")}`,
+        `Resource title: ${escapePromptText(resource.title)}`,
         `URL: ${resource.url}`,
-        `CONTENT:\n${content.slice(0, MAX_SUMMARY_CHARS * 6)}`,
+          `CONTENT:\n${escapePromptText(content.slice(0, MAX_SUMMARY_CHARS * 6))}`,
       ].join("\n"),
     ],
   ]);

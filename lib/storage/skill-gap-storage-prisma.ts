@@ -347,8 +347,9 @@ ${
           targetLevel: item.targetLevel,
         },
         gap: item.gap,
-        priority: item.priority.toUpperCase() as 'HIGH' | 'MEDIUM' | 'LOW',
+        priority: this.mapPriorityToScore(item.priority),
         recommendations: [],
+        confidence: this.mapConfidenceToLabel(item.confidence),
       })),
       recommendations: skillGap.recommendations.map((rec: any) => rec.text),
       categories: [],
@@ -364,6 +365,35 @@ ${
       createdAt: skillGap.createdAt.toISOString(),
       lastAccessed: skillGap.lastAccessed.toISOString(),
     };
+  }
+
+  private mapPriorityToScore(priority: string): number {
+    switch (priority?.toLowerCase()) {
+      case 'high':
+        return 9;
+      case 'medium':
+        return 6.5;
+      case 'low':
+        return 4;
+      default:
+        return 5;
+    }
+  }
+
+  private mapConfidenceToLabel(confidence?: number | null): 'low' | 'medium' | 'high' {
+    if (confidence == null) {
+      return 'medium';
+    }
+
+    if (confidence >= 0.7) {
+      return 'high';
+    }
+
+    if (confidence >= 0.45) {
+      return 'medium';
+    }
+
+    return 'low';
   }
 }
 

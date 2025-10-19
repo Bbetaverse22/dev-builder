@@ -16,15 +16,18 @@ function convertActionRecommendations(
   }
 
   const actions = recommendations.filter((item) => item?.type === 'action');
+  console.log(`[Portfolio Builder API] Converting ${actions.length} action recommendations...`);
+  
   const usedIds = new Set<string>();
   const existingTitles = new Set(
     existing.map((rec) => rec.title?.toLowerCase().trim()).filter(Boolean)
   );
 
-  return actions.slice(0, 3).map((action, index) => {
+  return actions.map((action, index) => {
     const normalizedTitle =
       typeof action.title === 'string' ? action.title.toLowerCase().trim() : '';
     if (normalizedTitle && existingTitles.has(normalizedTitle)) {
+      console.log(`[Portfolio Builder API] ⚠️  Skipping duplicate action: "${action.title}"`);
       return null;
     }
 
@@ -86,6 +89,38 @@ export async function POST(request: NextRequest) {
 
     const includeOptionalImprovements = Boolean(body.includeOptionalImprovements);
 
+    // Check if we're just creating issues from provided recommendations (skip re-analysis)
+    if (body.createIssues && body.providedRecommendations && Array.isArray(body.providedRecommendations)) {
+      console.log(`[Portfolio Builder API] Using ${body.providedRecommendations.length} provided recommendations directly`);
+      
+      // Extract owner and repo from URL
+      const match = body.repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+      if (!match) {
+        return NextResponse.json({ error: 'Invalid GitHub repository URL' }, { status: 400 });
+      }
+      const [, owner, repo] = match;
+      const cleanRepo = repo.replace(/\.git$/, '');
+
+      // Create issues directly from provided recommendations
+      const issueResults = await portfolioBuilder.createImprovementIssues(
+        owner,
+        cleanRepo,
+        body.providedRecommendations,
+        { includeOptional: includeOptionalImprovements }
+      );
+
+      const successCount = issueResults.filter((r) => r.success).length;
+      console.log(`[Portfolio Builder API] Created ${successCount}/${issueResults.length} issues successfully`);
+
+      return NextResponse.json(
+        {
+          success: true,
+          issues: issueResults,
+        },
+        { status: 200 }
+      );
+    }
+
     // Step 1: Analyze portfolio quality
     console.log('[Portfolio Builder API] Analyzing portfolio quality...');
     const qualityAnalysis = await portfolioBuilder.analyzePortfolioQuality(body.repoUrl, {
@@ -110,12 +145,15 @@ export async function POST(request: NextRequest) {
       body.researchResults?.recommendations,
       enrichedRecommendations
     );
+    console.log(`[Portfolio Builder API] Created ${actionRecommendations.length} action recommendations after deduplication`);
     const allRecommendations = [...enrichedRecommendations, ...actionRecommendations];
 
     let filteredRecommendations = allRecommendations;
     if (Array.isArray(body.recommendationIds) && body.recommendationIds.length > 0) {
+      console.log(`[Portfolio Builder API] Filtering to ${body.recommendationIds.length} selected recommendation IDs`);
       const idSet = new Set<string>(body.recommendationIds);
       filteredRecommendations = allRecommendations.filter((rec) => idSet.has(rec.id));
+      console.log(`[Portfolio Builder API] After filtering: ${filteredRecommendations.length} recommendations matched`);
     }
 
     // Step 3: Create GitHub issues (if requested and token available)

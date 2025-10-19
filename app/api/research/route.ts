@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[Research Agent] Starting workflow for:", body.skillGap);
+    console.log("[Research Agent] Force refresh:", body.forceRefresh ?? false);
 
     // Prepare input state
     const input: ResearchState = {
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
       focusSkills: body.focusSkills || [],
       learningObjectives: body.learningObjectives || [],
       iterationCount: 0,
+      forceRefresh: body.forceRefresh ?? true, // Default to true to ensure fresh research
     };
 
     // Run the research agent

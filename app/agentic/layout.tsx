@@ -10,6 +10,7 @@ import {
   Briefcase,
   TrendingUp,
   BookOpen,
+  Sparkles,
   Menu,
   X,
 } from "lucide-react";
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { id: "skill-gaps", label: "Skill Gap Analysis", icon: Target, href: "/agentic/skill-gaps" },
   { id: "portfolio", label: "Portfolio Builder", icon: Briefcase, href: "/agentic/portfolio" },
   { id: "learning", label: "Learning Resources", icon: BookOpen, href: "/agentic/learning" },
+  { id: "templates", label: "Template Generator", icon: Sparkles, href: "/agentic/templates" },
   // { id: "progress", label: "Progress Tracking", icon: TrendingUp, href: "/agentic/progress" },
 ] as const;
 
@@ -45,9 +47,9 @@ export default function AgenticLayout({
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300/70">
-                Agent Workflows
+                Dev-Builder
               </p>
-              <h1 className="text-lg font-semibold text-white">Skillbridge Control Center</h1>
+              <h1 className="text-lg font-semibold text-white">Analyze. Learn. Build.</h1>
             </div>
           </div>
         </div>
@@ -116,7 +118,7 @@ export default function AgenticLayout({
                 {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
               <span className="font-semibold uppercase tracking-wide text-slate-200">
-                Agent Workflows
+                Dev-Builder
               </span>
               <div className="w-9" />
             </header>

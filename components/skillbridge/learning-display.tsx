@@ -4,26 +4,26 @@ import { useAnalysis } from '@/lib/contexts/analysis-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Github, FileText, ArrowRight } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { BookOpen, Github, FileText, ArrowRight, Sparkles, Compass, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect } from 'react';
 
 export function LearningDisplay() {
   const { analysisResults, hasCompletedAnalysis } = useAnalysis();
 
-  useEffect(() => {
-    console.log('[LearningDisplay] hasCompletedAnalysis:', hasCompletedAnalysis);
-    console.log('[LearningDisplay] analysisResults:', analysisResults);
-    if (analysisResults) {
-      console.log('[LearningDisplay] researchResults:', analysisResults.researchResults);
-      console.log('[LearningDisplay] githubExamples:', analysisResults.githubExamples);
-    }
-  }, [hasCompletedAnalysis, analysisResults]);
+  // Debug logging (remove in production)
+  console.log('[LearningDisplay] Analysis status:', {
+    hasCompletedAnalysis,
+    researchResults: analysisResults?.researchResults?.length ?? 0,
+    githubExamples: analysisResults?.githubExamples?.length ?? 0,
+    repoUrl: analysisResults?.repoUrl
+  });
 
+  // Always show empty state if no analysis completed
   if (!hasCompletedAnalysis) {
     return (
       <div className="space-y-6">
-        <Card className="border-indigo-400/30 bg-gradient-to-br from-indigo-800/50 via-indigo-900/40 to-slate-950/70">
+        <Card className="border-2 border-indigo-400/40 bg-gradient-to-br from-indigo-700/40 via-indigo-900/30 to-slate-950/60 shadow-[0_0_40px_rgba(99,102,241,0.25)] backdrop-blur-md">
           <CardContent className="pt-12 pb-12 text-center">
             <div className="max-w-md mx-auto space-y-4">
               <BookOpen className="h-16 w-16 mx-auto text-indigo-400/50" />
@@ -44,7 +44,13 @@ export function LearningDisplay() {
     );
   }
 
-  const { researchResults = [], githubExamples = [] } = analysisResults || {};
+  const {
+    researchResults = [],
+    githubExamples = [],
+    comparativeInsights = [],
+    learningPath = [],
+    confidenceBreakdown,
+  } = analysisResults || {};
 
   return (
     <div className="space-y-6 text-white">
@@ -70,19 +76,38 @@ export function LearningDisplay() {
                   rel="noopener noreferrer"
                   className="p-4 bg-indigo-200/10 rounded-lg border border-indigo-200/20 hover:bg-indigo-200/20 transition-colors group"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 space-y-2">
                       <h4 className="text-lg font-semibold text-white group-hover:text-indigo-300 transition-colors">
                         {resource.title}
                       </h4>
-                      <p className="text-sm text-indigo-100/70 mt-1">{resource.description}</p>
-                      {resource.relevance && (
-                        <div className="mt-2">
+                      {resource.summary ? (
+                        <p className="text-sm text-indigo-100/80 leading-relaxed">{resource.summary}</p>
+                      ) : (
+                        <p className="text-sm text-indigo-100/70 mt-1">{resource.description}</p>
+                      )}
+                      {resource.keyPoints && resource.keyPoints.length > 0 && (
+                        <div className="mt-3 space-y-1">
+                          <p className="text-xs uppercase tracking-wide text-indigo-200/60">Key takeaways</p>
+                          <ul className="list-disc list-inside space-y-1 text-sm text-indigo-100/80">
+                            {resource.keyPoints.slice(0, 4).map((point: string, idx: number) => (
+                              <li key={idx}>{point}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {resource.relevance && (
                           <Badge variant="outline" className="text-xs text-indigo-200 border-indigo-200/30">
                             Relevance: {resource.relevance}
                           </Badge>
-                        </div>
-                      )}
+                        )}
+                        {resource.recommendedAudience && (
+                          <Badge variant="outline" className="text-xs text-indigo-200 border-indigo-200/30">
+                            Audience: {resource.recommendedAudience}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </a>
@@ -139,22 +164,178 @@ export function LearningDisplay() {
         </Card>
       )}
 
+      {/* Comparative Insights */}
+      {comparativeInsights && comparativeInsights.length > 0 && (
+        <Card className="border-2 border-purple-400/40 bg-gradient-to-br from-purple-700/40 via-purple-900/30 to-slate-950/60 shadow-[0_0_40px_rgba(168,85,247,0.25)] backdrop-blur-md">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-3 text-white text-2xl">
+              <Compass className="h-6 w-6" />
+              <span>Comparative Insights</span>
+            </CardTitle>
+            <CardDescription className="text-white/80 text-base">
+              Trade-offs and positioning across top learning resources
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {comparativeInsights.map((insight: any, index: number) => (
+              <div key={index} className="p-4 rounded-lg border border-purple-200/20 bg-purple-200/10">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-lg font-semibold text-white">{insight.title}</h4>
+                  <Badge variant="outline" className="text-xs text-purple-100 border-purple-200/40">
+                    Confidence: {insight.confidence}
+                  </Badge>
+                </div>
+                <p className="text-sm text-purple-100/80 leading-relaxed">{insight.insight}</p>
+                {insight.supportingResources?.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs uppercase tracking-wide text-purple-200/60 mb-1">Supporting resources</p>
+                    <div className="flex flex-wrap gap-2">
+                      {insight.supportingResources.slice(0, 4).map((url: string, idx: number) => (
+                        <a
+                          key={idx}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-purple-100 underline decoration-dotted hover:text-purple-200"
+                        >
+                          {url}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Learning Path */}
+      {learningPath && learningPath.length > 0 && (
+        <Card className="border-2 border-emerald-400/40 bg-gradient-to-br from-emerald-700/30 via-emerald-900/20 to-slate-950/60 shadow-[0_0_40px_rgba(16,185,129,0.25)] backdrop-blur-md">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-3 text-white text-2xl">
+              <Sparkles className="h-6 w-6" />
+              <span>Sequenced Learning Path</span>
+            </CardTitle>
+            <CardDescription className="text-white/80 text-base">
+              Follow these steps to progress from fundamentals to mastery
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {learningPath.map((step: any) => (
+              <div key={step.order} className="p-4 rounded-lg border border-emerald-200/20 bg-emerald-200/10">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-100 border-emerald-400/40">
+                        Step {step.order}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs text-emerald-100 border-emerald-200/40 capitalize">
+                        {step.difficulty}
+                      </Badge>
+                      {typeof step.estimatedTimeHours === 'number' && (
+                        <Badge variant="outline" className="text-xs text-emerald-100 border-emerald-200/40">
+                          ~{step.estimatedTimeHours} hrs
+                        </Badge>
+                      )}
+                    </div>
+                    <h4 className="text-lg font-semibold text-white">{step.title}</h4>
+                    <p className="text-sm text-emerald-100/80 leading-relaxed">{step.description}</p>
+                    {step.resourceUrl && (
+                      <a
+                        href={step.resourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-emerald-100 underline decoration-dotted hover:text-emerald-200"
+                      >
+                        {step.resourceTitle ?? 'View supporting resource'}
+                        <ArrowRight className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Confidence Breakdown */}
+      {confidenceBreakdown && (
+        <Card className="border-2 border-sky-400/40 bg-gradient-to-br from-sky-700/30 via-sky-900/20 to-slate-950/60 shadow-[0_0_40px_rgba(56,189,248,0.25)] backdrop-blur-md">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-3 text-white text-2xl">
+              <BarChart3 className="h-6 w-6" />
+              <span>Confidence Breakdown</span>
+            </CardTitle>
+            <CardDescription className="text-white/80 text-base">
+              Scores generated by the research agent after ranking sources, evaluating coverage, and sanity-checking freshness
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {[
+              { label: 'Overall', value: confidenceBreakdown.overall ?? 0 },
+              { label: 'Relevance', value: confidenceBreakdown.relevance ?? 0 },
+              { label: 'Coverage', value: confidenceBreakdown.coverage ?? 0 },
+              { label: 'Recency', value: confidenceBreakdown.recency ?? 0 },
+              { label: 'Practicality', value: confidenceBreakdown.practicality ?? 0 },
+            ].map(({ label, value }) => (
+              <div key={label} className="space-y-1">
+                <div className="flex items-center justify-between text-sm text-sky-100/90">
+                  <span>{label}</span>
+                  <span>{Math.round((value ?? 0) * 100)}%</span>
+                </div>
+                <Progress value={Math.round((value ?? 0) * 100)} className="h-2 bg-sky-900/40" />
+              </div>
+            ))}
+            {confidenceBreakdown.confidenceNotes && confidenceBreakdown.confidenceNotes.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs uppercase tracking-wide text-sky-200/60 mb-1">Notes</p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-sky-100/80">
+                  {confidenceBreakdown.confidenceNotes.map((note: string, idx: number) => (
+                    <li key={idx}>{note}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Empty State */}
       {researchResults.length === 0 && githubExamples.length === 0 && (
-        <Card className="border-indigo-400/30 bg-gradient-to-br from-indigo-800/50 via-indigo-900/40 to-slate-950/70">
+        <Card className="border-2 border-indigo-400/40 bg-gradient-to-br from-indigo-700/40 via-indigo-900/30 to-slate-950/60 shadow-[0_0_40px_rgba(99,102,241,0.25)] backdrop-blur-md">
           <CardContent className="pt-12 pb-12 text-center">
             <div className="max-w-md mx-auto space-y-4">
               <BookOpen className="h-16 w-16 mx-auto text-indigo-400/50" />
               <h3 className="text-2xl font-bold text-white">No Learning Resources Generated</h3>
               <p className="text-indigo-100/70 leading-relaxed">
-                The research agent didn't generate learning resources. Try running the analysis again or check your skill gap inputs.
+                The research agent didn't find learning resources or GitHub examples for this analysis.
               </p>
-              <Link href="/agentic/skill-gaps">
-                <Button className="mt-4 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white">
-                  Run Analysis Again
-                  <ArrowRight className="h-4 w-4 ml-2" />
+              <p className="text-sm text-indigo-100/60 leading-relaxed">
+                This can happen for very niche skills or if the research agent encountered API issues. Try running the analysis again with a different repository or check the Skill Gap Analysis page for more details.
+              </p>
+              <div className="flex gap-3 justify-center mt-6">
+                <Link href="/agentic/skill-gaps">
+                  <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white">
+                    Run New Analysis
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
+                <Button 
+                  variant="outline" 
+                  className="border-indigo-400/40 text-white hover:bg-indigo-500/20"
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.removeItem('skillbridge_analysis_results');
+                      window.location.reload();
+                    }
+                  }}
+                >
+                  Clear Cache
                 </Button>
-              </Link>
+              </div>
             </div>
           </CardContent>
         </Card>

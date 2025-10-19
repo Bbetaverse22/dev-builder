@@ -52,7 +52,7 @@ export class ServerlessTemplateCreatorClient {
    */
   async analyzeStructure(repoUrl: string, depth: number = 3): Promise<StructureAnalysis> {
     try {
-      const { owner, repo } = this.parseRepositoryUrl(repoUrl);
+      const { owner, repo, path } = this.parseRepositoryUrl(repoUrl);
       const octokit = this.getOctokit();
 
       // Get repository information
@@ -62,7 +62,7 @@ export class ServerlessTemplateCreatorClient {
       const { data: contentsResponse } = await octokit.repos.getContent({
         owner,
         repo,
-        path: '',
+        path: path || '',
       });
 
       // Ensure we have an array of contents
@@ -96,11 +96,11 @@ export class ServerlessTemplateCreatorClient {
     options: TemplateExtractionOptions = {}
   ): Promise<ExtractedTemplate> {
     try {
-      const { owner, repo } = this.parseRepositoryUrl(repoUrl);
+      const { owner, repo, path } = this.parseRepositoryUrl(repoUrl);
       const octokit = this.getOctokit();
 
       // Get all files matching the patterns
-      const files = await this.getMatchingFiles(octokit, owner, repo, filePatterns);
+      const files = await this.getMatchingFiles(octokit, owner, repo, filePatterns, path);
       
       // Process files to create template
       const templateFiles: TemplateFile[] = [];
@@ -119,13 +119,13 @@ export class ServerlessTemplateCreatorClient {
         });
       }
 
-      // Generate instructions
+      // Generate instructions (without numbers - let the UI handle formatting)
       instructions.push(
-        '1. Replace all placeholders with your specific values',
-        '2. Update package.json with your project details',
-        '3. Install dependencies: npm install',
-        '4. Customize the code for your specific use case',
-        '5. Update README.md with your project information'
+        'Replace all placeholders with your specific values',
+        'Update package.json with your project details',
+        'Install dependencies: npm install',
+        'Customize the code for your specific use case',
+        'Update README.md with your project information'
       );
 
       return {
@@ -242,7 +242,8 @@ export class ServerlessTemplateCreatorClient {
     octokit: Octokit,
     owner: string,
     repo: string,
-    patterns: string[]
+    patterns: string[],
+    subPath?: string
   ): Promise<Array<{ path: string; content: string; type: string }>> {
     const files: Array<{ path: string; content: string; type: string }> = [];
     
@@ -254,15 +255,53 @@ export class ServerlessTemplateCreatorClient {
       recursive: 'true',
     });
 
-    // Filter files by patterns
+    // Filter files by patterns and subdirectory
     const matchingFiles = tree.tree.filter(item =>
       item.type === 'blob' &&
       item.path &&
+      (!subPath || item.path.startsWith(subPath + '/')) &&
       patterns.some(pattern => minimatch(item.path!, pattern))
     );
 
-    // Get file contents
-    for (const file of matchingFiles.slice(0, 20)) { // Limit to 20 files
+    console.log(`[Template Extractor] Found ${matchingFiles.length} matching files`);
+
+    // Prioritize code files over documentation
+    const sortedFiles = matchingFiles.sort((a, b) => {
+      const aPath = a.path || '';
+      const bPath = b.path || '';
+      
+      // Prioritize source code directories
+      const aPriority = (
+        aPath.includes('/src/') ? 1000 :
+        aPath.includes('/lib/') ? 900 :
+        aPath.includes('/components/') ? 850 :
+        aPath.includes('/pages/') ? 850 :
+        aPath.includes('/app/') ? 850 :
+        aPath.includes('/api/') ? 800 :
+        aPath.match(/\.(ts|tsx|js|jsx|py|go|java|rs)$/) ? 700 :
+        aPath.match(/\.(json|yml|yaml)$/) ? 300 :
+        aPath.match(/\.md$/i) ? 100 :
+        0
+      );
+      
+      const bPriority = (
+        bPath.includes('/src/') ? 1000 :
+        bPath.includes('/lib/') ? 900 :
+        bPath.includes('/components/') ? 850 :
+        bPath.includes('/pages/') ? 850 :
+        bPath.includes('/app/') ? 850 :
+        bPath.includes('/api/') ? 800 :
+        bPath.match(/\.(ts|tsx|js|jsx|py|go|java|rs)$/) ? 700 :
+        bPath.match(/\.(json|yml|yaml)$/) ? 300 :
+        bPath.match(/\.md$/i) ? 100 :
+        0
+      );
+      
+      return bPriority - aPriority;
+    });
+
+    // Get file contents - increased limit to 50 files to get more actual code
+    for (const file of sortedFiles.slice(0, 50)) { // Limit to 50 files
       if (!file.path || !file.sha) continue;
 
       try {
@@ -272,15 +311,24 @@ export class ServerlessTemplateCreatorClient {
           file_sha: file.sha,
         });
 
-        files.push({
+        const fileData = {
           path: file.path,
           content: Buffer.from(content.content!, 'base64').toString('utf-8'),
           type: file.path.split('.').pop() || 'unknown',
-        });
+        };
+        files.push(fileData);
+        console.log(`[Template Extractor] ✓ Extracted: ${file.path}`);
       } catch (error) {
-        console.warn(`Failed to get content for ${file.path}:`, error);
+        console.warn(`[Template Extractor] ✗ Failed to get content for ${file.path}:`, error);
       }
     }
+
+    console.log(`[Template Extractor] Successfully extracted ${files.length} files`);
+    const fileTypes = files.reduce((acc, f) => {
+      acc[f.type] = (acc[f.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log(`[Template Extractor] File types:`, fileTypes);
 
     return files;
   }
@@ -339,7 +387,18 @@ export class ServerlessTemplateCreatorClient {
     return `Template Structure:\n${structure}`;
   }
 
-  private parseRepositoryUrl(repoUrl: string): { owner: string; repo: string } {
+  private parseRepositoryUrl(repoUrl: string): { owner: string; repo: string; path?: string } {
+    // Handle URLs like: https://github.com/owner/repo/tree/branch/path/to/dir
+    const treeMatch = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+?)(?:\.git)?\/tree\/[^\/]+\/(.+)/i);
+    if (treeMatch) {
+      return {
+        owner: treeMatch[1],
+        repo: treeMatch[2],
+        path: treeMatch[3],
+      };
+    }
+    
+    // Handle regular URLs like: https://github.com/owner/repo
     const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+?)(?:\.git)?(?:\/|$)/i);
     if (!match) {
       throw new Error(`Invalid GitHub repository URL: ${repoUrl}`);

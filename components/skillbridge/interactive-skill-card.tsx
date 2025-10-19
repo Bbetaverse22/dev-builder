@@ -15,7 +15,8 @@ import {
   TrendingUp,
   AlertCircle,
   Target,
-  Briefcase
+  Briefcase,
+  ShieldCheck,
 } from 'lucide-react';
 import { formatGapValue } from '@/lib/utils';
 import type { SkillGuidance } from '@/lib/agents/gap-analyzer';
@@ -27,6 +28,7 @@ interface SkillGap {
   targetLevel: number;
   priority: number;
   gap: number;
+  confidence?: 'low' | 'medium' | 'high';
   recommendations?: string[];
   guidance?: SkillGuidance;
 }
@@ -141,6 +143,16 @@ export function InteractiveSkillCard({ skill, onStartLearning }: InteractiveSkil
               <Badge variant={getPriorityColor(skill.priority)}>
                 Priority: {skill.priority}/10
               </Badge>
+              {skill.confidence && (
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <ShieldCheck className="h-3 w-3" />
+                  {skill.confidence === 'high'
+                    ? 'High confidence'
+                    : skill.confidence === 'medium'
+                      ? 'Moderate confidence'
+                      : 'Low confidence'}
+                </span>
+              )}
               {isExpanded ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (

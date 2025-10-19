@@ -5,7 +5,7 @@
  * Single-page agentic workflow with AI-powered Portfolio Builder
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,6 @@ import { AnimatedFeatures } from './animated-features';
 import { AnimatedHowItWorks } from './animated-how-it-works';
 import { useAnalysis } from '@/lib/contexts/analysis-context';
 import {
-  Github,
   Brain,
   Rocket,
   Target,
@@ -38,10 +37,8 @@ import {
   Activity,
   Zap,
   Search,
-  BookOpen,
-  ArrowRight
+  BookOpen
 } from 'lucide-react';
-import Link from 'next/link';
 
 type AgentStatus = 'IDLE' | 'ANALYZING' | 'RESEARCHING' | 'PLANNING' | 'ACTING' | 'MONITORING' | 'COMPLETE' | 'ERROR';
 
@@ -70,21 +67,6 @@ interface PortfolioTask {
   };
 }
 
-interface GeneratedTemplateSummary {
-  sourceName: string;
-  sourceUrl: string;
-  templateDirectory: string;
-  branchName: string;
-  instructions: string[];
-  analysisSummary: {
-    framework: string;
-    templateWorthiness: number;
-    insights: string[];
-  };
-  pullRequestUrl?: string;
-  pullRequestNumber?: number;
-}
-
 interface AgenticSkillAnalyzerProps {
   showMarketing?: boolean;
 }
@@ -92,8 +74,7 @@ interface AgenticSkillAnalyzerProps {
 const MAX_DISPLAY_RESOURCES = 3;
 const MAX_DISPLAY_EXAMPLES = 3;
 export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnalyzerProps) {
-  const { setAnalysisResults } = useAnalysis();
-  const [githubUsername, setGithubUsername] = useState('');
+  const { analysisResults, setAnalysisResults } = useAnalysis();
   const [repoUrlInput, setRepoUrlInput] = useState('');
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('IDLE');
   const [progress, setProgress] = useState(0);
@@ -115,14 +96,22 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
   const [resourcesExpanded, setResourcesExpanded] = useState(false);
   const [examplesExpanded, setExamplesExpanded] = useState(false);
   const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
-  const [generatedTemplates, setGeneratedTemplates] = useState<Record<string, GeneratedTemplateSummary>>({});
-  const [templateGenerationLoading, setTemplateGenerationLoading] = useState<Record<string, boolean>>({});
-  const [templateGenerationErrors, setTemplateGenerationErrors] = useState<Record<string, string>>({});
-  const [templatePrLoading, setTemplatePrLoading] = useState<Record<string, boolean>>({});
-  const [templatePrErrors, setTemplatePrErrors] = useState<Record<string, string>>({});
-  const [customTemplateRepo, setCustomTemplateRepo] = useState('');
-  const [customTemplateFeature, setCustomTemplateFeature] = useState('');
-  const [customTemplateError, setCustomTemplateError] = useState('');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [hasLoadedFromContext, setHasLoadedFromContext] = useState(false);
+  
+  const activityLogRef = useRef<HTMLDivElement>(null);
+  const activityLogContainerRef = useRef<HTMLDivElement>(null);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[AgenticSkillAnalyzer] Component state:', {
+      hasAnalysisResults: !!analysisResults,
+      skillGapsCount: analysisResults?.skillGaps?.length || 0,
+      localSkillGapsCount: skillGaps.length,
+      agentStatus,
+      hasLoadedFromContext
+    });
+  }, [analysisResults, skillGaps, agentStatus, hasLoadedFromContext]);
 
   const groupedResearchRecommendations = useMemo(() => {
     const recs = Array.isArray(researchResults?.recommendations)
@@ -151,13 +140,6 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
     };
   }, [researchResults]);
 
-  const normalizedCustomRepo = customTemplateRepo.trim();
-  const customTemplateLoading = normalizedCustomRepo ? templateGenerationLoading[normalizedCustomRepo] : false;
-  const customTemplateFailure = normalizedCustomRepo ? templateGenerationErrors[normalizedCustomRepo] : '';
-  const customTemplateSuccess = normalizedCustomRepo ? generatedTemplates[normalizedCustomRepo] : undefined;
-  const customTemplatePrLoading = normalizedCustomRepo ? templatePrLoading[normalizedCustomRepo] : false;
-  const customTemplatePrError = normalizedCustomRepo ? templatePrErrors[normalizedCustomRepo] : '';
-
   useEffect(() => {
     setResourcesExpanded(false);
     setExamplesExpanded(false);
@@ -166,6 +148,90 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
   useEffect(() => {
     setExpandedTasks({});
   }, [portfolioTasks.length]);
+
+  // Load existing results from context on mount
+  useEffect(() => {
+    if (!hasLoadedFromContext && analysisResults && analysisResults.skillGaps.length > 0) {
+      console.log('[AgenticSkillAnalyzer] Loading results from context:', analysisResults);
+      
+      // Convert context data back to local state format
+      const convertedSkillGaps = analysisResults.skillGaps.map((gap) => {
+        const priority = parseInt(gap.importance) || 80;
+        
+        // Use saved numeric values if available, otherwise estimate
+        const currentLevel = gap.currentLevel ?? (priority >= 85 ? 2 : priority >= 70 ? 3 : 4);
+        const targetLevel = gap.targetLevel ?? 5;
+        const gapSize = gap.gap ?? (targetLevel - currentLevel);
+        
+        return {
+          id: gap.skill,
+          name: gap.skill,
+          currentLevel,
+          targetLevel,
+          priority,
+          gap: gapSize,
+          guidance: {
+            reasoning: gap.reasoning,
+            recommendedSteps: [],
+          },
+          recommendations: [],
+        };
+      });
+
+      setSkillGaps(convertedSkillGaps);
+      setRepoUrl(analysisResults.repoUrl);
+      
+      // Create a mock skillAssessment from stored data
+      const mockAssessment = {
+        overallScore: analysisResults.portfolioQuality?.overallScore || 70,
+        skillGaps: convertedSkillGaps.map(sg => ({
+          skill: { 
+            id: sg.id || sg.name, 
+            name: sg.name, 
+            currentLevel: sg.currentLevel, 
+            targetLevel: sg.targetLevel 
+          },
+          gap: sg.gap,
+          priority: sg.priority,
+          guidance: sg.guidance as any
+        }))
+      };
+      setSkillAssessment(mockAssessment);
+      
+      // Mark as complete if we have data
+      setAgentStatus('COMPLETE');
+      setProgress(100);
+      setHasLoadedFromContext(true);
+      
+      // Add a log entry to indicate results were loaded from previous analysis
+      const log = {
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'info' as const,
+        message: 'Loaded results from previous analysis',
+        icon: <CheckCircle2 className="h-4 w-4" />
+      };
+      setActionLogs([log]);
+      
+      console.log('[AgenticSkillAnalyzer] Loaded skill gaps:', convertedSkillGaps);
+    }
+  }, [analysisResults, hasLoadedFromContext]);
+
+  // Auto-scroll to activity log when agent starts running
+  useEffect(() => {
+    if (agentStatus !== 'IDLE' && agentStatus !== 'COMPLETE' && agentStatus !== 'ERROR' && activityLogRef.current) {
+      setTimeout(() => {
+        activityLogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
+  }, [agentStatus]);
+
+  // Auto-scroll to bottom of activity log when new logs are added
+  useEffect(() => {
+    if (activityLogContainerRef.current && actionLogs.length > 0) {
+      const container = activityLogContainerRef.current;
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [actionLogs]);
 
   const toggleRecommendationSelection = (id: string, checked: boolean) => {
     setSelectedRecommendations((prev) => {
@@ -193,163 +259,34 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
     }
   };
 
-  const generateTemplateFromExample = async (example: any) => {
-    if (!example?.url) {
-      return;
-    }
-
-    const url: string = example.url;
-    setTemplateGenerationErrors((prev) => ({ ...prev, [url]: '' }));
-    setTemplateGenerationLoading((prev) => ({ ...prev, [url]: true }));
-    setTemplatePrErrors((prev) => ({ ...prev, [url]: '' }));
-
-    try {
-      const response = await fetch('/api/templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'preview',
-          exampleUrl: url,
-          featureName: example.name,
-          skillName: skillGaps[0]?.name,
-          repositoryUrl: repoUrl,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data?.success) {
-        setGeneratedTemplates((prev) => ({
-          ...prev,
-          [url]: {
-            sourceName: data.sourceName ?? example.name ?? url,
-            sourceUrl: data.sourceUrl ?? url,
-            templateDirectory: data.templateDirectory,
-            branchName: data.branchName,
-            instructions: data.instructions ?? [],
-            analysisSummary: data.analysisSummary ?? {
-              framework: 'unknown',
-              templateWorthiness: 0,
-              insights: [],
-            },
-            pullRequestUrl: undefined,
-            pullRequestNumber: undefined,
-          },
-        }));
-        addLog(
-          'success',
-          `Generated template example from ${example.name ?? url}. Saved to ${data.templateDirectory}.`,
-          <Sparkles className="h-4 w-4" />
-        );
-      } else {
-        const message = data?.message ?? 'Template generation failed';
-        setTemplateGenerationErrors((prev) => ({ ...prev, [url]: message }));
-        addLog('warning', message, <AlertCircle className="h-4 w-4" />);
-      }
-    } catch (error) {
-      console.error('Template generation error:', error);
-      setTemplateGenerationErrors((prev) => ({
-        ...prev,
-        [url]: 'Unexpected error while generating template.',
-      }));
-      addLog('error', 'Unexpected error while generating template example', <AlertCircle className="h-4 w-4" />);
-    } finally {
-      setTemplateGenerationLoading((prev) => ({ ...prev, [url]: false }));
-    }
-  };
-
-  const handleManualTemplateGeneration = async () => {
-    const url = customTemplateRepo.trim();
-    if (!url) {
-      setCustomTemplateError('Enter a GitHub repository URL');
-      return;
-    }
-
-    if (!/^https?:\/\/github\.com\/[^\/]+\/[^\/]+/i.test(url)) {
-      setCustomTemplateError('Enter a valid GitHub repository URL');
-      return;
-    }
-
-    setCustomTemplateError('');
-    await generateTemplateFromExample({
-      url,
-      name: customTemplateFeature || url,
-    });
-  };
-
-  const createTemplatePullRequest = async (example: any) => {
-    if (!example?.url) {
-      return;
-    }
-    if (!repoUrl) {
-      addLog('warning', 'Run the analyzer on a repository before creating a template PR.', <AlertCircle className="h-4 w-4" />);
-      setTemplatePrErrors((prev) => ({
-        ...prev,
-        [example.url]: 'Run the analyzer on a repository before creating a template PR.',
-      }));
-      return;
-    }
-
-    const url: string = example.url;
-    setTemplatePrErrors((prev) => ({ ...prev, [url]: '' }));
-    setTemplatePrLoading((prev) => ({ ...prev, [url]: true }));
-
-    try {
-      const response = await fetch('/api/templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'create-pr',
-          exampleUrl: url,
-          featureName: example.name,
-          skillName: skillGaps[0]?.name,
-          repositoryUrl: repoUrl,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data?.success && data.pullRequest) {
-        setGeneratedTemplates((prev) => {
-          const existing = prev[url];
-          if (!existing) {
-            return prev;
-          }
-          return {
-            ...prev,
-            [url]: {
-              ...existing,
-              pullRequestUrl: data.pullRequest.pullRequestUrl,
-              pullRequestNumber: data.pullRequest.number,
-              branchName: data.branchName ?? existing.branchName,
-            },
-          };
-        });
-        setTemplatePrErrors((prev) => ({ ...prev, [url]: '' }));
-
-        addLog(
-          'success',
-          `Created pull request ${data.pullRequest.pullRequestUrl}`,
-          <GitPullRequest className="h-4 w-4" />
-        );
-      } else {
-        const message = data?.message ?? 'Failed to create pull request';
-        setTemplatePrErrors((prev) => ({ ...prev, [url]: message }));
-        addLog('warning', message, <AlertCircle className="h-4 w-4" />);
-      }
-    } catch (error) {
-      console.error('Template PR creation error:', error);
-      setTemplatePrErrors((prev) => ({
-        ...prev,
-        [url]: 'Unexpected error while creating pull request.',
-      }));
-      addLog('error', 'Unexpected error while creating template pull request', <AlertCircle className="h-4 w-4" />);
-    } finally {
-      setTemplatePrLoading((prev) => ({ ...prev, [url]: false }));
-    }
-  };
-
   const gapAnalyzer = useMemo(() => new GapAnalyzerAgent(), []);
+
+  const handleClearResults = () => {
+    // Clear all state
+    setAnalysisResults(null);
+    setRepoUrlInput('');
+    setAgentStatus('IDLE');
+    setProgress(0);
+    setActionLogs([]);
+    setSkillGaps([]);
+    setPortfolioTasks([]);
+    setCareerInsights(null);
+    setResearchResults(null);
+    setError(null);
+    setTargetRole('');
+    setTargetIndustry('');
+    setProfessionalGoals('');
+    setPortfolioData(null);
+    setRepoUrl(null);
+    setCreatedIssues([]);
+    setSkillAssessment(null);
+    setSelectedRecommendations([]);
+    setShowClearConfirm(false);
+    setHasLoadedFromContext(false);
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const addLog = (type: ActionLog['type'], message: string, icon?: React.ReactNode) => {
     const log: ActionLog = {
@@ -364,7 +301,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
   const getCurrentTaskMessage = (status: AgentStatus): string => {
     switch (status) {
       case 'ANALYZING':
-        return 'Analyzing GitHub profile and repositories...';
+        return 'Analyzing repository...';
       case 'RESEARCHING':
         return 'Conducting deep market research on job requirements...';
       case 'PLANNING':
@@ -383,11 +320,10 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
   };
 
   const runAgenticWorkflow = async () => {
-    const username = githubUsername.trim();
     const directRepoUrl = repoUrlInput.trim();
 
-    if (!username && !directRepoUrl) {
-      setError('Please enter a GitHub username or repository URL');
+    if (!directRepoUrl) {
+      setError('Please enter a GitHub repository URL');
       return;
     }
 
@@ -403,70 +339,27 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
     setRepoUrl(null);
     setCreatedIssues([]);
     setSelectedRecommendations([]);
-    setGeneratedTemplates({});
-    setTemplateGenerationLoading({});
-    setTemplateGenerationErrors({});
-    setTemplatePrLoading({});
-    setTemplatePrErrors({});
+    setHasLoadedFromContext(false);
 
     try {
-      // Phase 1: REAL GitHub Analysis (using existing tool integrations)
       let repoUrl: string | null = null;
 
-      // Priority 1: Use direct repository URL if provided
-      if (directRepoUrl) {
-        const repoMatch = directRepoUrl.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+?)(?:\/|$)/i);
-        if (repoMatch) {
-          const [, owner, repo] = repoMatch;
-          repoUrl = `https://github.com/${owner}/${repo.replace(/\.git$/, "")}`;
-          addLog('info', `Analyzing repository: ${owner}/${repo}`, <Code className="h-4 w-4" />);
-          setProgress(20);
-        } else {
-          throw new Error('Invalid GitHub repository URL format');
-        }
-      }
-      // Priority 2: Fetch latest repo from username if no direct URL provided
-      else if (username) {
-        addLog('info', 'Starting GitHub profile analysis...', <Github className="h-4 w-4" />);
-        setProgress(10);
-
-        addLog('info', `Fetching repositories for @${username}`, <Search className="h-4 w-4" />);
-        setProgress(15);
-
-        const reposResponse = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=1`);
-
-        if (!reposResponse.ok) {
-          if (reposResponse.status === 404) {
-            throw new Error(`GitHub user "${username}" not found`);
-          } else if (reposResponse.status === 403) {
-            throw new Error('GitHub API rate limit exceeded. Please try again in a few minutes.');
-          } else {
-            throw new Error(`Failed to fetch GitHub profile (Status: ${reposResponse.status})`);
-          }
-        }
-
-        const repos = await reposResponse.json();
-        if (!repos || repos.length === 0) {
-          throw new Error(`No public repositories found for user "${username}"`);
-        }
-
-        repoUrl = repos[0].html_url;
-        addLog('success', `Found repository: ${repos[0].name}`, <CheckCircle2 className="h-4 w-4" />);
-        setProgress(25);
-
-        addLog('info', 'Analyzing repository tech stack...', <Code className="h-4 w-4" />);
-        setProgress(30);
+      const repoMatch = directRepoUrl.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+?)(?:\/?$|\/?#.*$|\/?\?.*$)/i);
+      if (repoMatch) {
+        const [, owner, repo] = repoMatch;
+        repoUrl = `https://github.com/${owner}/${repo.replace(/\.git$/, "")}`;
+        addLog('info', `Analyzing repository: ${owner}/${repo}`, <Code className="h-4 w-4" />);
+        setProgress(20);
+      } else {
+        throw new Error('Invalid GitHub repository URL format');
       }
 
-      // Ensure we have a repository before proceeding
       if (!repoUrl) {
-        throw new Error('Unable to determine a repository to analyze. Please provide a GitHub username or repository URL.');
+        throw new Error('Unable to determine a repository to analyze. Please provide a valid GitHub repository URL.');
       }
 
-      // Store repo URL for later use
       setRepoUrl(repoUrl);
 
-      // Use REAL GitHub analysis
       const githubAnalysis = await gapAnalyzer.analyzeGitHubRepository(repoUrl);
       
       addLog('success', `Detected languages: ${githubAnalysis.languages.join(', ')}`, <CheckCircle2 className="h-4 w-4" />);
@@ -538,6 +431,8 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
       addLog('info', 'Activating LangGraph Research Agent...', <Brain className="h-4 w-4" />);
       setProgress(60);
 
+      let researchDataForContext: any = null;
+
       try {
         // Run research agent for each skill gap
         addLog('info', `Researching ${topGaps.length} skill gaps...`, <Search className="h-4 w-4" />);
@@ -564,15 +459,36 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
         if (researchResponse.ok) {
           const researchData = await researchResponse.json();
 
-          // Store research results for display
+          // Store research results for display AND context
           setResearchResults(researchData);
+          researchDataForContext = researchData; // Capture for context saving
 
-          addLog('success', `Found ${researchData.resources?.length || 0} learning resources`, <CheckCircle2 className="h-4 w-4" />);
-          addLog('success', `Found ${researchData.examples?.length || 0} GitHub examples`, <CheckCircle2 className="h-4 w-4" />);
-          addLog('success', `Generated ${researchData.recommendations?.length || 0} personalized recommendations`, <CheckCircle2 className="h-4 w-4" />);
+          const resourceCount = researchData.resources?.length || 0;
+          const exampleCount = researchData.examples?.length || 0;
+
+          if (resourceCount === 0 && exampleCount === 0) {
+          addLog('warning', 'Research Agent found no learning resources or GitHub examples', <AlertCircle className="h-4 w-4" />);
+            addLog('info', 'Learning Resources and Templates pages will show empty. This may happen for niche skills or specific tech stacks.', <AlertCircle className="h-4 w-4" />);
+          } else {
+            addLog('success', `Found ${resourceCount} learning resources`, <CheckCircle2 className="h-4 w-4" />);
+            addLog('success', `Scraped ${researchData.scrapedResources?.length || 0} detailed sources`, <CheckCircle2 className="h-4 w-4" />);
+            addLog('success', `Found ${exampleCount} GitHub examples`, <CheckCircle2 className="h-4 w-4" />);
+            addLog('success', `Generated ${researchData.recommendations?.length || 0} personalized recommendations`, <CheckCircle2 className="h-4 w-4" />);
+          }
+
+          if (researchData.comparativeInsights?.length) {
+            addLog('info', `Comparative insights generated`, <Brain className="h-4 w-4" />);
+          }
+          if (researchData.learningPath?.length) {
+            addLog('info', `Learning path with ${researchData.learningPath.length} steps ready`, <BookOpen className="h-4 w-4" />);
+          }
+          if (researchData.confidenceBreakdown) {
+            addLog('info', `Confidence breakdown prepared`, <Activity className="h-4 w-4" />);
+          }
           setProgress(65);
         } else {
-          addLog('warning', 'Research agent returned no results, continuing...', <AlertCircle className="h-4 w-4" />);
+          addLog('warning', 'Research agent API call failed, continuing...', <AlertCircle className="h-4 w-4" />);
+          addLog('info', 'Learning Resources and Templates will be empty', <AlertCircle className="h-4 w-4" />);
         }
       } catch (researchError) {
         addLog('warning', 'Research agent failed, using fallback data', <AlertCircle className="h-4 w-4" />);
@@ -607,8 +523,6 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
 
           if (portfolioResponse.ok) {
             const portfolioDataResult = await portfolioResponse.json();
-
-            console.log('[Portfolio API Response]', portfolioDataResult);
 
             // Store portfolio data for later use
             setPortfolioData(portfolioDataResult);
@@ -720,12 +634,6 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
           timestamp: new Date()
         }));
 
-        console.log('[Context] Setting analysis results with portfolioData:', portfolioDataForContext);
-        console.log('[Context] portfolioTasks:', portfolioTasksForContext);
-        console.log('[Context] researchResults:', researchResults);
-        console.log('[Context] Learning resources count:', researchResults?.resources?.length || 0);
-        console.log('[Context] GitHub examples count:', researchResults?.examples?.length || 0);
-
         setAnalysisResults({
           repoUrl,
           portfolioQuality: portfolioDataForContext?.analysis ? {
@@ -734,10 +642,13 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
             weaknesses: portfolioDataForContext.analysis.weaknesses || [],
             recommendations: portfolioDataForContext.recommendations || []
           } : null,
-          skillGaps: skillGaps.map(gap => ({
+          skillGaps: topGaps.map(gap => ({
             skill: gap.name,
             importance: String(gap.priority),
-            reasoning: gap.guidance?.reasoning || gap.gap
+            reasoning: (gap.guidance as any)?.reasoning || gap.gap || '',
+            currentLevel: gap.currentLevel,
+            targetLevel: gap.targetLevel,
+            gap: gap.gap
           })),
           portfolioActions: portfolioTasksForContext.length > 0 ? portfolioTasksForContext.map(task => ({
             id: task.id,
@@ -745,23 +656,33 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
             description: task.description || '',
             priority: task.priority,
             estimatedTime: task.estimatedEffort || 'Unknown',
-            category: task.type
+            category: task.type,
+            optional: task.optional
           })) : [],
-          researchResults: researchResults?.resources?.map((resource: any) => ({
+          researchResults: researchDataForContext?.resources?.map((resource: any) => ({
             title: resource.title,
             url: resource.url,
             description: resource.description,
             type: 'article' as const,
-            relevance: resource.score ? `${(resource.score * 100).toFixed(0)}%` : undefined
+            relevance: resource.score ? `${(resource.score * 100).toFixed(0)}%` : undefined,
+            summary: resource.summary,
+            keyPoints: resource.keyPoints,
+            recommendedAudience: resource.recommendedAudience,
           })) || [],
-          githubExamples: researchResults?.examples?.map((example: any) => ({
+          githubExamples: researchDataForContext?.examples?.map((example: any) => ({
             name: example.name,
             url: example.url,
             description: example.description,
             stars: example.stars,
             language: example.language
           })) || [],
-          templates: [],
+          comparativeInsights: researchDataForContext?.comparativeInsights || [],
+          learningPath: researchDataForContext?.learningPath || [],
+          confidenceBreakdown: researchDataForContext?.confidenceBreakdown || null,
+          templates: (portfolioDataForContext?.recommendations || [])
+            .flatMap((rec: any) => rec.templates || [])
+            .filter((template: any) => template && Object.keys(template).length > 0)
+            .slice(0, 10), // Limit to 10 templates
           agentLogs: agentLogsForContext
         });
       }
@@ -913,7 +834,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
                   <span className="text-white">Agentic Skill Analyzer</span>
                 </CardTitle>
                 <CardDescription className="text-base text-white/80 leading-relaxed mt-1">
-                  Drop a GitHub username or repository URL and let autonomous agents audit your work, map skill gaps, and build a market-aligned learning plan.
+                  Drop a GitHub repository URL and let autonomous agents audit your work, map skill gaps, and build a market-aligned learning plan.
                 </CardDescription>
               </div>
             </div>
@@ -928,56 +849,52 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
           )}
 
           <div className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-purple-100/90 tracking-wide">GitHub Username</label>
-                <Input
-                  placeholder="e.g. octocat"
-                  value={githubUsername}
-                  onChange={(e) => setGithubUsername(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (githubUsername.trim() || repoUrlInput.trim()) && canEditInputs) {
-                      runAgenticWorkflow();
-                    }
-                  }}
-                  className="h-14 text-xl bg-purple-200/10 border-purple-300/30 text-white placeholder:text-purple-200/70 focus-visible:ring-purple-200/40 rounded-xl px-5"
-                  disabled={!canEditInputs}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-purple-100/90 tracking-wide">Repository URL (Optional)</label>
-                <Input
-                  placeholder="https://github.com/owner/repo"
-                  value={repoUrlInput}
-                  onChange={(e) => setRepoUrlInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (githubUsername.trim() || repoUrlInput.trim()) && canEditInputs) {
-                      runAgenticWorkflow();
-                    }
-                  }}
-                  className="h-14 text-xl bg-purple-200/10 border-purple-300/30 text-white placeholder:text-purple-200/70 focus-visible:ring-purple-200/40 rounded-xl px-5"
-                  disabled={!canEditInputs}
-                />
-              </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-purple-100/90 tracking-wide">GitHub Repository URL</label>
+              <Input
+                placeholder="https://github.com/owner/repo"
+                value={repoUrlInput}
+                onChange={(e) => setRepoUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && repoUrlInput.trim() && canEditInputs) {
+                    runAgenticWorkflow();
+                  }
+                }}
+                className="h-14 text-xl bg-purple-200/10 border-purple-300/30 text-white placeholder:text-purple-200/70 focus-visible:ring-purple-200/40 rounded-xl px-5"
+                disabled={!canEditInputs}
+              />
             </div>
-            <Button
-              size="lg"
-              onClick={runAgenticWorkflow}
-              disabled={(!githubUsername.trim() && !repoUrlInput.trim()) || !canEditInputs}
-              className="w-full h-14 text-xl font-semibold rounded-xl bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-600 hover:to-fuchsia-500 text-white shadow-[0_10px_30px_rgba(168,85,247,0.35)] transition-all"
-            >
-              {!canEditInputs ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Zap className="h-4 w-4 mr-2" />
-                  Activate Agent
-                </>
+            <div className="flex gap-3">
+              <Button
+                size="lg"
+                onClick={runAgenticWorkflow}
+                disabled={!repoUrlInput.trim() || !canEditInputs}
+                className="flex-1 h-14 text-xl font-semibold rounded-xl bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-600 hover:to-fuchsia-500 text-white shadow-[0_10px_30px_rgba(168,85,247,0.35)] transition-all"
+              >
+                {!canEditInputs ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Activate Agent
+                  </>
+                )}
+              </Button>
+              
+              {agentStatus === 'COMPLETE' && (
+                <Button
+                  size="lg"
+                  onClick={() => setShowClearConfirm(true)}
+                  variant="outline"
+                  className="h-14 px-6 text-lg font-semibold rounded-xl border-2 border-purple-400/40 bg-purple-900/20 hover:bg-purple-900/40 text-white transition-all"
+                >
+                  New Analysis
+                </Button>
               )}
-            </Button>
+            </div>
           </div>
 
           <div className="rounded-lg border border-purple-300/20 bg-purple-900/40 p-4 space-y-4">
@@ -1043,9 +960,40 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
       </Card>
       </div>
 
+      {/* Clear Results Confirmation Dialog */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md border-2 border-purple-400/40 bg-gradient-to-br from-purple-700/40 via-purple-900/30 to-slate-950/90 shadow-[0_0_60px_rgba(168,85,247,0.4)] backdrop-blur-md">
+            <CardHeader>
+              <CardTitle className="text-white text-xl">Clear Analysis Results?</CardTitle>
+              <CardDescription className="text-purple-100/80">
+                This will clear all analysis data from all pages (Portfolio Builder, Learning Resources, Templates) and reset the form. This action cannot be undone.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleClearResults}
+                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white"
+                >
+                  Clear All Results
+                </Button>
+                <Button
+                  onClick={() => setShowClearConfirm(false)}
+                  variant="outline"
+                  className="flex-1 border-purple-400/40 bg-purple-900/20 hover:bg-purple-900/40 text-white"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Agent Activity */}
       {(progress > 0 || actionLogs.length > 0) && (
-        <Card id="activity-log" className="mb-6">
+        <Card id="activity-log" ref={activityLogRef} className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Activity className="h-5 w-5" />
@@ -1056,7 +1004,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="max-h-80 overflow-y-auto space-y-3 pr-2">
+            <div ref={activityLogContainerRef} className="max-h-80 overflow-y-auto space-y-3 pr-2">
                 {actionLogs.length > 0 ? (
                   actionLogs.map((log, index) => (
                     <div
@@ -1185,52 +1133,6 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
               )}
             </CardContent>
           </Card>
-
-          {/* Navigation CTA to Portfolio and Learning Pages */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <Link href="/agentic/portfolio">
-              <Card className="h-full border-2 border-emerald-400/40 bg-gradient-to-br from-emerald-700/40 via-emerald-900/30 to-slate-950/60 shadow-[0_0_40px_rgba(16,185,129,0.25)] backdrop-blur-md hover:shadow-[0_0_50px_rgba(16,185,129,0.35)] transition-all cursor-pointer">
-                <CardContent className="pt-8">
-                  <div className="text-center space-y-4">
-                    <div className="flex justify-center">
-                      <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500">
-                        <Rocket className="h-8 w-8 text-white" />
-                      </div>
-                    </div>
-                    <h3 className="text-xl font-bold text-white">Portfolio Builder</h3>
-                    <p className="text-emerald-100/70 text-sm">
-                      Review your portfolio quality and create GitHub issues for improvements
-                    </p>
-                    <div className="flex items-center justify-center gap-2 text-emerald-300">
-                      <span className="text-sm font-medium">Continue</span>
-                      <ArrowRight className="h-4 w-4" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/agentic/learning">
-              <Card className="h-full border-2 border-indigo-400/40 bg-gradient-to-br from-indigo-700/40 via-indigo-900/30 to-slate-950/60 shadow-[0_0_40px_rgba(99,102,241,0.25)] backdrop-blur-md hover:shadow-[0_0_50px_rgba(99,102,241,0.35)] transition-all cursor-pointer">
-                <CardContent className="pt-8">
-                  <div className="text-center space-y-4">
-                    <div className="flex justify-center">
-                      <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500">
-                        <BookOpen className="h-8 w-8 text-white" />
-                      </div>
-                    </div>
-                    <h3 className="text-xl font-bold text-white">Learning Resources</h3>
-                    <p className="text-indigo-100/70 text-sm">
-                      Access AI-curated learning materials tailored to your skill gaps
-                    </p>
-                    <div className="flex items-center justify-center gap-2 text-indigo-300">
-                      <span className="text-sm font-medium">Continue</span>
-                      <ArrowRight className="h-4 w-4" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
         </>
       )}
     </div>

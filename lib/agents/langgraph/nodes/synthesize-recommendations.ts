@@ -19,6 +19,7 @@ import type {
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { z } from "zod";
+import { escapePromptText, escapeTemplateBraces } from "../utils/prompt-utils";
 
 const DEFAULT_MODEL = process.env.OPENAI_RESEARCH_MODEL ?? "gpt-4o-mini";
 const MAX_RECOMMENDATIONS = 6;
@@ -115,7 +116,9 @@ async function generateRecommendations(
       "For example, if the language is TypeScript, recommend TypeScript resources, NOT Java or Python.",
       "",
       "IMPORTANT: Return ONLY valid JSON with this exact structure:",
-      '{"recommendations": [...], "comparative_insights": [...], "learning_path": [...]}',
+      escapeTemplateBraces(
+        '{"recommendations": [{"type": "resource", "title": "...", "description": "...", "url": "...", "priority": "high"}], "comparative_insights": [{"title": "...", "insight": "...", "supporting_resources": ["https://..."], "confidence": "medium"}], "learning_path": [{"order": 1, "title": "...", "description": "...", "difficulty": "beginner", "estimated_time_hours": 4, "resource_url": "https://..."}]}'
+      ),
       "",
       "ALL recommendations MUST have a title field. Do not include any explanatory text, only the JSON object.",
       "Comparative insights should highlight trade-offs between the top resources.",
@@ -131,16 +134,25 @@ async function generateRecommendations(
       `Learning objectives: ${(state.learningObjectives ?? []).join(", ") || "not specified"}`,
       "",
       "Top Learning Resources:",
-      ...topResources.map((r, i) => `${i + 1}. ${r.title} (score: ${r.score.toFixed(2)})\n   ${r.url}\n   ${r.description}\n   Summary: ${r.summary ?? "(no summary)"}`),
+      ...topResources.map((r, i) => {
+        const escapedTitle = escapePromptText(r.title);
+        const escapedDescription = escapePromptText(r.description ?? "");
+        const escapedSummary = escapePromptText(r.summary ?? "(no summary)");
+        return `${i + 1}. ${escapedTitle} (score: ${r.score.toFixed(2)})\n   ${r.url}\n   ${escapedDescription}\n   Summary: ${escapedSummary}`;
+      }),
       "",
       "Top GitHub Examples:",
       ...topExamples.map((e, i) => `${i + 1}. ${e.name} (⭐ ${e.stars})\n   ${e.url}\n   ${e.description}`),
       "",
       "Scraped Resource Summaries:",
-      ...scrapedResources.map(
-        (scraped, i) =>
-          `${i + 1}. ${scraped.summary}\n   Key points: ${scraped.keyPoints.join(", ")}\n   Recommended audience: ${scraped.recommendedAudience ?? "general"}`
-      ),
+      ...scrapedResources.map((scraped, i) => {
+        const escapedSummary = escapePromptText(scraped.summary);
+        const escapedKeyPoints = scraped.keyPoints
+          .map((point) => escapePromptText(point))
+          .join(", ");
+        const escapedAudience = escapePromptText(scraped.recommendedAudience ?? "general");
+        return `${i + 1}. ${escapedSummary}\n   Key points: ${escapedKeyPoints}\n   Recommended audience: ${escapedAudience}`;
+      }),
       "",
       confidenceBreakdown
         ? `Confidence breakdown: relevance ${Math.round(
@@ -153,7 +165,8 @@ async function generateRecommendations(
         : "Confidence breakdown: unavailable",
       "",
       `Generate 5-10 personalized recommendations for ${state.detectedLanguage || "the tech stack"}.`,
-      "Return JSON with keys: recommendations (array), comparative_insights (array), learning_path (array).",
+      "Return JSON with keys: recommendations (array), comparative_insights (array), learning_path (array). Every recommendation must include type, title, description, and priority. If URL is unknown, set it to an empty string."
+        + " Include at least 5 recommendations. If you cannot find enough valid items, synthesize high-confidence suggestions based on the provided resources.",
       "Each comparative insight: title, insight, supporting_resources (URLs array), confidence (low|medium|high).",
       "Learning path items: order, title, description, difficulty (beginner|intermediate|advanced), estimated_time_hours (number), resource_url (optional).",
       `Remember: Focus ONLY on ${state.detectedLanguage || "relevant"} resources!`,
@@ -177,25 +190,63 @@ async function generateRecommendations(
       return generateFallbackRecommendations(state, resources, examples);
     }
 
-    return {
-      recommendations: limitRecommendations(validated.data.recommendations),
-      comparativeInsights: validated.data.comparative_insights.map((insight) => ({
-        title: insight.title,
-        insight: insight.insight,
-        supportingResources: insight.supporting_resources,
-        confidence: insight.confidence,
-      })),
-      learningPath: validated.data.learning_path
-        .map((step, index) => ({
-          order: step.order ?? index + 1,
-          title: step.title,
-          description: step.description,
-          estimatedTimeHours: step.estimated_time_hours,
-          difficulty: step.difficulty,
-          resourceUrl: step.resource_url,
-          resourceTitle: step.resource_title,
+    const fallback = generateFallbackRecommendations(state, resources, examples);
+
+    let recommendations = limitRecommendations(
+      validated.data.recommendations.map((rec) => ({
+        ...rec,
+        description:
+          (typeof rec.description === "string" && rec.description.trim().length > 0)
+            ? rec.description
+            : "Follow this recommendation generated by the research agent to reinforce your learning path.",
+        url: rec.url ?? "",
+      }))
+    );
+
+    if (recommendations.length < 5) {
+      const existingTitles = new Set(
+        recommendations.map((rec) => rec.title.trim().toLowerCase())
+      );
+      for (const fallbackRec of fallback.recommendations) {
+        const key = fallbackRec.title.trim().toLowerCase();
+        if (!existingTitles.has(key)) {
+          recommendations.push(fallbackRec);
+          existingTitles.add(key);
+        }
+        if (recommendations.length >= 6) {
+          break;
+        }
+      }
+      recommendations = limitRecommendations(recommendations);
+    }
+
+    const comparativeInsights = validated.data.comparative_insights.length
+      ? validated.data.comparative_insights.map((insight) => ({
+          title: insight.title,
+          insight: insight.insight,
+          supportingResources: insight.supporting_resources.filter((url) => !!url && url.trim().length > 0),
+          confidence: insight.confidence,
         }))
-        .slice(0, 6),
+      : fallback.comparativeInsights;
+
+    const learningPath = validated.data.learning_path.length
+      ? validated.data.learning_path
+          .map((step, index) => ({
+            order: step.order ?? index + 1,
+            title: step.title,
+            description: step.description,
+            estimatedTimeHours: step.estimated_time_hours,
+            difficulty: step.difficulty,
+            resourceUrl: step.resource_url && step.resource_url.trim().length > 0 ? step.resource_url : undefined,
+            resourceTitle: step.resource_title,
+          }))
+          .slice(0, 6)
+      : fallback.learningPath;
+
+    return {
+      recommendations,
+      comparativeInsights,
+      learningPath,
     };
   } catch (error) {
     console.warn(
@@ -353,7 +404,7 @@ const extendedSynthesisSchema = z.object({
       z.object({
         title: z.string().min(3),
         insight: z.string().min(10),
-        supporting_resources: z.array(z.string().url()).min(1),
+        supporting_resources: z.array(z.string().min(1)).min(1),
         confidence: z.enum(["low", "medium", "high"]),
       })
     )
@@ -367,7 +418,7 @@ const extendedSynthesisSchema = z.object({
         description: z.string().min(10),
         estimated_time_hours: z.number().min(0).max(80).optional(),
         difficulty: z.enum(["beginner", "intermediate", "advanced"]),
-        resource_url: z.string().url().optional(),
+        resource_url: z.string().optional(),
         resource_title: z.string().optional(),
       })
     )

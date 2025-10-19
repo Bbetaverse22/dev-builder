@@ -15,7 +15,7 @@ export default function AgenticPortfolioPage() {
           <div>
             <h1 className="text-4xl font-bold tracking-tight text-white">Portfolio Builder</h1>
             <p className="text-lg text-slate-300/80 mt-1">
-              AI-driven portfolio improvement recommendations and actions
+              Your portfolio strengths and actionable improvements
             </p>
           </div>
         </div>

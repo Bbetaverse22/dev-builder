@@ -23,12 +23,29 @@ export interface SkillGuidance {
   highlightedFrameworks?: string[];
 }
 
+export type SkillGapConfidence = 'low' | 'medium' | 'high';
+
 export interface SkillGap {
   skill: Skill;
   gap: number; // targetLevel - currentLevel
   priority: number; // calculated based on gap and importance
   recommendations: string[];
   guidance: SkillGuidance;
+  confidence: SkillGapConfidence;
+}
+
+export interface GitHubRepoMetadata {
+  starCount: number;
+  forkCount: number;
+  watcherCount: number;
+  repoSizeKb: number;
+  lastPushedAt?: string | null;
+  lastPushedAtDays?: number | null;
+  rootFileCount: number;
+  defaultBranch?: string | null;
+  openIssuesCount: number;
+  license?: string | null;
+  activityScore: number;
 }
 
 export interface GitHubAnalysis {
@@ -39,6 +56,8 @@ export interface GitHubAnalysis {
   tools: string[];
   skillLevel: 'beginner' | 'intermediate' | 'advanced';
   recommendations: string[];
+  metadata?: GitHubRepoMetadata;
+  specialties?: string[];
 }
 
 export interface GapAnalysisResult {
@@ -66,40 +85,390 @@ export class GapAnalyzerAgent {
     return Math.min(5, Math.max(1, Math.round(level * 10) / 10));
   }
 
+  /**
+   * Get realistic target level based on skill type and GitHub analysis
+   */
+  private getRealisticTargetLevel(skill: Skill, githubAnalysis?: GitHubAnalysis): number {
+    // Base target levels by skill category
+    const baseTargets: { [key: string]: number } = {
+      'programming': 4,      // Most developers should aim for 4/5
+      'frameworks': 4,       // Framework mastery is achievable
+      'databases': 3,        // Database skills vary by role
+      'cloud': 3,           // Cloud skills depend on role
+      'devops': 3,          // DevOps is specialized
+      'testing': 4,         // Testing is crucial
+      'prompt-engineering': 3, // Newer skill, 3 is good
+      'context-engineering': 3, // Newer skill, 3 is good
+      'communication': 4,    // Communication is important
+      'leadership': 3,       // Leadership varies by role
+      'problem-solving': 4,  // Core skill
+      'teamwork': 4,         // Important for collaboration
+      'time-management': 4,  // Important for productivity
+      'industry': 3,         // Industry knowledge varies
+      'business': 3,         // Business acumen varies
+      'architecture': 4,     // Architecture is important
+      'security': 3,         // Security is specialized
+    };
+
+    let targetLevel = baseTargets[skill.id] || 3;
+
+    // Adjust based on GitHub analysis
+    if (githubAnalysis) {
+      const skillLevel = githubAnalysis.skillLevel;
+      if (skillLevel === 'beginner') {
+        targetLevel = Math.min(targetLevel + 1, 5); // Aim higher if beginner
+      } else if (skillLevel === 'advanced') {
+        targetLevel = Math.max(targetLevel - 0.5, 2); // Already advanced, lower target
+      }
+    }
+
+    return this.clampSkillLevel(targetLevel);
+  }
+
+  /**
+   * Get default skills with realistic current levels based on GitHub analysis
+   */
+  private getDefaultSkillsWithRealisticLevels(githubAnalysis: GitHubAnalysis): Skill[] {
+    const skills: Skill[] = [];
+    const baseLevel = this.getBaseLevelFromSkillLevel(githubAnalysis.skillLevel);
+    
+    // Technical skills
+    skills.push({
+      id: 'programming',
+      name: 'Programming Languages',
+      currentLevel: this.clampSkillLevel(baseLevel + 0.5), // Slightly higher than base
+      targetLevel: 4,
+      importance: 5,
+      category: 'technical'
+    });
+
+    skills.push({
+      id: 'frameworks',
+      name: 'Frameworks & Libraries',
+      currentLevel: this.clampSkillLevel(baseLevel),
+      targetLevel: 4,
+      importance: 5,
+      category: 'technical'
+    });
+
+    skills.push({
+      id: 'version-control',
+      name: 'Version Control (Git)',
+      currentLevel: this.clampSkillLevel(baseLevel + 0.3), // Most developers know Git
+      targetLevel: 4,
+      importance: 5,
+      category: 'technical'
+    });
+
+    skills.push({
+      id: 'testing',
+      name: 'Testing & QA',
+      currentLevel: this.clampSkillLevel(baseLevel - 0.5), // Often underdeveloped
+      targetLevel: 4,
+      importance: 4,
+      category: 'technical'
+    });
+
+    skills.push({
+      id: 'debugging',
+      name: 'Debugging & Troubleshooting',
+      currentLevel: this.clampSkillLevel(baseLevel + 0.2),
+      targetLevel: 4,
+      importance: 4,
+      category: 'technical'
+    });
+
+    skills.push({
+      id: 'databases',
+      name: 'Database Management',
+      currentLevel: this.clampSkillLevel(baseLevel - 0.3),
+      targetLevel: 3,
+      importance: 4,
+      category: 'technical'
+    });
+
+    skills.push({
+      id: 'cloud',
+      name: 'Cloud Platforms',
+      currentLevel: this.clampSkillLevel(baseLevel - 0.7), // Often a gap
+      targetLevel: 3,
+      importance: 4,
+      category: 'technical'
+    });
+
+    skills.push({
+      id: 'devops',
+      name: 'DevOps & CI/CD',
+      currentLevel: this.clampSkillLevel(baseLevel - 0.8), // Common gap
+      targetLevel: 3,
+      importance: 3,
+      category: 'technical'
+    });
+
+    skills.push({
+      id: 'api-design',
+      name: 'API Design & Development',
+      currentLevel: this.clampSkillLevel(baseLevel - 0.2),
+      targetLevel: 3,
+      importance: 4,
+      category: 'technical'
+    });
+
+    skills.push({
+      id: 'performance',
+      name: 'Performance Optimization',
+      currentLevel: this.clampSkillLevel(baseLevel - 0.6),
+      targetLevel: 3,
+      importance: 3,
+      category: 'technical'
+    });
+
+    skills.push({
+      id: 'documentation',
+      name: 'Technical Documentation',
+      currentLevel: this.clampSkillLevel(baseLevel - 0.4),
+      targetLevel: 3,
+      importance: 3,
+      category: 'technical'
+    });
+
+    // Soft skills (generally lower than technical)
+    skills.push({
+      id: 'communication',
+      name: 'Communication',
+      currentLevel: this.clampSkillLevel(baseLevel - 0.2),
+      targetLevel: 4,
+      importance: 5,
+      category: 'soft'
+    });
+
+    skills.push({
+      id: 'problem-solving',
+      name: 'Problem Solving',
+      currentLevel: this.clampSkillLevel(baseLevel + 0.1),
+      targetLevel: 4,
+      importance: 5,
+      category: 'soft'
+    });
+
+    skills.push({
+      id: 'teamwork',
+      name: 'Teamwork',
+      currentLevel: this.clampSkillLevel(baseLevel - 0.1),
+      targetLevel: 4,
+      importance: 4,
+      category: 'soft'
+    });
+
+    skills.push({
+      id: 'time-management',
+      name: 'Time Management',
+      currentLevel: this.clampSkillLevel(baseLevel - 0.3),
+      targetLevel: 4,
+      importance: 4,
+      category: 'soft'
+    });
+
+    // Domain knowledge
+    skills.push({
+      id: 'architecture',
+      name: 'System Architecture',
+      currentLevel: this.clampSkillLevel(baseLevel - 0.5),
+      targetLevel: 4,
+      importance: 4,
+      category: 'domain'
+    });
+
+    skills.push({
+      id: 'security',
+      name: 'Security Best Practices',
+      currentLevel: this.clampSkillLevel(baseLevel - 0.7),
+      targetLevel: 3,
+      importance: 4,
+      category: 'domain'
+    });
+
+    skills.push({
+      id: 'data-structures',
+      name: 'Data Structures & Algorithms',
+      currentLevel: this.clampSkillLevel(baseLevel - 0.4),
+      targetLevel: 3,
+      importance: 4,
+      category: 'domain'
+    });
+
+    return skills;
+  }
+
+  /**
+   * Generate common skill gaps that are often overlooked
+   */
+  private generateCommonSkillGaps(githubAnalysis?: GitHubAnalysis): SkillGap[] {
+    const commonGaps: SkillGap[] = [];
+    const baseLevel = githubAnalysis ? this.getBaseLevelFromSkillLevel(githubAnalysis.skillLevel) : 2;
+    const isAdvancedRepo = githubAnalysis?.skillLevel === 'advanced';
+    const metadata = githubAnalysis?.metadata;
+    const highActivityRepo = metadata ? metadata.activityScore >= 7 : false;
+    const recencyLowConfidence = metadata?.lastPushedAtDays != null && metadata.lastPushedAtDays > 180;
+    const tinyRepo = metadata?.repoSizeKb != null && metadata.repoSizeKb < 200;
+
+    // Common gaps that most developers have
+    const commonSkills = [
+      {
+        id: 'testing',
+        name: 'Testing & QA',
+        currentLevel: Math.max(1, baseLevel - 0.8),
+        targetLevel: 4,
+        importance: 4,
+        category: 'technical'
+      },
+      {
+        id: 'cloud',
+        name: 'Cloud Platforms',
+        currentLevel: Math.max(1, baseLevel - 1.0),
+        targetLevel: 3,
+        importance: 4,
+        category: 'technical'
+      },
+      {
+        id: 'devops',
+        name: 'DevOps & CI/CD',
+        currentLevel: Math.max(1, baseLevel - 1.2),
+        targetLevel: 3,
+        importance: 3,
+        category: 'technical'
+      },
+      {
+        id: 'security',
+        name: 'Security Best Practices',
+        currentLevel: Math.max(1, baseLevel - 1.0),
+        targetLevel: 3,
+        importance: 4,
+        category: 'domain'
+      },
+      {
+        id: 'performance',
+        name: 'Performance Optimization',
+        currentLevel: Math.max(1, baseLevel - 0.8),
+        targetLevel: 3,
+        importance: 3,
+        category: 'technical'
+      },
+      {
+        id: 'documentation',
+        name: 'Technical Documentation',
+        currentLevel: Math.max(1, baseLevel - 0.6),
+        targetLevel: 3,
+        importance: 3,
+        category: 'technical'
+      },
+      {
+        id: 'code-review',
+        name: 'Code Review Practices',
+        currentLevel: Math.max(1, baseLevel - 0.4),
+        targetLevel: 3,
+        importance: 3,
+        category: 'technical'
+      },
+      {
+        id: 'architecture',
+        name: 'System Architecture',
+        currentLevel: Math.max(1, baseLevel - 0.7),
+        targetLevel: 4,
+        importance: 4,
+        category: 'domain'
+      },
+      {
+        id: 'data-structures',
+        name: 'Data Structures & Algorithms',
+        currentLevel: Math.max(1, baseLevel - 0.6),
+        targetLevel: 3,
+        importance: 4,
+        category: 'domain'
+      },
+      {
+        id: 'communication',
+        name: 'Communication',
+        currentLevel: Math.max(1, baseLevel - 0.3),
+        targetLevel: 4,
+        importance: 5,
+        category: 'soft'
+      }
+    ];
+
+    commonSkills.forEach(skill => {
+      const gap = Math.max(0, skill.targetLevel - skill.currentLevel);
+      if (gap < 0.5) {
+        return;
+      }
+
+      if ((isAdvancedRepo && skill.currentLevel >= skill.targetLevel - 0.3) || highActivityRepo) {
+        return;
+      }
+
+      const guidance = this.getSkillGuidance(skill, gap, { githubAnalysis });
+      commonGaps.push({
+        skill,
+        gap,
+        priority: gap * skill.importance,
+        recommendations: guidance.recommendedSteps,
+        guidance,
+        confidence: recencyLowConfidence || tinyRepo
+          ? 'low'
+          : this.estimateSkillGapConfidence(skill, gap, githubAnalysis),
+      });
+    });
+
+    return commonGaps.slice(0, 5); // Limit to top 5 common gaps
+  }
+
   private skillCategories: SkillCategory[] = [
     {
       id: 'technical',
       name: 'Technical Skills',
       skills: [
-        { id: 'programming', name: 'Programming Languages', currentLevel: 1, targetLevel: 5, importance: 5, category: 'technical' },
-        { id: 'frameworks', name: 'Frameworks & Libraries', currentLevel: 1, targetLevel: 5, importance: 5, category: 'technical' },
-        { id: 'databases', name: 'Database Management', currentLevel: 1, targetLevel: 5, importance: 4, category: 'technical' },
-        { id: 'cloud', name: 'Cloud Platforms', currentLevel: 1, targetLevel: 5, importance: 4, category: 'technical' },
-        { id: 'devops', name: 'DevOps & CI/CD', currentLevel: 1, targetLevel: 5, importance: 3, category: 'technical' },
-        { id: 'testing', name: 'Testing & QA', currentLevel: 1, targetLevel: 5, importance: 4, category: 'technical' },
-        { id: 'prompt-engineering', name: 'Prompt Engineering', currentLevel: 1, targetLevel: 5, importance: 4, category: 'technical' },
-        { id: 'context-engineering', name: 'Context & Retrieval Practices', currentLevel: 1, targetLevel: 5, importance: 3, category: 'technical' },
+        { id: 'programming', name: 'Programming Languages', currentLevel: 1, targetLevel: 4, importance: 5, category: 'technical' },
+        { id: 'frameworks', name: 'Frameworks & Libraries', currentLevel: 1, targetLevel: 4, importance: 5, category: 'technical' },
+        { id: 'databases', name: 'Database Management', currentLevel: 1, targetLevel: 3, importance: 4, category: 'technical' },
+        { id: 'cloud', name: 'Cloud Platforms', currentLevel: 1, targetLevel: 3, importance: 4, category: 'technical' },
+        { id: 'devops', name: 'DevOps & CI/CD', currentLevel: 1, targetLevel: 3, importance: 3, category: 'technical' },
+        { id: 'testing', name: 'Testing & QA', currentLevel: 1, targetLevel: 4, importance: 4, category: 'technical' },
+        { id: 'prompt-engineering', name: 'Prompt Engineering', currentLevel: 1, targetLevel: 3, importance: 4, category: 'technical' },
+        { id: 'context-engineering', name: 'Context & Retrieval Practices', currentLevel: 1, targetLevel: 3, importance: 3, category: 'technical' },
+        { id: 'version-control', name: 'Version Control (Git)', currentLevel: 1, targetLevel: 4, importance: 5, category: 'technical' },
+        { id: 'api-design', name: 'API Design & Development', currentLevel: 1, targetLevel: 3, importance: 4, category: 'technical' },
+        { id: 'performance', name: 'Performance Optimization', currentLevel: 1, targetLevel: 3, importance: 3, category: 'technical' },
+        { id: 'debugging', name: 'Debugging & Troubleshooting', currentLevel: 1, targetLevel: 4, importance: 4, category: 'technical' },
+        { id: 'code-review', name: 'Code Review Practices', currentLevel: 1, targetLevel: 3, importance: 3, category: 'technical' },
+        { id: 'documentation', name: 'Technical Documentation', currentLevel: 1, targetLevel: 3, importance: 3, category: 'technical' },
       ]
     },
     {
       id: 'soft',
       name: 'Soft Skills',
       skills: [
-        { id: 'communication', name: 'Communication', currentLevel: 1, targetLevel: 5, importance: 5, category: 'soft' },
-        { id: 'leadership', name: 'Leadership', currentLevel: 1, targetLevel: 5, importance: 4, category: 'soft' },
-        { id: 'problem-solving', name: 'Problem Solving', currentLevel: 1, targetLevel: 5, importance: 5, category: 'soft' },
-        { id: 'teamwork', name: 'Teamwork', currentLevel: 1, targetLevel: 5, importance: 4, category: 'soft' },
-        { id: 'time-management', name: 'Time Management', currentLevel: 1, targetLevel: 5, importance: 4, category: 'soft' },
+        { id: 'communication', name: 'Communication', currentLevel: 1, targetLevel: 4, importance: 5, category: 'soft' },
+        { id: 'leadership', name: 'Leadership', currentLevel: 1, targetLevel: 3, importance: 4, category: 'soft' },
+        { id: 'problem-solving', name: 'Problem Solving', currentLevel: 1, targetLevel: 4, importance: 5, category: 'soft' },
+        { id: 'teamwork', name: 'Teamwork', currentLevel: 1, targetLevel: 4, importance: 4, category: 'soft' },
+        { id: 'time-management', name: 'Time Management', currentLevel: 1, targetLevel: 4, importance: 4, category: 'soft' },
+        { id: 'mentoring', name: 'Mentoring & Teaching', currentLevel: 1, targetLevel: 3, importance: 3, category: 'soft' },
+        { id: 'adaptability', name: 'Adaptability', currentLevel: 1, targetLevel: 4, importance: 4, category: 'soft' },
+        { id: 'critical-thinking', name: 'Critical Thinking', currentLevel: 1, targetLevel: 4, importance: 4, category: 'soft' },
       ]
     },
     {
       id: 'domain',
       name: 'Domain Knowledge',
       skills: [
-        { id: 'industry', name: 'Industry Knowledge', currentLevel: 1, targetLevel: 5, importance: 4, category: 'domain' },
-        { id: 'business', name: 'Business Acumen', currentLevel: 1, targetLevel: 5, importance: 3, category: 'domain' },
-        { id: 'architecture', name: 'System Architecture', currentLevel: 1, targetLevel: 5, importance: 4, category: 'domain' },
-        { id: 'security', name: 'Security Best Practices', currentLevel: 1, targetLevel: 5, importance: 4, category: 'domain' },
+        { id: 'industry', name: 'Industry Knowledge', currentLevel: 1, targetLevel: 3, importance: 4, category: 'domain' },
+        { id: 'business', name: 'Business Acumen', currentLevel: 1, targetLevel: 3, importance: 3, category: 'domain' },
+        { id: 'architecture', name: 'System Architecture', currentLevel: 1, targetLevel: 4, importance: 4, category: 'domain' },
+        { id: 'security', name: 'Security Best Practices', currentLevel: 1, targetLevel: 3, importance: 4, category: 'domain' },
+        { id: 'scalability', name: 'Scalability & Performance', currentLevel: 1, targetLevel: 3, importance: 3, category: 'domain' },
+        { id: 'data-structures', name: 'Data Structures & Algorithms', currentLevel: 1, targetLevel: 3, importance: 4, category: 'domain' },
+        { id: 'design-patterns', name: 'Design Patterns', currentLevel: 1, targetLevel: 3, importance: 3, category: 'domain' },
+        { id: 'project-management', name: 'Project Management', currentLevel: 1, targetLevel: 3, importance: 3, category: 'domain' },
       ]
     }
   ];
@@ -109,11 +478,12 @@ export class GapAnalyzerAgent {
    */
   analyzeSkillGaps(
     skills: Skill[],
-    options: { includeCategories?: string[]; githubAnalysis?: GitHubAnalysis } = {}
+    options: { includeCategories?: string[]; githubAnalysis?: GitHubAnalysis; minGapThreshold?: number } = {}
   ): GapAnalysisResult {
     const includeSet = options.includeCategories?.length
       ? new Set(options.includeCategories)
       : null;
+    const minGapThreshold = options.minGapThreshold ?? 0.1; // Show gaps >= 0.1
 
     const skillsToProcess = (() => {
       if (!includeSet) return skills;
@@ -127,10 +497,16 @@ export class GapAnalyzerAgent {
       const normalizedSkill: Skill = {
         ...skill,
         currentLevel: this.clampSkillLevel(skill.currentLevel),
-        targetLevel: this.clampSkillLevel(skill.targetLevel ?? 5),
+        targetLevel: this.clampSkillLevel(skill.targetLevel ?? this.getRealisticTargetLevel(skill, options.githubAnalysis)),
       };
 
       const gap = Math.max(0, normalizedSkill.targetLevel - normalizedSkill.currentLevel);
+      
+      // Skip skills with gaps below threshold
+      if (gap < minGapThreshold) {
+        return;
+      }
+      
       const guidance = this.getSkillGuidance(normalizedSkill, gap, {
         githubAnalysis: options.githubAnalysis,
       });
@@ -159,6 +535,7 @@ export class GapAnalyzerAgent {
           priority: mergedPriority,
           recommendations: mergedGuidance.recommendedSteps,
           guidance: mergedGuidance,
+          confidence: this.estimateSkillGapConfidence(mergedSkill, mergedGap, options.githubAnalysis),
         });
       } else {
         aggregated.set(normalizedSkill.id, {
@@ -167,15 +544,42 @@ export class GapAnalyzerAgent {
           priority: gap * normalizedSkill.importance,
           recommendations,
           guidance,
+          confidence: this.estimateSkillGapConfidence(normalizedSkill, gap, options.githubAnalysis),
         });
       }
     });
 
     const skillGaps = Array.from(aggregated.values());
+    
+    // Filter out very small gaps and add more comprehensive analysis
+    const meaningfulGaps = skillGaps.filter(gap => gap.gap >= minGapThreshold);
+    
+    // If we have very few gaps, lower the threshold and try again
+    if (meaningfulGaps.length < 3 && minGapThreshold > 0.05) {
+      return this.analyzeSkillGaps(skills, { ...options, minGapThreshold: 0.05 });
+    }
+    
+    // If still too few gaps, add some common gaps that are often overlooked
+    if (meaningfulGaps.length < 3) {
+      const additionalGaps = this.generateCommonSkillGaps(options.githubAnalysis);
+      additionalGaps.forEach(gap => {
+        if (!aggregated.has(gap.skill.id)) {
+          aggregated.set(gap.skill.id, gap);
+        }
+      });
+    }
+    
+    const finalSkillGaps = Array.from(aggregated.values())
+      .filter(gap => gap.gap >= 0.05)
+      .map(gap => ({
+        ...gap,
+        confidence: this.estimateSkillGapConfidence(gap.skill, gap.gap, options.githubAnalysis),
+      }));
+    
     let totalAchieved = 0;
     let totalTarget = 0;
 
-    skillGaps.forEach((gap) => {
+    finalSkillGaps.forEach((gap) => {
       totalAchieved += gap.skill.currentLevel * gap.skill.importance;
       totalTarget += gap.skill.targetLevel * gap.skill.importance;
     });
@@ -187,11 +591,11 @@ export class GapAnalyzerAgent {
       : 100;
 
     // Sort gaps by priority
-    skillGaps.sort((a, b) => b.priority - a.priority);
+    finalSkillGaps.sort((a, b) => b.priority - a.priority);
 
     // Generate general recommendations
-    const recommendations = this.generateGeneralRecommendations(skillGaps);
-    const learningPath = this.generateLearningPath(skillGaps);
+    const recommendations = this.generateGeneralRecommendations(finalSkillGaps);
+    const learningPath = this.generateLearningPath(finalSkillGaps);
 
     const categoryList = includeSet
       ? this.skillCategories
@@ -202,7 +606,7 @@ export class GapAnalyzerAgent {
           }))
       : this.skillCategories;
 
-    const uniqueSkillGaps = skillGaps.reduce<SkillGap[]>((acc, gap) => {
+    const uniqueSkillGaps = finalSkillGaps.reduce<SkillGap[]>((acc, gap) => {
       if (!acc.some((existing) => existing.skill.id === gap.skill.id)) {
         acc.push(gap);
       }
@@ -266,6 +670,8 @@ export class GapAnalyzerAgent {
 
       console.log(`[GapAnalyzer] Analysis complete - Skill level: ${skillLevel}`);
 
+      const metadata = this.buildRepoMetadata(repoData, contentsData);
+
       return {
         repository: repoUrl,
         technologies,
@@ -273,7 +679,8 @@ export class GapAnalyzerAgent {
         languages,
         tools,
         skillLevel,
-        recommendations
+        recommendations,
+        metadata,
       };
 
     } catch (error) {
@@ -316,6 +723,10 @@ export class GapAnalyzerAgent {
    */
   private createSkillsFromTechnologies(githubAnalysis: GitHubAnalysis): Skill[] {
     const skills: Skill[] = [];
+    
+    // First, add all default skills with realistic current levels
+    const defaultSkills = this.getDefaultSkillsWithRealisticLevels(githubAnalysis);
+    skills.push(...defaultSkills);
     
     // Map technologies to skill categories and levels
     const technologySkillMap = this.getTechnologySkillMap();
@@ -388,32 +799,35 @@ export class GapAnalyzerAgent {
       category: 'technical'
     });
 
-    const hasMlSpecialty = skills.some((skill) =>
-      ['ml-python', 'ml-pytorch', 'ml-tensorflow', 'ml-scikit', 'ml-nlp'].includes(skill.id)
-    );
-    if (hasMlSpecialty) {
+    const specialties: string[] = [];
+    const mlSpecialtyIds = ['ml-python', 'ml-pytorch', 'ml-tensorflow', 'ml-scikit', 'ml-nlp'];
+    if (skills.some((skill) => mlSpecialtyIds.includes(skill.id)) && !skills.some((skill) => skill.id === 'ai-ml-specialization')) {
+      specialties.push('ai-ml-specialization');
       skills.push({
         id: 'ai-ml-specialization',
         name: 'AI & Machine Learning',
-        currentLevel: this.inferSpecialtyLevel(skills, ['ml-python', 'ml-pytorch', 'ml-tensorflow', 'ml-scikit', 'ml-nlp']),
+        currentLevel: this.inferSpecialtyLevel(skills, mlSpecialtyIds),
         targetLevel: 5,
         importance: 5,
         category: 'technical',
       });
     }
 
-    const hasDataEngineering = skills.some((skill) =>
-      ['data-spark', 'data-hadoop', 'data-kafka', 'data-airflow', 'data-snowflake', 'data-databricks'].includes(skill.id)
-    );
-    if (hasDataEngineering) {
+    const dataSpecialtyIds = ['data-spark', 'data-hadoop', 'data-kafka', 'data-airflow', 'data-snowflake', 'data-databricks'];
+    if (skills.some((skill) => dataSpecialtyIds.includes(skill.id)) && !skills.some((skill) => skill.id === 'data-engineering-specialization')) {
+      specialties.push('data-engineering-specialization');
       skills.push({
         id: 'data-engineering-specialization',
         name: 'Data Engineering & Pipelines',
-        currentLevel: this.inferSpecialtyLevel(skills, ['data-spark', 'data-hadoop', 'data-kafka', 'data-airflow', 'data-snowflake', 'data-databricks']),
+        currentLevel: this.inferSpecialtyLevel(skills, dataSpecialtyIds),
         targetLevel: 5,
         importance: 5,
         category: 'technical',
       });
+    }
+
+    if (specialties.length > 0) {
+      githubAnalysis.specialties = [...new Set([...(githubAnalysis.specialties ?? []), ...specialties])];
     }
 
     return skills;
@@ -532,11 +946,104 @@ export class GapAnalyzerAgent {
     return 5;
   }
 
+  private buildRepoMetadata(repoData: any, contentsData: any): GitHubRepoMetadata {
+    const pushedAt = repoData.pushed_at ? new Date(repoData.pushed_at) : null;
+    const lastPushedAtDays = pushedAt ? Math.round((Date.now() - pushedAt.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+    const rootFileCount = Array.isArray(contentsData)
+      ? contentsData.filter((item: any) => item.type === 'file').length
+      : 0;
+
+    const activityScore = this.calculateRepoActivityScore({
+      stars: repoData.stargazers_count || 0,
+      forks: repoData.forks_count || 0,
+      lastPushedAtDays,
+      rootFileCount,
+      repoSizeKb: repoData.size || 0,
+    });
+
+    return {
+      starCount: repoData.stargazers_count || 0,
+      forkCount: repoData.forks_count || 0,
+      watcherCount: repoData.subscribers_count || 0,
+      repoSizeKb: repoData.size || 0,
+      lastPushedAt: repoData.pushed_at ?? null,
+      lastPushedAtDays,
+      rootFileCount,
+      defaultBranch: repoData.default_branch ?? null,
+      openIssuesCount: repoData.open_issues_count || 0,
+      license: repoData.license?.spdx_id ?? repoData.license?.name ?? null,
+      activityScore,
+    };
+  }
+
+  private calculateRepoActivityScore(params: {
+    stars: number;
+    forks: number;
+    lastPushedAtDays: number | null;
+    rootFileCount: number;
+    repoSizeKb: number;
+  }): number {
+    const starScore = Math.min(params.stars / 50, 10);
+    const forkScore = Math.min(params.forks / 20, 10);
+    const sizeScore = Math.min(params.repoSizeKb / 500, 10);
+    const fileScore = Math.min(params.rootFileCount / 20, 10);
+    const recencyScore = params.lastPushedAtDays != null
+      ? Math.max(0, 10 - Math.min(params.lastPushedAtDays / 30, 10))
+      : 5;
+
+    const average = (starScore + forkScore + sizeScore + fileScore + recencyScore) / 5;
+    return Math.round(average * 10) / 10;
+  }
+
   private inferToolingSkillLevel(githubAnalysis: GitHubAnalysis, tool: string): number {
     const baseLevel = this.getBaseLevelFromSkillLevel(githubAnalysis.skillLevel);
     const isPrimaryTool = githubAnalysis.tools.includes(tool);
     const multiplier = isPrimaryTool ? 1.2 : 0.9;
     return this.clampSkillLevel(baseLevel * multiplier);
+  }
+
+  private estimateSkillGapConfidence(
+    skill: Skill,
+    gap: number,
+    githubAnalysis?: GitHubAnalysis
+  ): SkillGapConfidence {
+    if (!githubAnalysis) {
+      return gap >= 1 ? 'medium' : 'low';
+    }
+
+    let score = 45;
+
+    if (githubAnalysis.metadata) {
+      const { activityScore, lastPushedAtDays, repoSizeKb, rootFileCount } = githubAnalysis.metadata;
+
+      if (activityScore >= 7) score += 20;
+      else if (activityScore <= 3) score -= 15;
+
+      if (typeof lastPushedAtDays === 'number') {
+        if (lastPushedAtDays <= 30) score += 10;
+        else if (lastPushedAtDays > 180) score -= 10;
+      }
+
+      if (repoSizeKb > 5000) score += 5;
+      if (rootFileCount < 5) score -= 5;
+    } else {
+      score -= 10;
+    }
+
+    if (githubAnalysis.skillLevel === 'advanced') score += 5;
+    if (githubAnalysis.skillLevel === 'beginner') score -= 5;
+
+    if (gap >= 2) score += 5;
+    if (skill.importance >= 4) score += 5;
+
+    if (skill.currentLevel >= skill.targetLevel - 0.25) score -= 15;
+
+    const normalized = Math.max(0, Math.min(100, score));
+
+    if (normalized >= 70) return 'high';
+    if (normalized >= 45) return 'medium';
+    return 'low';
   }
 
   /**

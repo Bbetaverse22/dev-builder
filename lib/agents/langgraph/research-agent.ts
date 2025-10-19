@@ -23,6 +23,7 @@ export interface ResearchState {
   focusSkills?: FocusSkill[];
   learningObjectives?: string[];
   queries?: string[];
+  languageCandidates?: string[];
   searchSources?: string[];
   searchNotes?: string[];
   searchIterations?: SearchIteration[];
@@ -95,6 +96,7 @@ export interface GitHubProject {
   stars: number;
   description: string;
   source?: "github";
+  language?: string;
 }
 
 export interface Recommendation {
@@ -214,6 +216,28 @@ function buildResearchGraph() {
       searchIterations: {
         value: (left?: SearchIteration[], right?: SearchIteration[]) =>
           right ?? left ?? [],
+      },
+      scrapedResources: {
+        value: (left?: ScrapedResource[], right?: ScrapedResource[]) =>
+          right ?? left ?? [],
+      },
+      comparativeInsights: {
+        value: (left?: ComparativeInsight[], right?: ComparativeInsight[]) =>
+          right ?? left ?? [],
+      },
+      learningPath: {
+        value: (left?: LearningPathStep[], right?: LearningPathStep[]) =>
+          right ?? left ?? [],
+      },
+      confidenceBreakdown: {
+        value: (left?: ConfidenceBreakdown, right?: ConfidenceBreakdown) =>
+          right ?? left ?? undefined,
+      },
+      summaryNotes: {
+        value: (left?: string[], right?: string[]) => right ?? left ?? [],
+      },
+      searchIterationLog: {
+        value: (left?: string[], right?: string[]) => right ?? left ?? [],
       },
       searchQuery: {
         value: (left?: string, right?: string) => right ?? left,

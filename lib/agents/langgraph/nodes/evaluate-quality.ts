@@ -15,6 +15,7 @@ import type {
   ScoredResource,
   ConfidenceBreakdown,
 } from "../research-agent";
+import { escapePromptText, escapeTemplateBraces } from "../utils/prompt-utils";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { z } from "zod";
@@ -142,18 +143,24 @@ async function evaluateWithLLM(
       "- practicality: Hands-on, actionable content",
       "",
       "IMPORTANT: Return ONLY valid JSON with this exact structure:",
-      '{"evaluations": [{"url": "...", "relevance": 0.8, "authority": 0.9, "recency": 0.7, "comprehensiveness": 0.8, "practicality": 0.7}]}',
+      escapeTemplateBraces(
+        '{"evaluations": [{"url": "...", "relevance": 0.8, "authority": 0.9, "recency": 0.7, "comprehensiveness": 0.8, "practicality": 0.7}]}'
+      ),
       "",
       "Do not include any explanatory text, only the JSON object.",
     ].join("\n");
 
     const humanPrompt = [
-      `Skill gap: ${state.skillGap}`,
-      `Language: ${state.detectedLanguage || "unknown"}`,
-      `User context: ${state.userContext}`,
+      `Skill gap: ${escapePromptText(state.skillGap)}`,
+      `Language: ${escapePromptText(state.detectedLanguage || "unknown")}`,
+      `User context: ${escapePromptText(state.userContext)}`,
       "",
       "Resources to evaluate:",
-      ...resources.map((r, i) => `${i + 1}. ${r.title}\n   URL: ${r.url}\n   Description: ${r.description}`),
+      ...resources.map((r, i) => {
+        const escapedTitle = escapePromptText(r.title);
+        const escapedDescription = escapePromptText(r.description);
+        return `${i + 1}. ${escapedTitle}\n   URL: ${r.url}\n   Description: ${escapedDescription}`;
+      }),
       "",
       "Return JSON with an 'evaluations' array containing one object per resource.",
     ].join("\n");

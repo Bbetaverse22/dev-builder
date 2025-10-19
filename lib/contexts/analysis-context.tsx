@@ -7,6 +7,11 @@ export interface SkillGap {
   skill: string;
   importance: string;
   reasoning: string;
+  confidence?: 'low' | 'medium' | 'high';
+  // Numeric values for display
+  currentLevel?: number;
+  targetLevel?: number;
+  gap?: number;
 }
 
 export interface PortfolioQuality {
@@ -23,6 +28,7 @@ export interface PortfolioAction {
   priority: "high" | "medium" | "low";
   estimatedTime: string;
   category: string;
+  optional?: boolean;
 }
 
 export interface ResearchResult {
@@ -34,6 +40,32 @@ export interface ResearchResult {
   summary?: string;
   keyPoints?: string[];
   recommendedAudience?: string;
+}
+
+export interface ComparativeInsightContext {
+  title: string;
+  insight: string;
+  supportingResources: string[];
+  confidence: "low" | "medium" | "high";
+}
+
+export interface LearningPathStepContext {
+  order: number;
+  title: string;
+  description: string;
+  difficulty: "beginner" | "intermediate" | "advanced";
+  estimatedTimeHours?: number;
+  resourceUrl?: string;
+  resourceTitle?: string;
+}
+
+export interface ConfidenceBreakdownContext {
+  overall: number;
+  relevance: number;
+  coverage: number;
+  recency: number;
+  practicality: number;
+  confidenceNotes?: string[];
 }
 
 export interface GitHubExample {
@@ -51,6 +83,9 @@ export interface AnalysisResults {
   portfolioActions: PortfolioAction[];
   researchResults: ResearchResult[];
   githubExamples: GitHubExample[];
+  comparativeInsights?: ComparativeInsightContext[];
+  learningPath?: LearningPathStepContext[];
+  confidenceBreakdown?: ConfidenceBreakdownContext | null;
   templates: any[];
   agentLogs: Array<{ agent: string; status: string; message: string; timestamp: Date }>;
 }
@@ -71,13 +106,22 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
   // Load from localStorage on mount
   useEffect(() => {
+    console.log('[AnalysisContext] Loading from localStorage...');
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        setAnalysisResults(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        console.log('[AnalysisContext] Loaded data:', {
+          hasData: true,
+          repoUrl: parsed.repoUrl,
+          skillGapsCount: parsed.skillGaps?.length || 0
+        });
+        setAnalysisResults(parsed);
+      } else {
+        console.log('[AnalysisContext] No stored data found');
       }
     } catch (error) {
-      console.warn('Failed to load analysis results from localStorage:', error);
+      console.warn('[AnalysisContext] Failed to load analysis results from localStorage:', error);
     }
     setIsHydrated(true);
   }, []);
@@ -87,12 +131,17 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     if (isHydrated) {
       try {
         if (analysisResults) {
+          console.log('[AnalysisContext] Saving to localStorage:', {
+            repoUrl: analysisResults.repoUrl,
+            skillGapsCount: analysisResults.skillGaps?.length || 0
+          });
           localStorage.setItem(STORAGE_KEY, JSON.stringify(analysisResults));
         } else {
+          console.log('[AnalysisContext] Clearing localStorage');
           localStorage.removeItem(STORAGE_KEY);
         }
       } catch (error) {
-        console.warn('Failed to save analysis results to localStorage:', error);
+        console.warn('[AnalysisContext] Failed to save analysis results to localStorage:', error);
       }
     }
   }, [analysisResults, isHydrated]);

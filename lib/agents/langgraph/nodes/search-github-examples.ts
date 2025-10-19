@@ -10,6 +10,15 @@
 import { GitHubClient } from '@/lib/github/github-client';
 import type { ResearchState, GitHubProject } from '../research-agent';
 
+const QUERY_VARIANTS = [
+  { stars: 200, pushed: '2024-01-01' },
+  { stars: 100, pushed: '2023-01-01' },
+  { stars: 50, pushed: '2022-01-01' },
+  { stars: 20, pushed: '2021-01-01' },
+];
+
+const FALLBACK_LANGUAGES = ['TypeScript', 'JavaScript', 'Java'];
+
 /**
  * Search GitHub Examples Node
  *
@@ -26,53 +35,79 @@ export async function searchGitHubExamplesNode(
   try {
     const client = new GitHubClient(process.env.GITHUB_TOKEN);
 
-    // Build search query with qualifiers
-    // Format: "{skill_gap} {language} stars:>100 pushed:>2023-01-01"
-    const query = buildSearchQuery(state.skillGap, state.detectedLanguage);
-    console.log(`   Query: "${query}"`);
+    const languageCandidates = buildLanguageCandidates(state);
+    console.log(`   Language candidates: ${languageCandidates.join(', ') || 'none'}`);
 
-    // Search repositories
-    const { items: repos, total_count } = await client.searchRepositories(query, {
-      sort: 'stars',
-      order: 'desc',
-      per_page: 10, // Top 10 results
-    });
+    const attempts: GitHubProject[] = [];
+    let rateLimitHit = false;
 
-    console.log(`✅ Found ${total_count} repositories, analyzing top ${repos.length}...`);
+    for (const language of languageCandidates) {
+      for (const variant of QUERY_VARIANTS) {
+        if (rateLimitHit) break;
+        const query = buildSearchQuery(
+          state.skillGap,
+          language,
+          variant.stars,
+          variant.pushed
+        );
+        console.log(`   Query: "${query}"`);
 
-    // Convert to GitHubProject format
-    const examples: GitHubProject[] = repos.map((repo) => ({
-      name: repo.full_name,
-      url: repo.html_url,
-      stars: repo.stargazers_count,
-      description: repo.description || 'No description provided',
-      source: "github",
-    }));
+        try {
+          const { items: repos, total_count } = await client.searchRepositories(query, {
+            sort: 'stars',
+            order: 'desc',
+            per_page: 10,
+          });
 
-    // Filter for quality (minimum star threshold already in query)
-    const qualityExamples = examples.filter((ex) => {
-      // Must have description
-      if (!ex.description || ex.description === 'No description provided') {
-        return false;
+          console.log(`✅ Found ${total_count} repositories, analyzing top ${repos.length}...`);
+
+          const examples = repos.map((repo) => ({
+            name: repo.full_name,
+            url: repo.html_url,
+            stars: repo.stargazers_count,
+            description: repo.description || 'No description provided',
+            source: 'github' as const,
+            language: repo.language || language,
+          }));
+
+          const qualityExamples = examples.filter((ex) => {
+            if (!ex.description || ex.description === 'No description provided') {
+              return false;
+            }
+            if (variant.stars >= 100 && ex.stars < variant.stars) {
+              return false;
+            }
+            return true;
+          });
+
+          attempts.push(...qualityExamples);
+
+          if (qualityExamples.length >= 3) {
+            logTopExamples(qualityExamples);
+            return {
+              examples: qualityExamples,
+              iterationCount: state.iterationCount + 1,
+            };
+          }
+        } catch (error) {
+          const message = (error as Error)?.message ?? String(error);
+          console.error('❌ GitHub search failed:', message);
+          if (/rate limit/i.test(message)) {
+            rateLimitHit = true;
+            break;
+          }
+        }
       }
-      // Must have reasonable stars
-      if (ex.stars < 100) {
-        return false;
-      }
-      return true;
-    });
+      if (attempts.length >= 3) break;
+    }
 
-    console.log(`✅ Found ${qualityExamples.length} high-quality examples`);
-
-    // Log top 3 for user visibility
-    qualityExamples.slice(0, 3).forEach((ex, i) => {
-      console.log(`   ${i + 1}. ${ex.name} (⭐ ${ex.stars})`);
-      console.log(`      ${ex.description.substring(0, 80)}...`);
-    });
+    if (attempts.length > 0) {
+      logTopExamples(attempts);
+    }
 
     return {
-      examples: qualityExamples,
-      iterationCount: 1,
+      examples: attempts.slice(0, 5),
+      iterationCount: state.iterationCount + 1,
     };
   } catch (error) {
     console.error('❌ GitHub search failed:', error);
@@ -98,22 +133,44 @@ export async function searchGitHubExamplesNode(
  * buildSearchQuery("React hooks authentication", "TypeScript")
  * // Returns: "React hooks authentication language:TypeScript stars:>100 pushed:>2023-01-01"
  */
-function buildSearchQuery(skillGap: string, language: string): string {
+function buildSearchQuery(
+  skillGap: string,
+  language: string | undefined,
+  starThreshold: number,
+  pushedAfter: string
+): string {
   const qualifiers: string[] = [];
 
-  // Add skill gap keywords
   qualifiers.push(skillGap);
 
-  // Add language filter (if specified)
   if (language && language.toLowerCase() !== 'unknown') {
     qualifiers.push(`language:${language}`);
   }
 
-  // Add quality filters
-  qualifiers.push('stars:>100'); // Minimum 100 stars
-  qualifiers.push('pushed:>2023-01-01'); // Active in last 2 years
+  qualifiers.push(`stars:>${starThreshold}`);
+  qualifiers.push(`pushed:>${pushedAfter}`);
 
   return qualifiers.join(' ');
+}
+
+function buildLanguageCandidates(state: ResearchState): string[] {
+  const primary = state.detectedLanguage && state.detectedLanguage !== 'unknown'
+    ? [state.detectedLanguage]
+    : [];
+  const fromContext = state.languageCandidates ?? [];
+  const fallbacks = FALLBACK_LANGUAGES;
+
+  return Array.from(new Set([...primary, ...fromContext, ...fallbacks])).filter(
+    Boolean
+  ) as string[];
+}
+
+function logTopExamples(examples: GitHubProject[]): void {
+  console.log(`✅ Found ${examples.length} high-quality examples`);
+  examples.slice(0, 3).forEach((ex, index) => {
+    console.log(`   ${index + 1}. ${ex.name} (⭐ ${ex.stars})`);
+    console.log(`      ${ex.description.substring(0, 80)}...`);
+  });
 }
 
 /**

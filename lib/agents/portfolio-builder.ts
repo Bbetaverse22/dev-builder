@@ -8,6 +8,7 @@
 import { buildFrameworkSkillPlan } from '@/lib/analysis/framework-skill-plan';
 import { GitHubClient } from '@/lib/github/github-client';
 import type { GitHubAnalysis, GapAnalysisResult, SkillGap } from './gap-analyzer';
+import { getTemplateCreatorClient, closeTemplateCreatorClient } from '@/lib/mcp/template-creator/client';
 
 export interface PortfolioQualityAnalysis {
   repository: string;
@@ -327,6 +328,11 @@ export class PortfolioBuilderAgent {
             if (example?.url) usedExampleUrls.add(example.url);
           });
 
+          // Extract templates from GitHub examples using Template Creator MCP
+          enrichedRec.templates = await this.extractTemplatesFromExamples(
+            filteredExamples,
+            enrichedRec
+          );
         }
 
         return enrichedRec;
@@ -334,6 +340,73 @@ export class PortfolioBuilderAgent {
     );
 
     return enrichedRecommendations;
+  }
+
+  /**
+   * Extract templates from GitHub examples using Template Creator MCP
+   */
+  private async extractTemplatesFromExamples(
+    examples: GitHubExample[],
+    recommendation: PortfolioRecommendation
+  ): Promise<ExtractedTemplate[]> {
+    const templates: ExtractedTemplate[] = [];
+
+    if (!examples || examples.length === 0) {
+      return templates;
+    }
+
+    try {
+      const client = await getTemplateCreatorClient();
+      const filePatterns = this.buildExtractionPatterns(recommendation);
+
+      console.log(
+        `[Portfolio Builder] Extracting templates from ${examples.length} examples for "${recommendation.title}"`
+      );
+
+      for (const example of examples) {
+        try {
+          console.log(`[Portfolio Builder]   Extracting from: ${example.url}`);
+
+          const extractedTemplate = await client.extractTemplate(
+            example.url,
+            filePatterns,
+            {
+              preserveStructure: true,
+              keepComments: true,
+              includeTypes: true,
+              removeBusinessLogic: false,
+            }
+          );
+
+          // Add source repo URL to the template
+          const templateWithSource: ExtractedTemplate = {
+            ...extractedTemplate,
+            sourceRepo: example.url,
+          };
+
+          templates.push(templateWithSource);
+          console.log(`[Portfolio Builder]   ✅ Template extracted: ${example.name}`);
+        } catch (error) {
+          console.warn(
+            `[Portfolio Builder]   ⚠️  Failed to extract template from ${example.url}:`,
+            error instanceof Error ? error.message : error
+          );
+          // Continue with next example on error
+        }
+      }
+
+      console.log(
+        `[Portfolio Builder] Successfully extracted ${templates.length}/${examples.length} templates`
+      );
+    } catch (error) {
+      console.error(
+        '[Portfolio Builder] Template extraction failed:',
+        error instanceof Error ? error.message : error
+      );
+      // Return empty array on connection error, don't break the workflow
+    }
+
+    return templates;
   }
 
   /**
