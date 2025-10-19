@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  images: {
+    unoptimized: true, // Required for Vercel static export
+  },
+  
   turbopack: {
     resolveAlias: {
       "property-information/find": "property-information/lib/find.js",

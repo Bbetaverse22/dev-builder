@@ -17,6 +17,7 @@ export default function AgenticDashboardPage() {
             alt="Agentic gradient background"
             fill
             priority
+            unoptimized
             className="object-cover animate-pulse"
             style={{ animationDuration: '4s' }}
           />
