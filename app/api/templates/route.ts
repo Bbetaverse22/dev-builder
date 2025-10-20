@@ -37,11 +37,33 @@ export async function POST(request: NextRequest) {
     // Generate a unique template ID
     const templateId = `template-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Generate branch name for template
-    const featureName = body.featureName || body.skillName || 'example';
-    const branchName = `template-${featureName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+    // Generate branch name for template - sanitize to remove URL components
+    const rawFeatureName = body.featureName || body.skillName || 'example';
+    const featureName = rawFeatureName.includes('github.com')
+      ? rawFeatureName.split('/').pop()?.replace(/[^a-zA-Z0-9-]/g, '-') || 'example'
+      : rawFeatureName;
+    const branchName = `template-${featureName.toLowerCase().replace(/\s+/g, '-').substring(0, 50)}-${Date.now()}`;
     const templateDirectory = `templates/${featureName.toLowerCase().replace(/\s+/g, '-')}`;
     
+    const metadata = template.metadata;
+    const metadataInsights: string[] = [];
+
+    if (metadata) {
+      if (metadata.modeUsed === 'skeleton') {
+        metadataInsights.push('Skeleton mode removed business logic and inserted TODO markers.');
+      } else {
+        metadataInsights.push('Copier mode used; review files for proprietary logic before publishing.');
+      }
+
+      if (metadata.fallbackReason) {
+        metadataInsights.push(`Fallback reason: ${metadata.fallbackReason}`);
+      }
+
+      if (metadata.droppedFiles.length > 0) {
+        metadataInsights.push(`Omitted ${metadata.droppedFiles.length} file(s) flagged as business logic or oversized.`);
+      }
+    }
+
     const result: any = {
       success: true,
       templateId,
@@ -56,13 +78,28 @@ export async function POST(request: NextRequest) {
         'Customize the code for your specific use case'
       ],
       analysisSummary: {
-        framework: 'Unknown',
-        templateWorthiness: 85,
-        insights: [
-          'Template extracted from high-quality example',
-          'Ready for customization and learning',
-          'Includes best practices and patterns'
-        ]
+        framework: metadata?.modeUsed === 'skeleton' ? 'Skeleton Template' : 'Direct Copy',
+        templateWorthiness: Math.max(
+          15,
+          Math.min(
+            100,
+            metadata
+              ? Math.round(
+                  ((metadata.totalFilesConsidered - metadata.droppedFiles.length) /
+                    Math.max(metadata.totalFilesConsidered, 1)) *
+                    100
+                )
+              : 85
+          )
+        ),
+        insights:
+          metadataInsights.length > 0
+            ? metadataInsights
+            : [
+                'Template extracted from high-quality example',
+                'Ready for customization and learning',
+                'Includes best practices and patterns',
+              ],
       },
       template: {
         ...template,
@@ -71,6 +108,7 @@ export async function POST(request: NextRequest) {
         featureName: body.featureName,
         extractedAt: new Date().toISOString(),
       },
+      metadata,
       action: body.action || 'preview',
     };
 
@@ -270,9 +308,13 @@ async function createPullRequest(
   const { data: repoData } = await octokit.repos.get({ owner, repo });
   const baseBranch = repoData.default_branch ?? 'main';
 
-  // Create branch name
-  const featureName = options.featureName || options.skillName || 'example';
-  const branchName = `template-${featureName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+  // Create branch name - sanitize to remove URL components if present
+  const rawFeatureName = options.featureName || options.skillName || 'example';
+  // Extract repo name if it's a URL
+  const featureName = rawFeatureName.includes('github.com')
+    ? rawFeatureName.split('/').pop()?.replace(/[^a-zA-Z0-9-]/g, '-') || 'example'
+    : rawFeatureName;
+  const branchName = `template-${featureName.toLowerCase().replace(/\s+/g, '-').substring(0, 50)}-${Date.now()}`;
 
   // Get base branch SHA
   const { data: baseRef } = await octokit.git.getRef({ 

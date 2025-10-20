@@ -1,4 +1,7 @@
 import { buildFrameworkSkillPlan } from '@/lib/analysis/framework-skill-plan';
+import { generateObject, generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
 
 export interface SkillCategory {
   id: string;
@@ -77,6 +80,60 @@ export interface ResearchContext {
   professionalGoals?: string;
 }
 
+// Agentic analysis interfaces
+export interface AgenticCodeAnalysis {
+  overallQuality: number; // 0-100
+  skillLevel: 'beginner' | 'intermediate' | 'advanced';
+  architecturePatterns: string[];
+  codeSmells: CodeSmell[];
+  bestPractices: BestPractice[];
+  recommendations: string[];
+  confidence: number; // 0-1
+}
+
+export interface CodeSmell {
+  type: string;
+  severity: 'high' | 'medium' | 'low';
+  description: string;
+  location?: string;
+  suggestion: string;
+}
+
+export interface BestPractice {
+  name: string;
+  implemented: boolean;
+  importance: 'high' | 'medium' | 'low';
+  suggestion?: string;
+}
+
+export interface ReadmeAnalysis {
+  qualityScore: number; // 0-100
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: string[];
+  hasInstallation: boolean;
+  hasUsageExamples: boolean;
+  hasDocumentation: boolean;
+  clarity: number; // 0-100
+  completeness: number; // 0-100
+}
+
+export interface AgenticSkillAssessment {
+  skillLevel: 'beginner' | 'intermediate' | 'advanced';
+  detectedSkills: DetectedSkill[];
+  confidenceScore: number;
+  reasoning: string;
+  improvementAreas: string[];
+}
+
+export interface DetectedSkill {
+  name: string;
+  category: string;
+  currentLevel: number; // 1-5
+  evidence: string[];
+  confidence: number; // 0-1
+}
+
 export class GapAnalyzerAgent {
   private clampSkillLevel(level: number): number {
     if (Number.isNaN(level)) {
@@ -99,7 +156,6 @@ export class GapAnalyzerAgent {
       'testing': 4,         // Testing is crucial
       'prompt-engineering': 3, // Newer skill, 3 is good
       'context-engineering': 3, // Newer skill, 3 is good
-      'communication': 4,    // Communication is important
       'leadership': 3,       // Leadership varies by role
       'problem-solving': 4,  // Core skill
       'teamwork': 4,         // Important for collaboration
@@ -233,15 +289,6 @@ export class GapAnalyzerAgent {
     });
 
     // Soft skills (generally lower than technical)
-    skills.push({
-      id: 'communication',
-      name: 'Communication',
-      currentLevel: this.clampSkillLevel(baseLevel - 0.2),
-      targetLevel: 4,
-      importance: 5,
-      category: 'soft'
-    });
-
     skills.push({
       id: 'problem-solving',
       name: 'Problem Solving',
@@ -385,14 +432,6 @@ export class GapAnalyzerAgent {
         targetLevel: 3,
         importance: 4,
         category: 'domain'
-      },
-      {
-        id: 'communication',
-        name: 'Communication',
-        currentLevel: Math.max(1, baseLevel - 0.3),
-        targetLevel: 4,
-        importance: 5,
-        category: 'soft'
       }
     ];
 
@@ -447,7 +486,6 @@ export class GapAnalyzerAgent {
       id: 'soft',
       name: 'Soft Skills',
       skills: [
-        { id: 'communication', name: 'Communication', currentLevel: 1, targetLevel: 4, importance: 5, category: 'soft' },
         { id: 'leadership', name: 'Leadership', currentLevel: 1, targetLevel: 3, importance: 4, category: 'soft' },
         { id: 'problem-solving', name: 'Problem Solving', currentLevel: 1, targetLevel: 4, importance: 5, category: 'soft' },
         { id: 'teamwork', name: 'Teamwork', currentLevel: 1, targetLevel: 4, importance: 4, category: 'soft' },
@@ -1202,12 +1240,21 @@ export class GapAnalyzerAgent {
    * Fetch data from GitHub API
    */
   private async fetchGitHubData(url: string): Promise<any> {
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'SkillBridge.ai-Agents'
-      }
-    });
+    const headers: Record<string, string> = {
+      'Accept': 'application/vnd.github.v3+json',
+      'User-Agent': 'SkillBridge.ai-Agents'
+    };
+    
+    // Add authentication if token is available
+    const token = process.env.GITHUB_TOKEN;
+    if (token) {
+      headers['Authorization'] = `token ${token}`;
+      console.log('[GapAnalyzer] ✅ Using authenticated GitHub API request');
+    } else {
+      console.warn('[GapAnalyzer] ⚠️ No GITHUB_TOKEN found, using unauthenticated requests (60 req/hour limit)');
+    }
+    
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -1656,12 +1703,6 @@ export class GapAnalyzerAgent {
           'Build a complete project using the framework',
           'Join community forums and attend meetups',
         ];
-      case 'communication':
-        return [
-          'Practice presenting technical concepts to non-technical audiences',
-          'Join Toastmasters or similar public speaking groups',
-          'Write technical blog posts or documentation',
-        ];
       case 'leadership':
         return [
           'Take on mentoring opportunities',
@@ -1784,5 +1825,760 @@ export class GapAnalyzerAgent {
         }
       }
     });
+  }
+
+  // ============================================================================
+  // AGENTIC ANALYSIS METHODS (Using AI SDK)
+  // ============================================================================
+
+  /**
+   * Analyze GitHub repository using AI for deep code understanding
+   * This is the main entry point for agentic analysis
+   * ALWAYS falls back to heuristic analysis if AI fails
+   */
+  async analyzeGitHubRepositoryAgentic(
+    repoUrl: string,
+    options: { deepAnalysis?: boolean } = {}
+  ): Promise<GitHubAnalysis & { 
+    agenticAnalysis?: AgenticCodeAnalysis; 
+    readmeAnalysis?: ReadmeAnalysis;
+    analysisMode?: 'fast' | 'agentic' | 'fallback';
+    fallbackReason?: string;
+  }> {
+    console.log(`[GapAnalyzer Agentic] Starting analysis for ${repoUrl}`);
+    
+    // FALLBACK LAYER 1: Always run heuristic analysis first
+    let basicAnalysis: GitHubAnalysis;
+    try {
+      basicAnalysis = await this.analyzeGitHubRepository(repoUrl);
+      console.log(`[GapAnalyzer Agentic] ✅ Heuristic analysis complete`);
+    } catch (error) {
+      console.error('[GapAnalyzer Agentic] ❌ CRITICAL: Heuristic analysis failed:', error);
+      throw error; // Can't fallback if even basic analysis fails
+    }
+    
+    // Fast mode - return heuristic results immediately
+    if (!options.deepAnalysis) {
+      console.log(`[GapAnalyzer Agentic] Fast mode - returning heuristic results`);
+      return { ...basicAnalysis, analysisMode: 'fast' };
+    }
+
+    // Deep mode - attempt AI analysis with comprehensive fallback
+    console.log(`[GapAnalyzer Agentic] Deep mode - attempting AI analysis...`);
+    
+    let agenticAnalysis: AgenticCodeAnalysis | undefined;
+    let readmeAnalysis: ReadmeAnalysis | undefined;
+    let fallbackReason: string | undefined;
+    let analysisMode: 'agentic' | 'fallback' = 'agentic';
+
+    try {
+      const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+      if (!match) {
+        throw new Error('Invalid GitHub repository URL format');
+      }
+      
+      const [, owner, repo] = match;
+      const cleanRepo = repo.replace(/\.git$/, '');
+
+      // FALLBACK LAYER 2: README analysis (independent, won't fail entire analysis)
+      try {
+        console.log(`[GapAnalyzer Agentic] Fetching README...`);
+        const readmeContent = await this.fetchReadmeContent(owner, cleanRepo);
+        readmeAnalysis = await this.analyzeReadmeQualityAgentic(readmeContent);
+        console.log(`[GapAnalyzer Agentic] ✅ README analysis: ${readmeAnalysis.qualityScore}/100`);
+      } catch (readmeError) {
+        console.warn('[GapAnalyzer Agentic] ⚠️ README analysis failed:', 
+          readmeError instanceof Error ? readmeError.message : 'Unknown error');
+        // Don't fail entire analysis if README fails
+      }
+
+      // FALLBACK LAYER 3: Code file selection (independent)
+      let keyFiles: Array<{ path: string; content: string; language: string }> = [];
+      try {
+        console.log(`[GapAnalyzer Agentic] Selecting code files...`);
+        keyFiles = await this.selectKeyFilesForAnalysis(owner, cleanRepo, basicAnalysis.languages);
+        console.log(`[GapAnalyzer Agentic] Selected ${keyFiles.length} files`);
+      } catch (fileError) {
+        console.warn('[GapAnalyzer Agentic] ⚠️ File selection failed:', 
+          fileError instanceof Error ? fileError.message : 'Unknown error');
+      }
+
+      // FALLBACK LAYER 4: AI code analysis (optional)
+      if (keyFiles.length > 0) {
+        try {
+          console.log(`[GapAnalyzer Agentic] Running AI code analysis...`);
+          agenticAnalysis = await this.analyzeCodeQualityAgentic(keyFiles, basicAnalysis);
+          console.log(`[GapAnalyzer Agentic] ✅ Code quality: ${agenticAnalysis.overallQuality}/100 (confidence: ${agenticAnalysis.confidence})`);
+
+          // Update skill level only if AI is confident
+          if (agenticAnalysis.confidence > 0.7) {
+            const oldLevel = basicAnalysis.skillLevel;
+            basicAnalysis.skillLevel = agenticAnalysis.skillLevel;
+            console.log(`[GapAnalyzer Agentic] Updated skill level: ${oldLevel} → ${agenticAnalysis.skillLevel}`);
+          }
+
+          // Merge recommendations (AI first, then heuristic)
+          basicAnalysis.recommendations = [
+            ...agenticAnalysis.recommendations,
+            ...basicAnalysis.recommendations
+          ].slice(0, 10);
+
+        } catch (aiError) {
+          console.warn('[GapAnalyzer Agentic] ⚠️ AI code analysis failed:', 
+            aiError instanceof Error ? aiError.message : 'Unknown error');
+          analysisMode = 'fallback';
+          fallbackReason = aiError instanceof Error ? aiError.message : 'AI analysis error';
+        }
+      } else {
+        console.warn('[GapAnalyzer Agentic] ⚠️ No code files available for AI analysis');
+        analysisMode = 'fallback';
+        fallbackReason = 'No code files found';
+      }
+
+      // Return results (either full agentic or partial with fallback)
+      const result = {
+        ...basicAnalysis,
+        agenticAnalysis,
+        readmeAnalysis,
+        analysisMode,
+        fallbackReason
+      };
+
+      if (analysisMode === 'fallback') {
+        console.log(`[GapAnalyzer Agentic] ⚠️ Returning fallback results: ${fallbackReason}`);
+      } else {
+        console.log(`[GapAnalyzer Agentic] ✅ Full agentic analysis complete`);
+      }
+
+      return result;
+
+    } catch (error) {
+      // FINAL FALLBACK: Return heuristic analysis with error context
+      console.error('[GapAnalyzer Agentic] ❌ Deep analysis failed, using heuristic fallback:', error);
+      return {
+        ...basicAnalysis,
+        analysisMode: 'fallback',
+        fallbackReason: error instanceof Error ? error.message : 'Unknown error during AI analysis'
+      };
+    }
+  }
+
+  /**
+   * Select key files for AI analysis (avoid overwhelming the LLM)
+   */
+  private async selectKeyFilesForAnalysis(
+    owner: string,
+    repo: string,
+    primaryLanguages: string[]
+  ): Promise<Array<{ path: string; content: string; language: string }>> {
+    try {
+      const files: Array<{ path: string; content: string; language: string }> = [];
+      
+      // Determine file extensions to look for based on detected languages
+      const extensionMap: Record<string, string[]> = {
+        'TypeScript': ['.ts', '.tsx'],
+        'JavaScript': ['.js', '.jsx'],
+        'Python': ['.py'],
+        'Java': ['.java'],
+        'Go': ['.go'],
+        'Rust': ['.rs'],
+        'C++': ['.cpp', '.hpp', '.cc'],
+        'C#': ['.cs'],
+        'Ruby': ['.rb'],
+        'PHP': ['.php'],
+        'Swift': ['.swift'],
+        'Kotlin': ['.kt']
+      };
+
+      const targetExtensions = primaryLanguages.flatMap(lang => extensionMap[lang] || []);
+      if (targetExtensions.length === 0) {
+        targetExtensions.push('.js', '.ts', '.py'); // Default fallback
+      }
+
+      // Fetch root directory contents
+      console.log(`[GapAnalyzer Agentic] Fetching root directory for ${owner}/${repo}`);
+      const contentsData = await this.fetchGitHubData(
+        `https://api.github.com/repos/${owner}/${repo}/contents`
+      );
+      console.log(`[GapAnalyzer Agentic] Root directory has ${Array.isArray(contentsData) ? contentsData.length : 0} items`);
+
+      // Look for important files in common directories
+      const importantPaths = [
+        'src/index',
+        'src/main',
+        'src/app',
+        'app/page',           // Next.js 13+ App Router
+        'app/layout',         // Next.js 13+ Layout
+        'pages/index',        // Next.js Pages Router
+        'pages/_app',         // Next.js App Component
+        'lib/index',
+        'lib/main',
+        'index',
+        'main',
+        'app',
+        'server',
+        'api'
+      ];
+
+      // Try to fetch a few key files
+      console.log(`[GapAnalyzer Agentic] Looking for files with extensions: ${targetExtensions.join(', ')}`);
+      for (const basePath of importantPaths) {
+        for (const ext of targetExtensions) {
+          const filePath = `${basePath}${ext}`;
+          try {
+            const fileData = await this.fetchGitHubData(
+              `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`
+            );
+            
+            if (fileData.content && fileData.encoding === 'base64') {
+              const content = Buffer.from(fileData.content, 'base64').toString('utf-8');
+              
+              // Limit file size (max 15000 chars per file, truncate if larger)
+              const MAX_FILE_SIZE = 15000;
+              if (content.length <= MAX_FILE_SIZE) {
+                files.push({
+                  path: filePath,
+                  content,
+                  language: primaryLanguages[0] || 'Unknown'
+                });
+                console.log(`[GapAnalyzer Agentic] ✓ Found file: ${filePath} (${content.length} chars)`);
+              } else {
+                // Truncate large files instead of skipping them
+                const truncated = content.substring(0, MAX_FILE_SIZE);
+                files.push({
+                  path: filePath,
+                  content: truncated,
+                  language: primaryLanguages[0] || 'Unknown'
+                });
+                console.log(`[GapAnalyzer Agentic] ✓ Found file (truncated): ${filePath} (${content.length} → ${MAX_FILE_SIZE} chars)`);
+              }
+            }
+          } catch (error) {
+            // File doesn't exist, continue (this is expected for most paths)
+          }
+
+          if (files.length >= 3) break; // Max 3 files to analyze
+        }
+        if (files.length >= 3) break;
+      }
+      
+      console.log(`[GapAnalyzer Agentic] Found ${files.length} files from important paths`);
+
+      // If no files found in standard locations, explore common code directories
+      if (files.length === 0 && Array.isArray(contentsData)) {
+        console.log(`[GapAnalyzer Agentic] No files in standard paths, checking root directory...`);
+        
+        // First, check if there are common code directories
+        const codeDirectories = ['src', 'cmd', 'pkg', 'lib', 'app', 'internal'];
+        const foundDirs = contentsData.filter(item => 
+          item.type === 'dir' && codeDirectories.includes(item.name.toLowerCase())
+        );
+        
+        // If we found common code directories, explore them (limit to avoid too many requests)
+        if (foundDirs.length > 0) {
+          console.log(`[GapAnalyzer Agentic] Found code directories: ${foundDirs.map(d => d.name).join(', ')}`);
+          
+          for (const dir of foundDirs.slice(0, 2)) { // Max 2 directories to explore
+            try {
+              const dirData = await this.fetchGitHubData(
+                `https://api.github.com/repos/${owner}/${repo}/contents/${dir.name}`
+              );
+              
+              if (Array.isArray(dirData)) {
+                const codeFiles = dirData.filter(item => 
+                  item.type === 'file' && targetExtensions.some(ext => item.name.endsWith(ext))
+                );
+                
+                console.log(`[GapAnalyzer Agentic] Found ${codeFiles.length} code files in ${dir.name}/`);
+                
+                // Take first code file from this directory
+                for (const file of codeFiles.slice(0, 2)) {
+                  try {
+                    const fileData = await this.fetchGitHubData(
+                      `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}`
+                    );
+                    
+                    if (fileData.content && fileData.encoding === 'base64') {
+                      const content = Buffer.from(fileData.content, 'base64').toString('utf-8');
+                      const MAX_FILE_SIZE = 15000;
+                      
+                      files.push({
+                        path: file.path,
+                        content: content.length <= MAX_FILE_SIZE ? content : content.substring(0, MAX_FILE_SIZE),
+                        language: primaryLanguages[0] || 'Unknown'
+                      });
+                      console.log(`[GapAnalyzer Agentic] ✓ Found file in ${dir.name}: ${file.name} (${content.length} chars)`);
+                      
+                      if (files.length >= 3) break;
+                    }
+                  } catch (error) {
+                    // Skip files that can't be fetched
+                  }
+                }
+                
+                // If no files found directly in this directory, check subdirectories (one level deeper)
+                if (codeFiles.length === 0 && files.length < 3) {
+                  const subDirs = dirData.filter(item => item.type === 'dir').slice(0, 3); // Check up to 3 subdirectories
+                  console.log(`[GapAnalyzer Agentic] No files in ${dir.name}/, checking ${subDirs.length} subdirectories...`);
+                  
+                  for (const subDir of subDirs) {
+                    if (files.length >= 3) break;
+                    
+                    try {
+                      const subDirData = await this.fetchGitHubData(
+                        `https://api.github.com/repos/${owner}/${repo}/contents/${subDir.path}`
+                      );
+                      
+                      if (Array.isArray(subDirData)) {
+                        const subDirCodeFiles = subDirData.filter(item => 
+                          item.type === 'file' && targetExtensions.some(ext => item.name.endsWith(ext))
+                        );
+                        
+                        console.log(`[GapAnalyzer Agentic] Found ${subDirCodeFiles.length} code files in ${subDir.path}/`);
+                        
+                        // Take first code file from this subdirectory
+                        for (const file of subDirCodeFiles.slice(0, 1)) { // Only 1 file per subdir
+                          try {
+                            const fileData = await this.fetchGitHubData(
+                              `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}`
+                            );
+                            
+                            if (fileData.content && fileData.encoding === 'base64') {
+                              const content = Buffer.from(fileData.content, 'base64').toString('utf-8');
+                              const MAX_FILE_SIZE = 15000;
+                              
+                              files.push({
+                                path: file.path,
+                                content: content.length <= MAX_FILE_SIZE ? content : content.substring(0, MAX_FILE_SIZE),
+                                language: primaryLanguages[0] || 'Unknown'
+                              });
+                              console.log(`[GapAnalyzer Agentic] ✓ Found file in ${subDir.path}: ${file.name} (${content.length} chars)`);
+                              
+                              if (files.length >= 3) break;
+                            }
+                          } catch (error) {
+                            // Skip files that can't be fetched
+                          }
+                        }
+                      }
+                    } catch (error) {
+                      // Skip subdirectories that can't be explored
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.log(`[GapAnalyzer Agentic] Could not explore directory: ${dir.name}`);
+            }
+            
+            if (files.length >= 3) break;
+          }
+        }
+        
+        // If still no files, check root directory for code files
+        if (files.length === 0) {
+          const rootCodeFiles = contentsData.filter(item => 
+            item.type === 'file' && targetExtensions.some(ext => item.name.endsWith(ext))
+          );
+          console.log(`[GapAnalyzer Agentic] Found ${rootCodeFiles.length} code files in root`);
+        
+          for (const item of rootCodeFiles) {
+            try {
+              const fileData = await this.fetchGitHubData(
+                `https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`
+              );
+              
+              if (fileData.content && fileData.encoding === 'base64') {
+                const content = Buffer.from(fileData.content, 'base64').toString('utf-8');
+                const MAX_FILE_SIZE = 15000;
+                
+                if (content.length <= MAX_FILE_SIZE) {
+                  files.push({
+                    path: item.path,
+                    content,
+                    language: primaryLanguages[0] || 'Unknown'
+                  });
+                  console.log(`[GapAnalyzer Agentic] ✓ Found root file: ${item.path} (${content.length} chars)`);
+                } else {
+                  // Truncate large files instead of skipping them
+                  const truncated = content.substring(0, MAX_FILE_SIZE);
+                  files.push({
+                    path: item.path,
+                    content: truncated,
+                    language: primaryLanguages[0] || 'Unknown'
+                  });
+                  console.log(`[GapAnalyzer Agentic] ✓ Found root file (truncated): ${item.path} (${content.length} → ${MAX_FILE_SIZE} chars)`);
+                }
+                
+                if (files.length >= 3) break; // Get up to 3 files
+              }
+            } catch (error) {
+              // Skip files that can't be read
+            }
+          }
+        }
+      }
+
+      return files;
+    } catch (error) {
+      console.error('[GapAnalyzer Agentic] Error selecting files:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch README content from GitHub
+   */
+  private async fetchReadmeContent(owner: string, repo: string): Promise<string> {
+    try {
+      const readmeData = await this.fetchGitHubData(
+        `https://api.github.com/repos/${owner}/${repo}/readme`
+      );
+      
+      if (readmeData.content && readmeData.encoding === 'base64') {
+        return Buffer.from(readmeData.content, 'base64').toString('utf-8');
+      }
+      throw new Error('No README content found');
+    } catch (error) {
+      throw new Error('README not found');
+    }
+  }
+
+  /**
+   * Analyze code quality using AI (AI SDK)
+   * Falls back to heuristic assessment if AI fails
+   */
+  private async analyzeCodeQualityAgentic(
+    files: Array<{ path: string; content: string; language: string }>,
+    basicAnalysis: GitHubAnalysis
+  ): Promise<AgenticCodeAnalysis> {
+    console.log(`[GapAnalyzer Agentic] Analyzing code quality with AI...`);
+
+    try {
+      // Validate inputs
+      if (!files || files.length === 0) {
+        throw new Error('No files provided for analysis');
+      }
+
+      // Check for OpenAI API key
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY not configured');
+      }
+
+      const codeContext = files.map(f => 
+        `File: ${f.path}\n\`\`\`${f.language}\n${f.content}\n\`\`\``
+      ).join('\n\n');
+
+      const prompt = `You are an expert code reviewer analyzing a ${basicAnalysis.languages.join(', ')} project.
+
+Repository Technologies:
+- Languages: ${basicAnalysis.languages.join(', ')}
+- Frameworks: ${basicAnalysis.frameworks.join(', ') || 'None detected'}
+- Tools: ${basicAnalysis.tools.join(', ') || 'None detected'}
+
+Code Files to Analyze:
+${codeContext}
+
+Please analyze this code and provide:
+1. Overall quality assessment (0-100)
+2. Developer skill level (beginner/intermediate/advanced)
+3. Architecture patterns used
+4. Code smells and issues
+5. Best practices (implemented or missing)
+6. Specific recommendations for improvement
+7. Confidence in your assessment (0-1)
+
+Focus on: code organization, error handling, type safety, testing, documentation, security, and maintainability.`;
+
+      const { object } = await generateObject({
+        model: openai('gpt-4o-mini'),
+        schema: z.object({
+          overallQuality: z.number().min(0).max(100).describe('Overall code quality score'),
+          skillLevel: z.enum(['beginner', 'intermediate', 'advanced']).describe('Developer skill level based on code'),
+          architecturePatterns: z.array(z.string()).describe('Detected architecture patterns (e.g., MVC, microservices, clean architecture)'),
+          codeSmells: z.array(z.object({
+            type: z.string().describe('Type of code smell'),
+            severity: z.enum(['high', 'medium', 'low']),
+            description: z.string().describe('What the issue is'),
+            location: z.string().optional().describe('File or function where found'),
+            suggestion: z.string().describe('How to fix it')
+          })).describe('Code smells and issues found'),
+          bestPractices: z.array(z.object({
+            name: z.string().describe('Best practice name'),
+            implemented: z.boolean().describe('Whether it is implemented'),
+            importance: z.enum(['high', 'medium', 'low']),
+            suggestion: z.string().optional().describe('How to implement if missing')
+          })).describe('Best practices evaluation'),
+          recommendations: z.array(z.string()).describe('Top 5 actionable recommendations'),
+          confidence: z.number().min(0).max(1).describe('Confidence in this assessment')
+        }),
+        prompt,
+        maxRetries: 2 // Retry failed requests up to 2 times
+      });
+
+      console.log(`[GapAnalyzer Agentic] ✅ AI code analysis complete`);
+      return object;
+
+    } catch (error) {
+      // Comprehensive error logging
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn(`[GapAnalyzer Agentic] ⚠️ AI code analysis failed: ${errorMessage}`);
+      
+      // Provide helpful error context
+      if (errorMessage.includes('API key')) {
+        console.warn('[GapAnalyzer Agentic] → Set OPENAI_API_KEY in environment variables');
+      } else if (errorMessage.includes('rate limit')) {
+        console.warn('[GapAnalyzer Agentic] → OpenAI rate limit reached, using fallback');
+      } else if (errorMessage.includes('timeout')) {
+        console.warn('[GapAnalyzer Agentic] → Request timeout, using fallback');
+      }
+      
+      // Fallback to enhanced heuristic assessment based on basic analysis
+      const heuristicQuality = this.calculateHeuristicQuality(basicAnalysis);
+      
+      return {
+        overallQuality: heuristicQuality,
+        skillLevel: basicAnalysis.skillLevel,
+        architecturePatterns: [],
+        codeSmells: [],
+        bestPractices: [],
+        recommendations: [
+          'AI analysis unavailable - showing heuristic recommendations',
+          ...basicAnalysis.recommendations.slice(0, 4)
+        ],
+        confidence: 0.3
+      };
+    }
+  }
+
+  /**
+   * Calculate heuristic quality score as fallback
+   */
+  private calculateHeuristicQuality(analysis: GitHubAnalysis): number {
+    let score = 50; // Base score
+
+    // Add points based on heuristic indicators
+    if (analysis.skillLevel === 'advanced') score += 20;
+    else if (analysis.skillLevel === 'intermediate') score += 10;
+    
+    if (analysis.frameworks.length > 0) score += 10;
+    if (analysis.languages.length > 1) score += 5;
+    if (analysis.tools.includes('docker')) score += 5;
+    if (analysis.tools.includes('typescript')) score += 5;
+    
+    if (analysis.metadata) {
+      if (analysis.metadata.activityScore > 7) score += 10;
+      if (analysis.metadata.starCount > 10) score += 5;
+    }
+
+    return Math.min(100, Math.max(0, score));
+  }
+
+  /**
+   * Analyze README quality using AI (AI SDK)
+   * Falls back to heuristic analysis if AI fails
+   */
+  async analyzeReadmeQualityAgentic(readmeContent: string): Promise<ReadmeAnalysis> {
+    console.log(`[GapAnalyzer Agentic] Analyzing README quality with AI...`);
+
+    try {
+      // Validate inputs
+      if (!readmeContent || readmeContent.trim().length === 0) {
+        throw new Error('README content is empty');
+      }
+
+      // Check for OpenAI API key
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY not configured');
+      }
+
+      // Truncate README if too long (keep first 3000 chars)
+      const truncatedReadme = readmeContent.slice(0, 3000);
+
+      const prompt = `You are a technical documentation expert. Analyze this README and evaluate its quality.
+
+README Content:
+\`\`\`markdown
+${truncatedReadme}
+\`\`\`
+
+Evaluate:
+1. Overall quality score (0-100)
+2. Strengths (what's done well)
+3. Weaknesses (what's missing or unclear)
+4. Specific suggestions for improvement
+5. Whether it has installation instructions
+6. Whether it has usage examples
+7. Whether it has good documentation
+8. Clarity score (how easy to understand)
+9. Completeness score (how thorough it is)
+
+Consider: structure, clarity, completeness, examples, getting started guide, API docs, contributing guidelines.`;
+
+      const { object } = await generateObject({
+        model: openai('gpt-4o-mini'),
+        schema: z.object({
+          qualityScore: z.number().min(0).max(100).describe('Overall README quality'),
+          strengths: z.array(z.string()).describe('What the README does well (2-3 items)'),
+          weaknesses: z.array(z.string()).describe('What the README is missing or could improve (2-3 items)'),
+          suggestions: z.array(z.string()).describe('Specific actionable suggestions (3-5 items)'),
+          hasInstallation: z.boolean().describe('Has clear installation instructions'),
+          hasUsageExamples: z.boolean().describe('Has code examples showing usage'),
+          hasDocumentation: z.boolean().describe('Has comprehensive documentation'),
+          clarity: z.number().min(0).max(100).describe('How clear and easy to understand'),
+          completeness: z.number().min(0).max(100).describe('How complete and thorough')
+        }),
+        prompt,
+        maxRetries: 2
+      });
+
+      console.log(`[GapAnalyzer Agentic] ✅ README analysis complete - Score: ${object.qualityScore}/100`);
+      return object;
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn(`[GapAnalyzer Agentic] ⚠️ README analysis failed: ${errorMessage}`);
+      
+      // Fallback to heuristic README analysis
+      const heuristicAnalysis = this.analyzeReadmeHeuristically(readmeContent);
+      console.log('[GapAnalyzer Agentic] Using heuristic README analysis');
+      
+      return heuristicAnalysis;
+    }
+  }
+
+  /**
+   * Heuristic README analysis as fallback
+   */
+  private analyzeReadmeHeuristically(content: string): ReadmeAnalysis {
+    const lowerContent = content.toLowerCase();
+    
+    // Check for common sections
+    const hasInstallation = /install|setup|getting started/i.test(content);
+    const hasUsageExamples = /```|example|usage/i.test(content);
+    const hasDocumentation = /api|documentation|reference/i.test(content);
+    
+    // Count sections (lines starting with #)
+    const sections = (content.match(/^#+\s/gm) || []).length;
+    
+    // Calculate scores based on heuristics
+    let qualityScore = 40; // Base score for having README
+    if (content.length > 500) qualityScore += 10;
+    if (content.length > 1500) qualityScore += 10;
+    if (sections >= 3) qualityScore += 15;
+    if (hasInstallation) qualityScore += 10;
+    if (hasUsageExamples) qualityScore += 10;
+    if (hasDocumentation) qualityScore += 5;
+    
+    const clarity = content.length > 200 ? 60 : 40;
+    const completeness = Math.min(80, 40 + (sections * 5));
+    
+    return {
+      qualityScore: Math.min(100, qualityScore),
+      strengths: [
+        'README file exists',
+        content.length > 500 ? 'Substantial content' : 'Basic documentation',
+        sections >= 3 ? 'Multiple sections' : 'Single section'
+      ].filter(Boolean),
+      weaknesses: [
+        !hasInstallation && 'Missing installation instructions',
+        !hasUsageExamples && 'No code examples',
+        !hasDocumentation && 'Limited documentation',
+        'AI analysis unavailable - showing heuristic results'
+      ].filter(Boolean) as string[],
+      suggestions: [
+        !hasInstallation && 'Add installation/setup instructions',
+        !hasUsageExamples && 'Include code examples',
+        !hasDocumentation && 'Add API or usage documentation',
+        'Consider adding badges, images, or diagrams'
+      ].filter(Boolean) as string[],
+      hasInstallation,
+      hasUsageExamples,
+      hasDocumentation,
+      clarity,
+      completeness
+    };
+  }
+
+  /**
+   * Generate personalized recommendations using AI
+   * Falls back to basic recommendations if AI fails
+   */
+  async generateAgenticRecommendations(
+    githubAnalysis: GitHubAnalysis,
+    agenticAnalysis?: AgenticCodeAnalysis,
+    readmeAnalysis?: ReadmeAnalysis,
+    userContext?: ResearchContext
+  ): Promise<string[]> {
+    console.log(`[GapAnalyzer Agentic] Generating personalized recommendations with AI...`);
+
+    try {
+      // Check for OpenAI API key
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY not configured');
+      }
+
+      const contextDescription = `
+Repository Analysis:
+- Languages: ${githubAnalysis.languages.join(', ')}
+- Frameworks: ${githubAnalysis.frameworks.join(', ') || 'None'}
+- Skill Level: ${githubAnalysis.skillLevel}
+${agenticAnalysis ? `- Code Quality: ${agenticAnalysis.overallQuality}/100` : ''}
+${readmeAnalysis ? `- README Quality: ${readmeAnalysis.qualityScore}/100` : ''}
+
+${agenticAnalysis?.codeSmells?.length ? `Code Issues Found:
+${agenticAnalysis.codeSmells.slice(0, 3).map(cs => `- ${cs.type}: ${cs.description}`).join('\n')}` : ''}
+
+${readmeAnalysis?.weaknesses?.length ? `README Weaknesses:
+${readmeAnalysis.weaknesses.slice(0, 2).map(w => `- ${w}`).join('\n')}` : ''}
+
+${userContext?.targetRole ? `Target Role: ${userContext.targetRole}` : ''}
+${userContext?.professionalGoals ? `Goals: ${userContext.professionalGoals}` : ''}
+`.trim();
+
+      const prompt = `Based on this developer's GitHub repository analysis, generate 5-7 specific, actionable recommendations to improve their skills and portfolio.
+
+${contextDescription}
+
+Provide recommendations that are:
+1. Specific and actionable (not generic advice)
+2. Prioritized by impact
+3. Tailored to their current skill level
+4. Include concrete next steps
+5. Consider both technical skills and portfolio presentation`;
+
+      const { text } = await generateText({
+        model: openai('gpt-4o-mini'),
+        prompt,
+        maxRetries: 2
+      });
+
+      // Parse recommendations (assuming they're in a list format)
+      const recommendations = text
+        .split('\n')
+        .filter(line => line.trim().match(/^[\d\-\*\.]+\s+/)) // Lines starting with numbers, bullets, etc.
+        .map(line => line.replace(/^[\d\-\*\.]+\s+/, '').trim())
+        .filter(line => line.length > 0)
+        .slice(0, 7);
+
+      console.log(`[GapAnalyzer Agentic] ✅ Generated ${recommendations.length} AI recommendations`);
+      return recommendations.length > 0 ? recommendations : [text.slice(0, 200)]; // Fallback to first 200 chars
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn(`[GapAnalyzer Agentic] ⚠️ AI recommendations failed: ${errorMessage}`);
+      
+      // Fallback to enhanced recommendations combining all available data
+      const fallbackRecs = [
+        ...githubAnalysis.recommendations,
+        ...(agenticAnalysis?.recommendations || []),
+        ...(readmeAnalysis?.suggestions || [])
+      ]
+        .filter((rec, index, self) => self.indexOf(rec) === index) // Remove duplicates
+        .slice(0, 7);
+
+      console.log('[GapAnalyzer Agentic] Using fallback recommendations');
+      return fallbackRecs;
+    }
   }
 }

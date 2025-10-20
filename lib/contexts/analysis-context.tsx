@@ -78,6 +78,7 @@ export interface GitHubExample {
 
 export interface AnalysisResults {
   repoUrl: string;
+  githubAnalysis?: any; // Full GitHub analysis including AI insights (agenticAnalysis, readmeAnalysis)
   portfolioQuality: PortfolioQuality | null;
   skillGaps: SkillGap[];
   portfolioActions: PortfolioAction[];

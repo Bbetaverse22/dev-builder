@@ -17,6 +17,9 @@ import {
   Target,
   Briefcase,
   ShieldCheck,
+  Sparkles,
+  CheckCircle2,
+  FileText,
 } from 'lucide-react';
 import { formatGapValue } from '@/lib/utils';
 import type { SkillGuidance } from '@/lib/agents/gap-analyzer';
@@ -31,6 +34,13 @@ interface SkillGap {
   confidence?: 'low' | 'medium' | 'high';
   recommendations?: string[];
   guidance?: SkillGuidance;
+  aiInsights?: {
+    codeQuality?: number;
+    architecturePatterns?: string[];
+    relatedCodeSmells?: Array<{ type: string; description: string; severity: string }>;
+    bestPractices?: Array<{ name: string; description: string }>;
+    readmeQuality?: number;
+  };
 }
 
 interface InteractiveSkillCardProps {
@@ -264,6 +274,102 @@ export function InteractiveSkillCard({ skill, onStartLearning }: InteractiveSkil
                     </ul>
                   </div>
                 ) : null}
+              </div>
+            )}
+
+            {/* AI Insights Section */}
+            {skill.aiInsights && (
+              <div className="pt-3 border-t space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Sparkles className="h-4 w-4 text-purple-500" />
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      AI-Powered Insights
+                    </p>
+                    <Badge variant="secondary" className="text-[10px] bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300">
+                      GPT-4o-mini
+                    </Badge>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground italic">
+                    Skill-specific analysis
+                  </p>
+                </div>
+
+                <div className="grid gap-3">
+                  {/* Code Quality */}
+                  {skill.aiInsights.codeQuality !== undefined && (
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800/30">
+                      <span className="text-xs font-medium">Code Quality Score</span>
+                      <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                        {skill.aiInsights.codeQuality}/100
+                      </span>
+                    </div>
+                  )}
+
+                  {/* README Quality */}
+                  {skill.aiInsights.readmeQuality !== undefined && (
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/30">
+                      <div className="flex items-center gap-1.5">
+                        <FileText className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                        <span className="text-xs font-medium">README Quality</span>
+                      </div>
+                      <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                        {skill.aiInsights.readmeQuality}/100
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Architecture Patterns */}
+                  {skill.aiInsights.architecturePatterns && skill.aiInsights.architecturePatterns.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground">🏗️ Architecture Detected</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {skill.aiInsights.architecturePatterns.map((pattern, i) => (
+                          <Badge key={i} variant="outline" className="text-[10px] bg-purple-50 dark:bg-purple-950/20 border-purple-300 dark:border-purple-700">
+                            {pattern}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Code Smells */}
+                  {skill.aiInsights.relatedCodeSmells && skill.aiInsights.relatedCodeSmells.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400">⚠️ Related Code Smells</p>
+                      <div className="space-y-1.5">
+                        {skill.aiInsights.relatedCodeSmells.slice(0, 2).map((smell, i) => (
+                          <div key={i} className="p-2 rounded bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800/30">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1">
+                                <p className="text-xs font-medium text-yellow-900 dark:text-yellow-100">{smell.type}</p>
+                                <p className="text-[10px] text-yellow-700 dark:text-yellow-300 mt-0.5">{smell.description}</p>
+                              </div>
+                              <Badge className="text-[9px] h-4 bg-yellow-600/20 dark:bg-yellow-600/20 text-yellow-900 dark:text-yellow-100 border-yellow-600/30">
+                                {smell.severity}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Best Practices - Only show when truly relevant to this specific skill */}
+                  {skill.aiInsights.bestPractices && skill.aiInsights.bestPractices.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">✅ Relevant Best Practices</p>
+                      <div className="space-y-1">
+                        {skill.aiInsights.bestPractices.slice(0, 2).map((practice, i) => (
+                          <div key={i} className="flex items-start gap-1.5 p-1.5 rounded bg-emerald-50 dark:bg-emerald-950/20">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+                            <p className="text-[10px] text-emerald-900 dark:text-emerald-100">{practice.description || practice.name}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

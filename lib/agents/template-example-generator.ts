@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { Octokit } from '@octokit/rest';
-import { getTemplateCreatorClient } from '@/lib/mcp/template-creator';
+import { getTemplateCreatorClient, type TemplateMetadata } from '@/lib/mcp/template-creator';
 
 interface TemplateGenerationOptions {
   exampleUrl: string;
@@ -30,6 +30,7 @@ interface TemplateGenerationResult {
   instructions: string[];
   sourceUrl: string;
   sourceName: string;
+  metadata?: TemplateMetadata;
 }
 
 interface TemplateGenerationFailure {
@@ -137,6 +138,19 @@ export class TemplateExampleGenerator {
     }
 
     const relativeDir = path.relative(process.cwd(), templateDir);
+    const metadata = template.metadata;
+    if (metadata?.modeUsed === 'skeleton') {
+      analysis.insights = [
+        'Skeleton mode removed business logic; TODO comments mark the gaps you need to fill.',
+        ...(analysis.insights ?? []),
+      ];
+    } else if (metadata?.fallbackReason) {
+      analysis.insights = [
+        `Skeleton fallback reason: ${metadata.fallbackReason}`,
+        ...(analysis.insights ?? []),
+      ];
+    }
+
     const instructions = [
       `git checkout -b ${branchName}`,
       `git add ${relativeDir}`,
@@ -158,6 +172,7 @@ export class TemplateExampleGenerator {
         templateWorthiness: analysis.templateWorthiness,
         insights: analysis.insights ?? [],
       },
+      metadata,
     };
   }
 

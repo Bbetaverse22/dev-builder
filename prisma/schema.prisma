@@ -89,7 +89,7 @@ model SkillGap {
   technologies    Technology[]
   skillGapItems   SkillGapItem[]
   recommendations Recommendation[]
-  researchResults ResearchResult?
+  researchResults ResearchResult[]
   githubIssues    GitHubIssue[]
 
   @@index([userId])

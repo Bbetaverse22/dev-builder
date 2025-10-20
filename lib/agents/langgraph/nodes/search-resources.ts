@@ -23,6 +23,9 @@ type SearchProvider = "firecrawl" | "openai";
 const DEFAULT_MODEL = process.env.OPENAI_RESEARCH_MODEL ?? "gpt-4o-mini";
 const MAX_FIRECRAWL_RESULTS = 10;
 const MAX_TOTAL_RESULTS = 20;
+const MAX_FIRECRAWL_PASSES = Number(
+  process.env.FIRECRAWL_MAX_PASSES ?? 1
+);
 const MAX_SCRAPE_COUNT = 5;
 const MAX_SUMMARY_CHARS = 600;
 const SUMMARY_KEYPOINT_LIMIT = 5;
@@ -31,7 +34,7 @@ const SCRAPE_TIMEOUT_MS = 20_000;
 const SEARCH_ITERATION_LIMIT = 3;
 const MIN_RESULTS_TARGET = 12;
 const FIRECRAWL_MIN_INTERVAL_MS = Number(
-  process.env.FIRECRAWL_MIN_INTERVAL_MS ?? 1500
+  process.env.FIRECRAWL_MIN_INTERVAL_MS ?? 5000
 );
 
 let lastFirecrawlRequestAt = 0;
@@ -79,7 +82,11 @@ export async function searchResourcesNode(
   let pass = 0;
   let continueSearching = true;
 
-  while (continueSearching && pass < SEARCH_ITERATION_LIMIT) {
+  while (
+    continueSearching &&
+    pass < SEARCH_ITERATION_LIMIT &&
+    pass < MAX_FIRECRAWL_PASSES
+  ) {
     pass += 1;
     const iterationStart = Date.now();
     const iteration: SearchIteration = {
@@ -161,7 +168,9 @@ export async function searchResourcesNode(
         );
       }
 
-      supplementalQueries.forEach((query) => querySet.add(query));
+      supplementalQueries
+        .slice(0, 3)
+        .forEach((query) => querySet.add(query));
       iteration.sources.push("openai");
       iteration.resultsFound += llmResources.length;
     }
@@ -536,7 +545,9 @@ async function runLLMFallback(
     const rawText = extractTextContent(aiMessage.content);
     const parsed = parseLLMJson(rawText);
 
-    const validated = llmResponseSchema.safeParse(parsed);
+    const parsedWithClamp = clampSupplementalQueries(parsed);
+
+    const validated = llmResponseSchema.safeParse(parsedWithClamp);
     if (!validated.success) {
       console.warn(
         "[searchResourcesNode] LLM response failed validation:",
@@ -596,6 +607,25 @@ function parseLLMJson(rawText: string): unknown {
     );
     return null;
   }
+}
+
+function clampSupplementalQueries(parsed: unknown): unknown {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return parsed;
+  }
+
+  const maybeSupplemental = (parsed as Record<string, unknown>)[
+    "supplemental_queries"
+  ];
+  if (!Array.isArray(maybeSupplemental)) {
+    return parsed;
+  }
+
+  const trimmed = maybeSupplemental.slice(0, 6);
+  return {
+    ...(parsed as Record<string, unknown>),
+    supplemental_queries: trimmed,
+  };
 }
 
 function normalizeUrl(url: string | undefined | null): string | null {

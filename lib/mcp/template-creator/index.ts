@@ -14,6 +14,17 @@ export interface TemplateExtractionOptions {
   keepComments?: boolean;
   includeTypes?: boolean;
   removeBusinessLogic?: boolean;
+  includePatterns?: string[];
+  excludePatterns?: string[];
+  configPath?: string;
+  verbosity?: 'minimal' | 'default' | 'full';
+  strictRedaction?: boolean;
+  fallbackToRawCopy?: boolean;
+  mode?: 'skeleton' | 'copier';
+  fallbackMode?: 'copier' | 'skip';
+  maxFiles?: number;
+  maxFileSizeKb?: number;
+  minSkeletonFiles?: number;
 }
 
 export interface ExtractedTemplate {
@@ -21,6 +32,7 @@ export interface ExtractedTemplate {
   structure: string;
   instructions: string[];
   placeholders: Record<string, string>;
+  metadata?: TemplateMetadata;
 }
 
 export interface TemplateFile {
@@ -28,6 +40,16 @@ export interface TemplateFile {
   content: string;
   description: string;
   placeholders: string[];
+}
+
+export interface TemplateMetadata {
+  modeUsed: 'skeleton' | 'copier';
+  redactedFunctions: number;
+  droppedFiles: string[];
+  totalFilesConsidered: number;
+  warnings?: string[];
+  fallbackReason?: string;
+  notes?: string[];
 }
 
 export interface StructureAnalysis {

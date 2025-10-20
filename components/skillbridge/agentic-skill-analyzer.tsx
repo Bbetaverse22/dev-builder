@@ -154,8 +154,73 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
     if (!hasLoadedFromContext && analysisResults && analysisResults.skillGaps.length > 0) {
       console.log('[AgenticSkillAnalyzer] Loading results from context:', analysisResults);
       
-      // Convert context data back to local state format
-      const convertedSkillGaps = analysisResults.skillGaps.map((gap) => {
+      // Helper function to filter AI insights by skill relevance (for context loading - TECHNICAL ONLY)
+      const getSkillSpecificInsightsFromContext = (skillName: string) => {
+        if (!analysisResults.githubAnalysis?.agenticAnalysis && !analysisResults.githubAnalysis?.readmeAnalysis) {
+          return undefined;
+        }
+
+        const skillLower = skillName.toLowerCase();
+        const agenticAnalysis = analysisResults.githubAnalysis.agenticAnalysis;
+
+        // SKIP SOFT SKILLS
+        const softSkills = ['communication', 'teamwork', 'time management', 'leadership', 'collaboration'];
+        if (softSkills.some(soft => skillLower.includes(soft))) {
+          return undefined;
+        }
+
+        const relevantArchitecture = skillLower.includes('architecture') || skillLower.includes('design')
+          ? agenticAnalysis?.architecturePatterns || []
+          : [];
+
+        const relevantSmells = (agenticAnalysis?.codeSmells || []).filter((smell: any) => {
+          const smellText = `${smell.type} ${smell.description}`.toLowerCase();
+          if (skillLower.includes('test') || skillLower.includes('qa')) {
+            return smellText.includes('test') || smellText.includes('coverage') || smellText.includes('assertion');
+          }
+          if (skillLower.includes('framework') || skillLower.includes('librar')) {
+            return smellText.includes('import') || smellText.includes('dependency') || smellText.includes('package');
+          }
+          if (skillLower.includes('javascript') || skillLower.includes('typescript') || skillLower.includes('python') || skillLower.includes('java')) {
+            return true;
+          }
+          if (skillLower.includes('architecture') || skillLower.includes('design')) {
+            return smellText.includes('coupling') || smellText.includes('architecture') || smellText.includes('pattern');
+          }
+          return true;
+        });
+
+        const relevantPractices = (agenticAnalysis?.bestPractices || []).filter((practice: any) => {
+          const practiceText = `${practice.name || ''} ${practice.description || ''}`.toLowerCase();
+          if (skillLower.includes('test') || skillLower.includes('qa')) {
+            return practiceText.includes('test');
+          }
+          if (skillLower.includes('typescript') || skillLower.includes('javascript') || skillLower.includes('python')) {
+            return true;
+          }
+          if (skillLower.includes('framework') || skillLower.includes('librar')) {
+            return true;
+          }
+          return true;
+        });
+
+        return {
+          codeQuality: agenticAnalysis?.overallQuality,
+          architecturePatterns: relevantArchitecture,
+          relatedCodeSmells: relevantSmells.slice(0, 2),
+          bestPractices: relevantPractices.slice(0, 2),
+          readmeQuality: undefined,
+        };
+      };
+
+      // Convert context data back to local state format (filter out soft skills)
+      const convertedSkillGaps = analysisResults.skillGaps
+        .filter(gap => {
+          const skillLower = gap.skill.toLowerCase();
+          const softSkills = ['communication', 'teamwork', 'time management', 'leadership', 'collaboration'];
+          return !softSkills.some(soft => skillLower.includes(soft));
+        })
+        .map((gap) => {
         const priority = parseInt(gap.importance) || 80;
         
         // Use saved numeric values if available, otherwise estimate
@@ -175,6 +240,8 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
             recommendedSteps: [],
           },
           recommendations: [],
+          // Restore skill-specific AI insights
+          aiInsights: getSkillSpecificInsightsFromContext(gap.skill),
         };
       });
 
@@ -360,12 +427,60 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
 
       setRepoUrl(repoUrl);
 
-      const githubAnalysis = await gapAnalyzer.analyzeGitHubRepository(repoUrl);
+      // NEW: Call agentic API endpoint for AI-powered analysis
+      addLog('info', '🤖 Starting AI-powered agentic analysis...', <Brain className="h-4 w-4" />);
+      
+      const agenticResponse = await fetch('/api/gap-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'analyze-github-agentic',
+          repositoryUrl: repoUrl,
+          deepAnalysis: true, // Enable AI analysis
+          userContext: {
+            targetRole: targetRole || undefined,
+            targetIndustry: targetIndustry || undefined,
+            professionalGoals: professionalGoals || undefined,
+          }
+        }),
+      });
+
+      if (!agenticResponse.ok) {
+        throw new Error('Failed to analyze repository with agentic analyzer');
+      }
+
+      const agenticData = await agenticResponse.json();
+      const githubAnalysis = agenticData.result;
+      
+      // Show analysis mode
+      if (agenticData.analysisMode === 'agentic' && !agenticData.usedFallback) {
+        addLog('success', '✨ AI-powered analysis complete!', <CheckCircle2 className="h-4 w-4" />);
+      } else if (agenticData.usedFallback) {
+        addLog('warning', `⚠️ Using fallback mode: ${agenticData.fallbackReason}`, <AlertCircle className="h-4 w-4" />);
+      }
       
       addLog('success', `Detected languages: ${githubAnalysis.languages.join(', ')}`, <CheckCircle2 className="h-4 w-4" />);
       if (githubAnalysis.frameworks.length > 0) {
         addLog('info', `Frameworks: ${githubAnalysis.frameworks.join(', ')}`, <Code className="h-4 w-4" />);
       }
+
+      // Show AI insights if available
+      if (githubAnalysis.agenticAnalysis) {
+        addLog('success', `🎯 Code Quality: ${githubAnalysis.agenticAnalysis.overallQuality}/100 (Confidence: ${(githubAnalysis.agenticAnalysis.confidence * 100).toFixed(0)}%)`, <CheckCircle2 className="h-4 w-4" />);
+        
+        if (githubAnalysis.agenticAnalysis.architecturePatterns.length > 0) {
+          addLog('info', `🏗️ Architecture: ${githubAnalysis.agenticAnalysis.architecturePatterns.join(', ')}`, <Code className="h-4 w-4" />);
+        }
+        
+        if (githubAnalysis.agenticAnalysis.codeSmells.length > 0) {
+          addLog('warning', `⚠️ Found ${githubAnalysis.agenticAnalysis.codeSmells.length} code smell(s)`, <AlertCircle className="h-4 w-4" />);
+        }
+      }
+
+      if (githubAnalysis.readmeAnalysis) {
+        addLog('info', `📝 README Quality: ${githubAnalysis.readmeAnalysis.qualityScore}/100`, <Code className="h-4 w-4" />);
+      }
+
       setProgress(40);
 
       // Generate REAL skill assessment
@@ -410,8 +525,100 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
         addLog('warning', 'Could not store analysis data', <AlertCircle className="h-4 w-4" />);
       }
 
-      // Set REAL skill gaps
-      const topGaps = gapAnalysis.skillGaps.slice(0, 5).map(sg => ({
+      // Helper function to filter AI insights by skill relevance (TECHNICAL SKILLS ONLY)
+      const getSkillSpecificInsights = (skillName: string) => {
+        if (!githubAnalysis.agenticAnalysis && !githubAnalysis.readmeAnalysis) {
+          return undefined;
+        }
+
+        const skillLower = skillName.toLowerCase();
+        const agenticAnalysis = githubAnalysis.agenticAnalysis;
+        const readmeAnalysis = githubAnalysis.readmeAnalysis;
+
+        // SKIP SOFT SKILLS - no AI insights for non-technical skills
+        const softSkills = ['communication', 'teamwork', 'time management', 'leadership', 'collaboration'];
+        if (softSkills.some(soft => skillLower.includes(soft))) {
+          return undefined;
+        }
+
+        // For technical skills, always show code quality + relevant details
+        const relevantArchitecture = skillLower.includes('architecture') || skillLower.includes('design')
+          ? agenticAnalysis?.architecturePatterns || []
+          : [];
+
+        // More lenient filtering - show smells if they're somewhat related
+        const relevantSmells = (agenticAnalysis?.codeSmells || []).filter((smell: any) => {
+          const smellText = `${smell.type} ${smell.description}`.toLowerCase();
+          
+          // Show for testing-related skills
+          if (skillLower.includes('test') || skillLower.includes('qa')) {
+            return smellText.includes('test') || smellText.includes('coverage') || smellText.includes('assertion');
+          }
+          // Show for framework/library skills
+          if (skillLower.includes('framework') || skillLower.includes('librar')) {
+            return smellText.includes('import') || smellText.includes('dependency') || smellText.includes('package');
+          }
+          // Show for any programming language skill
+          if (skillLower.includes('javascript') || skillLower.includes('typescript') || skillLower.includes('python') || skillLower.includes('java')) {
+            return true; // Show all smells for language skills
+          }
+          // Show for architecture
+          if (skillLower.includes('architecture') || skillLower.includes('design')) {
+            return smellText.includes('coupling') || smellText.includes('architecture') || smellText.includes('pattern');
+          }
+          
+          return true; // Default: show smell (less restrictive)
+        });
+
+        // Strict best practices filtering - only show when highly relevant to the specific skill
+        const relevantPractices = (agenticAnalysis?.bestPractices || []).filter((practice: any) => {
+          const practiceText = `${practice.name || ''} ${practice.description || ''}`.toLowerCase();
+          
+          // Show for testing ONLY if practice mentions testing
+          if (skillLower.includes('test') || skillLower.includes('qa')) {
+            return practiceText.includes('test') || practiceText.includes('quality');
+          }
+          // Show for specific language ONLY if practice mentions that language
+          if (skillLower.includes('typescript')) {
+            return practiceText.includes('typescript') || practiceText.includes('type');
+          }
+          if (skillLower.includes('javascript')) {
+            return practiceText.includes('javascript') || practiceText.includes('js ');
+          }
+          if (skillLower.includes('python')) {
+            return practiceText.includes('python') || practiceText.includes('py');
+          }
+          // Show for frameworks ONLY if practice mentions frameworks/libraries
+          if (skillLower.includes('framework') || skillLower.includes('librar')) {
+            return practiceText.includes('framework') || practiceText.includes('library') || practiceText.includes('package');
+          }
+          // Show for architecture ONLY if practice mentions architecture/design
+          if (skillLower.includes('architecture') || skillLower.includes('design')) {
+            return practiceText.includes('architect') || practiceText.includes('design') || practiceText.includes('pattern');
+          }
+          
+          return false; // Default: DON'T show generic practices on skill-specific cards
+        });
+
+        // DON'T show code quality on individual skill cards - it's a repository-level metric
+        return {
+          codeQuality: undefined, // Code quality is repository-level, not skill-specific
+          architecturePatterns: relevantArchitecture,
+          relatedCodeSmells: relevantSmells.slice(0, 2), // Max 2 smells per skill
+          bestPractices: relevantPractices.length > 0 ? relevantPractices.slice(0, 2) : undefined, // Only show if relevant
+          readmeQuality: undefined, // README quality is repository-level
+        };
+      };
+
+      // Filter out soft skills and prioritize technical skills
+      const technicalSkillGaps = gapAnalysis.skillGaps.filter(sg => {
+        const skillLower = sg.skill.name.toLowerCase();
+        const softSkills = ['communication', 'teamwork', 'time management', 'leadership', 'collaboration'];
+        return !softSkills.some(soft => skillLower.includes(soft));
+      });
+
+      // Set REAL skill gaps with skill-specific AI insights (TECHNICAL ONLY)
+      const topGaps = technicalSkillGaps.slice(0, 5).map(sg => ({
         id: sg.skill.id,
         name: sg.skill.name,
         currentLevel: sg.skill.currentLevel,
@@ -422,6 +629,8 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
         recommendations: sg.guidance?.recommendedSteps?.length
           ? sg.guidance.recommendedSteps
           : sg.recommendations,
+        // Add skill-specific AI insights
+        aiInsights: getSkillSpecificInsights(sg.skill.name),
       }));
       setSkillGaps(topGaps);
       setProgress(60);
@@ -636,6 +845,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
 
         setAnalysisResults({
           repoUrl,
+          githubAnalysis: githubAnalysis, // Store the full GitHub analysis including AI insights
           portfolioQuality: portfolioDataForContext?.analysis ? {
             overallScore: portfolioDataForContext.analysis.overallQuality,
             strengths: portfolioDataForContext.analysis.strengths || [],
@@ -1050,6 +1260,8 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
 
       {agentStatus === 'COMPLETE' && (
         <>
+          {/* AI-Powered Analysis is now shown inline within each skill gap card */}
+
           {/* Overall Skill Score Card */}
           {skillAssessment && (
             <Card className="mb-6 border-2 border-blue-400/40 bg-gradient-to-br from-blue-700/40 via-indigo-900/30 to-slate-950/60 shadow-[0_0_40px_rgba(59,130,246,0.25)] backdrop-blur-md">

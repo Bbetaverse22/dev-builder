@@ -98,7 +98,6 @@ export async function searchGitHubExamplesNode(
           }
         }
       }
-      if (attempts.length >= 3) break;
     }
 
     if (attempts.length > 0) {
@@ -141,7 +140,9 @@ function buildSearchQuery(
 ): string {
   const qualifiers: string[] = [];
 
-  qualifiers.push(skillGap);
+  // Make generic skill names more specific for better GitHub search results
+  const enhancedSkillGap = enhanceSkillGapQuery(skillGap, language);
+  qualifiers.push(enhancedSkillGap);
 
   if (language && language.toLowerCase() !== 'unknown') {
     qualifiers.push(`language:${language}`);
@@ -153,14 +154,92 @@ function buildSearchQuery(
   return qualifiers.join(' ');
 }
 
+/**
+ * Enhance generic skill names to be more specific for GitHub search
+ * Uses language-specific keywords to find more relevant examples
+ */
+function enhanceSkillGapQuery(skillGap: string, language?: string): string {
+  const lower = skillGap.toLowerCase();
+  const lang = (language || '').toLowerCase();
+  
+  // Language-specific enhancements for better relevance
+  const languageSpecificEnhancements: Record<string, Record<string, string>> = {
+    python: {
+      'frameworks & libraries': 'python framework django flask fastapi tutorial',
+      'frameworks and libraries': 'python framework django flask fastapi tutorial',
+      'testing & qa': 'python pytest unittest testing',
+      'testing and qa': 'python pytest unittest testing',
+      'system architecture': 'python microservices architecture design-patterns',
+    },
+    javascript: {
+      'frameworks & libraries': 'javascript framework react vue angular node',
+      'frameworks and libraries': 'javascript framework react vue angular node',
+      'testing & qa': 'javascript testing jest mocha cypress',
+      'testing and qa': 'javascript testing jest mocha cypress',
+    },
+    typescript: {
+      'frameworks & libraries': 'typescript framework react next nest angular',
+      'frameworks and libraries': 'typescript framework react next nest angular',
+      'testing & qa': 'typescript testing jest vitest',
+      'testing and qa': 'typescript testing jest vitest',
+    },
+    java: {
+      'frameworks & libraries': 'java framework spring boot hibernate',
+      'frameworks and libraries': 'java framework spring boot hibernate',
+      'testing & qa': 'java testing junit mockito',
+      'testing and qa': 'java testing junit mockito',
+    },
+  };
+
+  // Try language-specific enhancement first
+  if (lang && languageSpecificEnhancements[lang]) {
+    for (const [key, value] of Object.entries(languageSpecificEnhancements[lang])) {
+      if (lower.includes(key)) {
+        return value;
+      }
+    }
+  }
+  
+  // Fallback to generic enhancements
+  const genericEnhancements: Record<string, string> = {
+    'frameworks & libraries': `${language || 'web'} framework tutorial example`,
+    'frameworks and libraries': `${language || 'web'} framework tutorial example`,
+    'testing & qa': `${language || ''} testing framework unit-test integration-test`,
+    'testing and qa': `${language || ''} testing framework unit-test integration-test`,
+    'system architecture': `${language || ''} architecture design-patterns microservices`,
+    'time management': 'productivity automation scheduler',
+    'project management': 'project-management agile scrum kanban',
+    'version control': 'git github workflow',
+    'deployment': `${language || ''} deployment CI/CD docker kubernetes`,
+  };
+
+  // Check for exact matches in generic enhancements
+  for (const [key, value] of Object.entries(genericEnhancements)) {
+    if (lower.includes(key)) {
+      return value;
+    }
+  }
+
+  // If no match, return the original (might be already specific enough)
+  return skillGap;
+}
+
 function buildLanguageCandidates(state: ResearchState): string[] {
   const primary = state.detectedLanguage && state.detectedLanguage !== 'unknown'
     ? [state.detectedLanguage]
     : [];
+  
+  // If we have a detected primary language, ONLY use that language
+  // Don't pollute results with irrelevant languages
+  if (primary.length > 0) {
+    return primary;
+  }
+  
+  // Only use fallbacks if NO language was detected
   const fromContext = state.languageCandidates ?? [];
   const fallbacks = FALLBACK_LANGUAGES;
 
-  return Array.from(new Set([...primary, ...fromContext, ...fallbacks])).filter(
+  return Array.from(new Set([...fromContext, ...fallbacks])).filter(
     Boolean
   ) as string[];
 }

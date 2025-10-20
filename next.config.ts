@@ -3,10 +3,11 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   images: {
-    unoptimized: true, // Required for Vercel static export
+    unoptimized: true,
   },
   
   turbopack: {
+    root: __dirname,
     resolveAlias: {
       "property-information/find": "property-information/lib/find.js",
       "property-information/normalize": "property-information/lib/normalize.js",
@@ -21,9 +22,8 @@ const nextConfig: NextConfig = {
       "property-information/normalize": path.resolve(__dirname, "node_modules/property-information/lib/normalize.js"),
     };
 
-    // Optimize for Vercel deployment
-    if (isServer) {
-      // Mark large dependencies as external to reduce bundle size
+    // Optimize for Vercel deployment (production only)
+    if (isServer && process.env.NODE_ENV === 'production') {
       config.externals = config.externals || [];
       config.externals.push({
         'tsx': 'commonjs tsx',
@@ -33,43 +33,29 @@ const nextConfig: NextConfig = {
         '@modelcontextprotocol/sdk': 'commonjs @modelcontextprotocol/sdk',
       });
 
-      // Disable webpack cache in production to reduce bundle size
-      if (process.env.NODE_ENV === 'production') {
-        config.cache = false;
-      }
-
-      // Simplified bundle splitting for Vercel
-      config.optimization = config.optimization || {};
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-            priority: 10,
-          },
-        },
-      };
+      config.cache = false;
     }
 
     return config;
   },
   
-  // Optimize for Vercel deployment
-  serverExternalPackages: [
-    'tsx',
-    '@langchain/core',
-    '@langchain/langgraph', 
-    '@langchain/openai',
-    '@modelcontextprotocol/sdk',
-    '@octokit/rest',
-    'fs',
-    'path'
-  ],
+  serverExternalPackages:
+    process.env.NODE_ENV === "production"
+      ? [
+          "tsx",
+          "@langchain/core",
+          "@langchain/langgraph",
+          "@langchain/openai",
+          "@modelcontextprotocol/sdk",
+          "@octokit/rest",
+        ]
+      : undefined,
   
-  // Reduce bundle size
   compress: true,
+  
+  outputFileTracingIncludes: {
+    '/api/**/*': ['./lib/**/*'],
+  },
 };
 
 export default nextConfig;
