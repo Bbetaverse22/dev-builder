@@ -1,12 +1,12 @@
 # 🚀 DevBuilder: AI-Powered Developer Career Growth
 
-An **agentic AI platform** that helps developers identify skill gaps and improve their portfolios through deep research and autonomous actions. Unlike traditional generative AI that just produces reports, DevBuilder **takes action**: analyzing GitHub profiles, creating improvement tasks, and continuously monitoring progress.
+An **agentic AI platform** that helps developers identify skill gaps and improve their portfolios through deep research and autonomous actions. Unlike traditional generative AI that just produces reports, DevBuilder **takes action**: analyzing GitHub repositories, creating improvement tasks, and providing personalized learning paths.
 
 ## 🎯 V1 Vision: Research + Action
 
 DevBuilder V1 focuses on two core innovations:
-1. **Deep Research**: Real-time web scraping for job requirements, salary trends, and learning resources
-2. **Autonomous Actions**: GitHub integration that creates issues, drafts improvements, and tracks progress
+1. **AI-Powered Analysis**: Agentic skill gap detection using GPT-4o for deep code and README analysis
+2. **Autonomous Actions**: GitHub integration that creates issues, generates templates, and tracks progress
 
 Built with advanced AI agents for intelligent career development and portfolio improvement.
 
@@ -14,7 +14,6 @@ Built with advanced AI agents for intelligent career development and portfolio i
 
 ### 🧠 Agentic Skill Analyzer
 - **Multi-Stage Analysis**: Automatically profiles GitHub repos, detects tech stack, and generates skill gaps
-- **Career Research (Planned)**: Upcoming web research for job boards, salary trends, and learning resources
 - **Learning Intelligence**: Surfaces curated resources with the current research pipeline
 - **Persistent Memory**: Stores skill profiles for continuous tracking and improvement
 
@@ -23,7 +22,6 @@ Built with advanced AI agents for intelligent career development and portfolio i
 - **GitHub Integration**: Creates GitHub issues with prioritized action steps
 - **Template & PR Automation**: Extracts production-ready examples, saves them in `examples/generated/`, and can open a GitHub branch + PR via `/api/templates`
 - **README Guidance**: Highlights documentation gaps and suggests next actions
-- **Progress Monitoring (Planned)**: Upcoming tracking for completion and portfolio improvements
 
 ### 🔗 Tool Integrations
 - **GitHub REST API**: Repository analysis, issue creation, and optional template PR automation
@@ -108,6 +106,27 @@ Built with advanced AI agents for intelligent career development and portfolio i
    - Next.js App: http://localhost:3000
    - LangGraph Platform: http://localhost:2024 (if running)
 
+## 📖 How to Use
+
+1. **Navigate to Skill Gap Analysis**
+   - Go to `http://localhost:3000/agentic/skill-gaps`
+
+2. **Analyze Your Repository**
+   - Enter your GitHub repository URL (e.g., `https://github.com/username/repo`)
+   - Add target role (e.g., "Full-Stack Developer", "Data Engineer")
+   - Click "Start Analysis"
+
+3. **Review Results**
+   - **Skill Gaps**: See technical skills you're missing with AI-powered insights
+   - **Portfolio Builder**: View improvement recommendations at `/agentic/portfolio`
+   - **Learning Resources**: Access curated resources at `/agentic/learning`
+
+4. **Take Action**
+   - Create GitHub issues directly from the Portfolio Builder page
+   - Generate code templates from example repositories
+
+That's it! The AI agents will handle the rest automatically.
+
 ### Optional: Template Workflow / PR Automation
 1. Ensure you have a GitHub PAT with `repo` scope set as `GITHUB_TOKEN` in `.env.local`.
 2. In the Analyzer UI, expand the **Research Results** panel and either:
@@ -123,50 +142,19 @@ Built with advanced AI agents for intelligent career development and portfolio i
 1. **GitHub Profiling**: Analyzes your repositories, tech stack, and coding patterns
 2. **Role Detection**: Automatically determines if you're a backend dev, data engineer, DevOps, etc.
 3. **Skill Gap Identification**: Compares your current skills vs. market demands
-4. **Market Intelligence (Planned)**: Future integration will monitor job postings for required skills
 
 ### Phase 2: Research & Planning
-1. **Job Market Research (Planned)**: LinkedIn, Indeed, and AngelList scrapers are on the roadmap
-2. **Salary Analysis (Planned)**: Compensation insights slated for a later release
-3. **Learning Resource Discovery**: Current LangGraph research node surfaces courses, docs, and tutorials
-4. **Priority Ranking**: Determines which skills have highest ROI using LLM reasoning
+1. **Learning Resource Discovery**: Current LangGraph research node surfaces courses, docs, and tutorials
+2. **Priority Ranking**: Determines which skills have highest ROI using LLM reasoning
 
 ### Phase 3: Autonomous Action (Portfolio Builder)
 1. **Weakness Detection**: Identifies repos needing improvement (missing READMEs, tests, docs)
 2. **Task Generation**: Creates GitHub issues with specific improvement steps
 3. **README Drafting (Planned)**: Template-based drafting is under development
-4. **Progress Monitoring (Planned)**: Upcoming dashboards for issue completion and quality tracking
 
-### Phase 4: Continuous Loop
-- **Weekly Check-ins (Planned)**: Automated re-analysis to measure progress
-- **Adaptive Planning**: Adjusts recommendations based on completed tasks
-- **New Opportunities (Planned)**: Future updates will highlight trending technologies and skills
 
-## 🔧 Configuration
 
-### Database Setup (Prisma Postgres Free Tier)
-
-DevBuilder uses **Prisma Postgres** for data persistence:
-
-**Free Tier Includes:**
-- ✅ 5 GB storage (supports 1000s of skill gap analyses)
-- ✅ 10k queries/day
-- ✅ **No credit card required**
-- ✅ Perfect for V1 + early production
-
-**Setup (2 minutes):**
-
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Navigate to **Storage** → **Create Database** → **Prisma Postgres**
-3. Select **Free Tier**
-4. Copy the `DATABASE_URL` connection string to `.env.local`
-5. Run migrations:
-   ```bash
-   npx prisma generate
-   npx prisma migrate dev --name init
-   ```
-
-**That's it!** No payment info needed.
+## 🔧 Advanced Configuration
 
 ### LangGraph Research Agent
 
@@ -200,46 +188,9 @@ pnpm langgraph:up
 
 The research agent is defined in `lib/agents/langgraph/research-agent.ts` and configured in `langgraph.json`.
 
-### Environment Variables
-
-**Required for V1:**
-```env
-# AI Model Access
-OPENAI_API_KEY=your_openai_api_key_here
-
-# Database (Prisma Postgres)
-DATABASE_URL=your_postgres_connection_url
-
-# GitHub OAuth (planned multi-user authentication)
-GITHUB_CLIENT_ID=your_oauth_client_id
-GITHUB_CLIENT_SECRET=your_oauth_client_secret
-NEXTAUTH_SECRET=generate_with_openssl_rand_base64_32
-NEXTAUTH_URL=http://localhost:3000
-```
-
-**Optional:**
-```env
-# GitHub Personal Access Token (increases API rate limits)
-GITHUB_TOKEN=your_github_personal_access_token_here
-```
-
-**How to get GitHub OAuth credentials (optional until NextAuth integration ships):**
-1. Go to GitHub Settings → Developer settings → OAuth Apps
-2. Create new OAuth App:
-   - Homepage URL: `http://localhost:3000`
-   - Callback URL: `http://localhost:3000/api/auth/github/callback`
-3. Copy Client ID and Client Secret to `.env.local`
-
-**How to get a GitHub Token:**
-1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
-2. Generate new token with these scopes:
-   - `repo` (full control for creating issues/PRs)
-   - `read:user` (for profile analysis)
-3. Add to `.env.local` as `GITHUB_TOKEN`
-
 ### Tool Integration Architecture
 
-DevBuilder V1 uses standardized tool integrations for external services:
+DevBuilder uses standardized tool integrations for external services:
 
 **GitHub API Integration** (Built-in):
 - Repository analysis and profiling
@@ -247,26 +198,18 @@ DevBuilder V1 uses standardized tool integrations for external services:
 - README generation and documentation
 - Progress tracking via GitHub API
 
-**Web Research Integration** (Planned):
-- Job board scraping (LinkedIn, Indeed, AngelList)
-- Salary data aggregation
-- Learning resource discovery
-- Market trend analysis
-
 **Extensible Design**:
 - Add custom tools and integrations
 - Standardized interface for easy integration
-- See `lib/agents/coordinator.ts` for tool definitions
 
 ### Agent Workflow Architecture
 
-The Portfolio Builder Agent uses advanced workflow management:
-- **State Management**: Tracks analysis progress, goals, and actions
+The system uses advanced workflow management:
+- **State Management**: Tracks analysis progress, goals, and actions across pages
 - **Conditional Routing**: Decides next steps based on current state
 - **Human-in-the-Loop**: Optional approval gates for GitHub actions
 - **Retry Logic**: Handles API failures and rate limits gracefully
-
-See `V1_DEVELOPMENT_PLAN.md` for implementation roadmap.
+- **Fallback Strategy**: 5-layer fallback ensures graceful degradation (AI → heuristic → cached → minimal → error)
 
 ## 🏗️ Tech Stack
 
@@ -277,11 +220,11 @@ See `V1_DEVELOPMENT_PLAN.md` for implementation roadmap.
 - **React**: UI library
 
 ### Backend & AI
-- **AI SDK 5 (Vercel)**: Streamable AI responses and tool calling
-- **LangGraph**: Autonomous agent workflows with state management and decision loops
-- **OpenAI GPT-4**: Language model for analysis and generation
+- **AI SDK 4 (Vercel)**: Agentic skill gap analysis with structured outputs
+- **LangGraph**: Autonomous research agent workflows with state management
+- **OpenAI GPT-4o**: Language model for code analysis and recommendations
 - **Prisma ORM**: Type-safe database access with PostgreSQL
-- **NextAuth.js**: Authentication with GitHub OAuth
+- **NextAuth.js**: Authentication with GitHub OAuth (planned)
 
 ### Database & Storage
 - **Prisma Postgres**: Serverless PostgreSQL managed via Vercel
@@ -290,46 +233,45 @@ See `V1_DEVELOPMENT_PLAN.md` for implementation roadmap.
 
 ### Integrations
 - **GitHub REST API**: Repository analysis, issue creation, profile enhancement
-- **Web Scraping**: Job boards, salary data, learning resources (planned)
 - **LangGraph Platform**: Visual agent development and debugging
+- **MCP Servers**: Custom Model Context Protocol servers for template extraction
 
 ## 🗺️ Roadmap
 
-### ✅ V1 (Capstone - 3 Weeks)
-**Focus**: Research + Action fundamentals
-- ✅ LangGraph agent framework setup (state loader, search/evaluation/synthesis nodes)
+### ✅ V1 (Capstone - Current)
+**Focus**: AI-Powered Analysis + Autonomous Actions
+- ✅ Agentic Gap Analyzer with AI SDK (GPT-4o for code & README analysis)
+- ✅ 5-layer fallback strategy (AI → heuristic → cached → minimal → error)
+- ✅ LangGraph Research Agent (autonomous learning resource discovery)
 - ✅ Database schema and migrations (Prisma Postgres)
-- 🔄 GitHub OAuth integration (NextAuth wiring in progress)
-- 🔄 Research agent refinement (confidence/retry logic pending)
-- ✅ Portfolio Builder Agent (quality scoring, research enrichment, template automation)
-- 🚧 Deep career research with web scraping
-- ✅ Autonomous GitHub issue creation (REST API)
-- 🚧 Progress tracking and weekly check-ins
+- ✅ Portfolio Builder Agent (quality scoring, GitHub issue creation, template automation)
+- ✅ Skill-specific AI insights with soft skills filtering
+- ✅ Shared state management across analysis pages
+- ✅ Template extraction and PR automation
 
-**Deliverables**: Working demo with real GitHub integration, research capabilities, and autonomous actions
-
-**Progress**: LangGraph Platform and database are ready; GitHub authentication is next
+**Status**: Core features complete and operational
 
 ### 🔮 V2 (Future Enhancements)
 **Focus**: Scale and intelligence
-- 🔄 Multi-user support with NextAuth.js (in progress)
-- ✅ Database-backed persistence (Prisma Postgres - complete)
-- Advanced tool integrations (LinkedIn, code quality tools)
-- ML-powered skill matching
-- Community features (share learning paths)
+- Multi-user support with NextAuth.js
+- Advanced tool integrations (code quality analyzers, CI/CD)
+- ML-powered skill matching and recommendations
+- Community features (share learning paths, compare portfolios)
 - Mobile app
 
 ## 📚 Key Documentation
 
-- **`CAPSTONE_PROPOSAL.md`**: Complete project vision and academic context
-- **`V1_DEVELOPMENT_PLAN.md`**: 25-issue breakdown for V1 implementation
-- **`docs/CAPSTONE_PROGRESS_REPORT.md`**: Week 1–2 status summary
-- **`PORTFOLIO_BUILDER_STATUS.md`**: Detailed portfolio builder workflow notes
-- **`CLAUDE.md`**: Session context and development history
+- **`docs/QUICK_START.md`**: Quick setup guide for developers
+- **`docs/CAPSTONE_PROPOSAL.md`**: Complete project vision and academic context
+- **`docs/V1_DEVELOPMENT_PLAN.md`**: Development roadmap and issues breakdown
+- **`docs/AGENTIC_IMPLEMENTATION_SUMMARY.md`**: Current agentic architecture overview
+- **`docs/CLAUDE.md`**: AI assistant guidance for working with this codebase
+- **`project-docs/`**: Detailed agent documentation and data flow diagrams
 
 ## 🤝 Contributing
 
 This is a capstone project, but feedback and suggestions are welcome! For V2 and beyond, contributions will be encouraged.
-----
+
+---
 
 **Built with ❤️ for developers who want to level up their careers through AI-powered insights and autonomous portfolio improvement.**
