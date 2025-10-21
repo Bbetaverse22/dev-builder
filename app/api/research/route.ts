@@ -21,6 +21,11 @@ export async function POST(request: NextRequest) {
 
     console.log("[Research Agent] Starting workflow for:", body.skillGap);
     console.log("[Research Agent] Force refresh:", body.forceRefresh ?? false);
+    console.log("[Research Agent] Environment summary:", {
+      hasOpenAIKey: Boolean(process.env.OPENAI_API_KEY),
+      hasFirecrawlKey: Boolean(process.env.FIRECRAWL_API_KEY),
+      researchModel: process.env.OPENAI_RESEARCH_MODEL ?? "gpt-4o-mini",
+    });
 
     // Prepare input state
     const input: ResearchState = {
@@ -46,10 +51,25 @@ export async function POST(request: NextRequest) {
     console.log(`  Recommendations: ${result.recommendations?.length || 0}`);
     console.log(`  Confidence: ${((result.confidence || 0) * 100).toFixed(0)}%`);
 
+    const resourcePayload = result.evaluatedResults || result.searchResults || [];
+    const diagnostics = {
+      resourceCount: resourcePayload.length,
+      exampleCount: result.examples?.length ?? 0,
+      recommendationCount: result.recommendations?.length ?? 0,
+      hasOpenAIKey: Boolean(process.env.OPENAI_API_KEY),
+      hasFirecrawlKey: Boolean(process.env.FIRECRAWL_API_KEY),
+      researchModel: process.env.OPENAI_RESEARCH_MODEL ?? "gpt-4o-mini",
+      usedCachedState: Boolean(result.loadedFromStorage),
+    };
+
+    if (resourcePayload.length === 0) {
+      console.warn("[Research Agent] No learning resources returned. Diagnostics:", diagnostics);
+    }
+
     // Return results
     return NextResponse.json({
       success: true,
-      resources: result.evaluatedResults || result.searchResults || [],
+      resources: resourcePayload,
       scrapedResources: result.scrapedResources || [],
       examples: result.examples || [],
       recommendations: result.recommendations || [],
@@ -63,6 +83,7 @@ export async function POST(request: NextRequest) {
       searchNotes: result.searchNotes || [],
       searchSources: result.searchSources || [],
       searchQuery: result.searchQuery,
+      diagnostics,
     }, { status: 200 });
 
   } catch (error) {
