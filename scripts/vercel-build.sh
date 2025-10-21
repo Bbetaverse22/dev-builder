@@ -5,15 +5,15 @@ echo "🚀 Starting Vercel build..."
 
 # Normalize Vercel Postgres environment variables for Prisma when DATABASE_URL is missing
 if [ -z "$DATABASE_URL" ]; then
-  if [ -n "$POSTGRES_PRISMA_URL" ]; then
-    export DATABASE_URL="$POSTGRES_PRISMA_URL"
-    echo "ℹ️  Using POSTGRES_PRISMA_URL as DATABASE_URL"
-  elif [ -n "$POSTGRES_URL_NON_POOLING" ]; then
+  if [ -n "$POSTGRES_URL_NON_POOLING" ]; then
     export DATABASE_URL="$POSTGRES_URL_NON_POOLING"
     echo "ℹ️  Using POSTGRES_URL_NON_POOLING as DATABASE_URL"
   elif [ -n "$POSTGRES_URL" ]; then
     export DATABASE_URL="$POSTGRES_URL"
     echo "ℹ️  Using POSTGRES_URL as DATABASE_URL"
+  elif [ -n "$POSTGRES_PRISMA_URL" ] && { [ "$PRISMA_CLIENT_ENGINE_TYPE" = "dataproxy" ] || [ "$USE_PRISMA_ACCELERATE" = "true" ]; }; then
+    export DATABASE_URL="$POSTGRES_PRISMA_URL"
+    echo "ℹ️  Using POSTGRES_PRISMA_URL as DATABASE_URL (dataproxy)"
   fi
 fi
 
