@@ -69,7 +69,8 @@ An agentic AI platform that helps developers identify skill gaps and improve the
   | GITHUB_TOKEN | ➖ (strongly recommended) | Higher GitHub rate limits + issue/PR creation. |
   | NEXTAUTH_*, GITHUB_CLIENT_ID/SECRET | Planned | Only needed once auth features land. |
   | FIRECRAWL_API_KEY | ➖ | Enables richer web research; otherwise LLM fallback only. |
-  | GITHUB_MCP_SERVER_URL | ➖ | Points to template MCP endpoint. |
+  | MCP_SERVER_URL | ➖ | Points to template MCP endpoint. |
+  |GITHUB_MCP_SERVER_URL | ➖ | Points to official Github MCP server. |
 
   Copy the keys into .env.local for dev, 
   Vercel → Project Settings → Environment Variables for production.
