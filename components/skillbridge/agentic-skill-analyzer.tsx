@@ -214,9 +214,8 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
           return true;
         });
 
-        // Show README quality only for problem-solving and documentation skills
-        const isProblemSolving = skillLower.includes('problem') || skillLower.includes('algorithm') || skillLower.includes('data structure');
-        const showReadme = (isProblemSolving || isDocumentationSkill) && readmeAnalysis?.qualityScore !== undefined;
+        // Show README quality only for documentation-focused skills
+        const showReadme = isDocumentationSkill && readmeAnalysis?.qualityScore !== undefined;
         
         // Show code quality only for programming language skills
         const isProgrammingLanguage = skillLower.includes('javascript') || skillLower.includes('typescript') || 
@@ -630,9 +629,8 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
           return true;
         });
 
-        // Show README quality only for problem-solving and documentation skills
-        const isProblemSolving = skillLower.includes('problem') || skillLower.includes('algorithm') || skillLower.includes('data structure');
-        const showReadme = (isProblemSolving || isDocumentationSkill) && readmeAnalysis?.qualityScore !== undefined;
+        // Show README quality only for documentation-focused skills
+        const showReadme = isDocumentationSkill && readmeAnalysis?.qualityScore !== undefined;
         
         // Show code quality only for programming language skills
         const isProgrammingLanguage = skillLower.includes('javascript') || skillLower.includes('typescript') || 
