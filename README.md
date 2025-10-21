@@ -75,6 +75,11 @@ Built with advanced AI agents for intelligent career development and portfolio i
 
    # Optional - increases GitHub API rate limits
    GITHUB_TOKEN=your_github_personal_access_token_here
+   
+   # GitHub MCP Server URL (for MCP integration)
+   # For production: https://your-app.vercel.app/api/github-mcp
+   # For local dev: http://localhost:3000/api/github-mcp
+   GITHUB_MCP_SERVER_URL=http://localhost:3000/api/github-mcp
    ```
 
 4. **Set up database**

@@ -102,11 +102,14 @@ export async function POST(request: NextRequest) {
       const cleanRepo = repo.replace(/\.git$/, '');
 
       // Create issues directly from provided recommendations
+      const includeOptionalForProvided =
+        body.includeOptionalImprovements ?? true;
+
       const issueResults = await portfolioBuilder.createImprovementIssues(
         owner,
         cleanRepo,
         body.providedRecommendations,
-        { includeOptional: includeOptionalImprovements }
+        { includeOptional: includeOptionalForProvided }
       );
 
       const successCount = issueResults.filter((r) => r.success).length;

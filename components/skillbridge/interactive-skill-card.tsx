@@ -38,7 +38,7 @@ interface SkillGap {
     codeQuality?: number;
     architecturePatterns?: string[];
     relatedCodeSmells?: Array<{ type: string; description: string; severity: string }>;
-    bestPractices?: Array<{ name: string; description: string }>;
+    recommendations?: string[];
     readmeQuality?: number;
   };
 }
@@ -355,15 +355,15 @@ export function InteractiveSkillCard({ skill, onStartLearning }: InteractiveSkil
                     </div>
                   )}
 
-                  {/* Best Practices - Only show when truly relevant to this specific skill */}
-                  {skill.aiInsights.bestPractices && skill.aiInsights.bestPractices.length > 0 && (
+                  {/* AI Recommendations */}
+                  {skill.aiInsights.recommendations && skill.aiInsights.recommendations.length > 0 && (
                     <div className="space-y-1.5">
-                      <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">✅ Relevant Best Practices</p>
+                      <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">✅ AI Recommendations</p>
                       <div className="space-y-1">
-                        {skill.aiInsights.bestPractices.slice(0, 2).map((practice, i) => (
+                        {skill.aiInsights.recommendations.slice(0, 3).map((recommendation, i) => (
                           <div key={i} className="flex items-start gap-1.5 p-1.5 rounded bg-emerald-50 dark:bg-emerald-950/20">
                             <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
-                            <p className="text-[10px] text-emerald-900 dark:text-emerald-100">{practice.description || practice.name}</p>
+                            <p className="text-[10px] text-emerald-900 dark:text-emerald-100">{recommendation}</p>
                           </div>
                         ))}
                       </div>
@@ -376,7 +376,7 @@ export function InteractiveSkillCard({ skill, onStartLearning }: InteractiveSkil
             {/* Action Hint */}
             <div className="pt-2 border-t">
               <p className="text-xs text-muted-foreground text-center italic">
-                See AI-generated recommendations and Portfolio Builder below for action items.
+                See AI-generated recommendations and Portfolio Builder in the tabs above for action items.
               </p>
             </div>
           </div>

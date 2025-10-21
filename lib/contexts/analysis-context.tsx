@@ -79,7 +79,8 @@ export interface GitHubExample {
 export interface AnalysisResults {
   repoUrl: string;
   githubAnalysis?: any; // Full GitHub analysis including AI insights (agenticAnalysis, readmeAnalysis)
-  portfolioQuality: PortfolioQuality | null;
+  skillAssessmentScore?: number; // Overall skill score (e.g., 76%) - separate from portfolio quality
+  portfolioQuality: PortfolioQuality | null; // Repository quality (e.g., 15%) - for GitHub issues
   skillGaps: SkillGap[];
   portfolioActions: PortfolioAction[];
   researchResults: ResearchResult[];

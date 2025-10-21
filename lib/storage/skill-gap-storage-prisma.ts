@@ -10,6 +10,13 @@ import type { ResearchState } from '@/lib/agents/langgraph/research-agent';
 import { buildResearchStateSeed } from '@/lib/agents/langgraph/utils/research-state-seed';
 import { formatGapValue } from '@/lib/utils';
 
+export class DatabaseUnavailableError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'DatabaseUnavailableError';
+  }
+}
+
 export interface StoredSkillGap {
   id: string;
   userId: string;
@@ -21,6 +28,16 @@ export interface StoredSkillGap {
 }
 
 export class SkillGapStoragePrisma {
+  private static readonly RETRY_INTERVAL_MS = 60_000;
+
+  private databaseStatus: {
+    state: 'unknown' | 'available' | 'unavailable';
+    lastChecked: number;
+    error?: unknown;
+  } = { state: 'unknown', lastChecked: 0 };
+
+  private lastLoggedErrorSignature?: string;
+
   /**
    * Store skill gap analysis results in database
    */
@@ -30,6 +47,13 @@ export class SkillGapStoragePrisma {
     skillAssessment: GapAnalysisResult,
     context?: ResearchContext
   ): Promise<string> {
+    if (!(await this.ensureDatabaseAvailable())) {
+      throw new DatabaseUnavailableError(
+        this.buildDatabaseUnavailableMessage('store the skill gap analysis'),
+        { cause: this.databaseStatus.error }
+      );
+    }
+
     try {
       // Create or update user
       await prisma.user.upsert({
@@ -102,6 +126,13 @@ export class SkillGapStoragePrisma {
       return skillGap.id;
     } catch (error) {
       console.error('❌ Error storing skill gap in database:', error);
+      if (this.isDatabaseConnectionError(error)) {
+        this.markDatabaseUnavailable(error);
+        throw new DatabaseUnavailableError(
+          this.buildDatabaseUnavailableMessage('store the skill gap analysis'),
+          { cause: error }
+        );
+      }
       throw error;
     }
   }
@@ -110,6 +141,10 @@ export class SkillGapStoragePrisma {
    * Get the latest skill gap analysis for a user
    */
   async getLatestSkillGap(userId: string): Promise<StoredSkillGap | null> {
+    if (!(await this.ensureDatabaseAvailable())) {
+      return null;
+    }
+
     try {
       const skillGap = await prisma.skillGap.findFirst({
         where: { userId },
@@ -144,6 +179,9 @@ export class SkillGapStoragePrisma {
       return storedGap;
     } catch (error) {
       console.error('❌ Error getting latest skill gap:', error);
+      if (this.isDatabaseConnectionError(error)) {
+        this.markDatabaseUnavailable(error);
+      }
       return null;
     }
   }
@@ -152,6 +190,10 @@ export class SkillGapStoragePrisma {
    * Get skill gap by ID
    */
   async getSkillGap(id: string): Promise<StoredSkillGap | null> {
+    if (!(await this.ensureDatabaseAvailable())) {
+      return null;
+    }
+
     try {
       const skillGap = await prisma.skillGap.findUnique({
         where: { id },
@@ -173,6 +215,9 @@ export class SkillGapStoragePrisma {
       return this.convertToStoredFormat(skillGap);
     } catch (error) {
       console.error('❌ Error getting skill gap:', error);
+      if (this.isDatabaseConnectionError(error)) {
+        this.markDatabaseUnavailable(error);
+      }
       return null;
     }
   }
@@ -181,6 +226,10 @@ export class SkillGapStoragePrisma {
    * Get all skill gaps for a user
    */
   async getUserSkillGaps(userId: string): Promise<StoredSkillGap[]> {
+    if (!(await this.ensureDatabaseAvailable())) {
+      return [];
+    }
+
     try {
       const skillGaps = await prisma.skillGap.findMany({
         where: { userId },
@@ -195,6 +244,9 @@ export class SkillGapStoragePrisma {
       return skillGaps.map((sg) => this.convertToStoredFormat(sg));
     } catch (error) {
       console.error('❌ Error getting user skill gaps:', error);
+      if (this.isDatabaseConnectionError(error)) {
+        this.markDatabaseUnavailable(error);
+      }
       return [];
     }
   }
@@ -295,6 +347,10 @@ ${
    * Clean up old skill gaps (older than 30 days)
    */
   async cleanup(): Promise<void> {
+    if (!(await this.ensureDatabaseAvailable())) {
+      return;
+    }
+
     try {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -310,6 +366,9 @@ ${
       console.log(`🧹 Cleaned up ${result.count} old skill gaps`);
     } catch (error) {
       console.error('❌ Error cleaning up skill gaps:', error);
+      if (this.isDatabaseConnectionError(error)) {
+        this.markDatabaseUnavailable(error);
+      }
     }
   }
 
@@ -394,6 +453,133 @@ ${
     }
 
     return 'low';
+  }
+
+  private async ensureDatabaseAvailable(): Promise<boolean> {
+    const now = Date.now();
+
+    if (this.databaseStatus.state === 'available') {
+      return true;
+    }
+
+    if (
+      this.databaseStatus.state === 'unavailable' &&
+      now - this.databaseStatus.lastChecked < SkillGapStoragePrisma.RETRY_INTERVAL_MS
+    ) {
+      return false;
+    }
+
+    try {
+      await prisma.$connect();
+      this.databaseStatus = {
+        state: 'available',
+        lastChecked: now,
+      };
+      return true;
+    } catch (error) {
+      this.markDatabaseUnavailable(error, now);
+      return false;
+    }
+  }
+
+  private logDatabaseConnectionError(error: unknown): void {
+    const signature = this.getErrorSignature(error);
+
+    if (signature && signature === this.lastLoggedErrorSignature) {
+      return;
+    }
+
+    this.lastLoggedErrorSignature = signature;
+
+    console.warn(
+      '⚠️ Prisma database connection failed. Skill gap persistence is temporarily disabled.',
+      this.describeDatabaseError(error)
+    );
+    console.warn(
+      '➡️  Verify your PostgreSQL instance is reachable (local service or remote Prisma Data Platform) and that `DATABASE_URL` points to it.',
+      this.getDatabaseLocationHint()
+    );
+    console.warn('   After the database is available, try `pnpm prisma db push` to sync the schema.');
+  }
+
+  private getDatabaseLocationHint(): string {
+    const rawUrl = process.env.DATABASE_URL;
+    if (!rawUrl) {
+      return 'DATABASE_URL is not set.';
+    }
+
+    try {
+      // Allow prisma:// URLs by replacing the custom scheme before parsing
+      const normalized = rawUrl.replace(/^prisma\+/, '');
+      const parsed = new URL(normalized);
+      const host = parsed.hostname || 'localhost';
+      const port = parsed.port ? `:${parsed.port}` : '';
+      const database =
+        parsed.pathname && parsed.pathname !== '/' ? parsed.pathname.replace(/^\//, '') : '(default schema)';
+      return `Configured host: ${host}${port}, database: ${database}`;
+    } catch {
+      return 'DATABASE_URL is set but could not be parsed.';
+    }
+  }
+
+  private getErrorSignature(error: unknown): string | undefined {
+    if (error && typeof error === 'object' && 'code' in error) {
+      return String((error as { code?: unknown }).code);
+    }
+
+    if (error instanceof Error) {
+      return error.name;
+    }
+
+    return undefined;
+  }
+
+  private describeDatabaseError(error: unknown): string {
+    if (error instanceof Error) {
+      return `${error.name}: ${error.message}`;
+    }
+
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+      const code = (error as { code?: string }).code;
+      return code ? `Prisma error code ${code}` : 'Unknown Prisma error';
+    }
+
+    return 'Unknown error';
+  }
+
+  private buildDatabaseUnavailableMessage(action: string): string {
+    return [
+      `Unable to ${action} because the database connection is unavailable.`,
+      'Confirm that your PostgreSQL instance (local server or hosted provider such as Prisma Data Platform) is running and reachable.',
+      'Update `DATABASE_URL` (and `PRISMA_DATABASE_URL` if you use Accelerate) to the correct values.',
+      'After the database is available, run `pnpm prisma db push` to initialize the schema if needed.',
+    ].join(' ');
+  }
+
+  private isDatabaseConnectionError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const code = (error as { code?: unknown }).code;
+    if (code === 'P1001' || code === 'P1002') {
+      return true;
+    }
+
+    if (error instanceof Error) {
+      return error.message.includes("Can't reach database server");
+    }
+
+    return false;
+  }
+
+  private markDatabaseUnavailable(error: unknown, timestamp: number = Date.now()): void {
+    this.databaseStatus = {
+      state: 'unavailable',
+      lastChecked: timestamp,
+      error,
+    };
+    this.logDatabaseConnectionError(error);
   }
 }
 

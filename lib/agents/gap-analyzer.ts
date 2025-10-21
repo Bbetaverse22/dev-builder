@@ -35,6 +35,12 @@ export interface SkillGap {
   recommendations: string[];
   guidance: SkillGuidance;
   confidence: SkillGapConfidence;
+  aiInsights?: {
+    readmeQuality?: number;
+    codeQuality?: number;
+    architecturePatterns?: string[];
+    bestPractices?: string[];
+  };
 }
 
 export interface GitHubRepoMetadata {
@@ -51,6 +57,36 @@ export interface GitHubRepoMetadata {
   activityScore: number;
 }
 
+export interface QualityMetrics {
+  readmeQuality: {
+    score: number; // 0-100
+    confidence: number; // 0-100
+    insights: string[];
+    improvements: string[];
+  };
+  codeQuality: {
+    score: number; // 0-100
+    confidence: number; // 0-100
+    insights: string[];
+    improvements: string[];
+  };
+  overallQuality: {
+    score: number; // 0-100
+    confidence: number; // 0-100
+    strengths: string[];
+    weaknesses: string[];
+  };
+}
+
+export interface AIAnalysisInsights {
+  problemSolvingApproach: string[];
+  frameworks: string[];
+  patterns: string[];
+  bestPractices: string[];
+  antiPatterns: string[];
+  recommendations: string[];
+}
+
 export interface GitHubAnalysis {
   repository: string;
   technologies: string[];
@@ -61,6 +97,8 @@ export interface GitHubAnalysis {
   recommendations: string[];
   metadata?: GitHubRepoMetadata;
   specialties?: string[];
+  qualityMetrics?: QualityMetrics;
+  aiInsights?: AIAnalysisInsights;
 }
 
 export interface GapAnalysisResult {
@@ -279,12 +317,20 @@ export class GapAnalyzerAgent {
       category: 'technical'
     });
 
+    // Calculate documentation level from README quality if available
+    let documentationLevel = this.clampSkillLevel(baseLevel - 0.4);
+    if ((githubAnalysis as any).readmeAnalysis?.qualityScore) {
+      const readmeScore = (githubAnalysis as any).readmeAnalysis.qualityScore;
+      // Convert 0-100 score to 1-5 scale
+      documentationLevel = Math.max(1, Math.min(5, Math.round((readmeScore / 100) * 5)));
+    }
+    
     skills.push({
       id: 'documentation',
       name: 'Technical Documentation',
-      currentLevel: this.clampSkillLevel(baseLevel - 0.4),
-      targetLevel: 3,
-      importance: 3,
+      currentLevel: documentationLevel,
+      targetLevel: 4, // Higher target since docs are important
+      importance: 4, // Higher importance for professional projects
       category: 'technical'
     });
 
@@ -574,6 +620,7 @@ export class GapAnalyzerAgent {
           recommendations: mergedGuidance.recommendedSteps,
           guidance: mergedGuidance,
           confidence: this.estimateSkillGapConfidence(mergedSkill, mergedGap, options.githubAnalysis),
+          aiInsights: this.getQualityInsightsForSkill(mergedSkill, options.githubAnalysis),
         });
       } else {
         aggregated.set(normalizedSkill.id, {
@@ -583,6 +630,7 @@ export class GapAnalyzerAgent {
           recommendations,
           guidance,
           confidence: this.estimateSkillGapConfidence(normalizedSkill, gap, options.githubAnalysis),
+          aiInsights: this.getQualityInsightsForSkill(normalizedSkill, options.githubAnalysis),
         });
       }
     });
@@ -681,9 +729,15 @@ export class GapAnalyzerAgent {
 
       try {
         [repoData, languagesData, contentsData] = await Promise.all([
-          this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}`),
-          this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}/languages`),
-          this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}/contents`)
+          this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}`, {
+            resourceLabel: `${owner}/${cleanRepo}`,
+          }),
+          this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}/languages`, {
+            resourceLabel: `${owner}/${cleanRepo} languages`,
+          }),
+          this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}/contents`, {
+            resourceLabel: `${owner}/${cleanRepo} contents`,
+          })
         ]);
       } catch (apiError) {
         console.error('[GapAnalyzer] GitHub API error:', apiError);
@@ -710,6 +764,12 @@ export class GapAnalyzerAgent {
 
       const metadata = this.buildRepoMetadata(repoData, contentsData);
 
+      // Analyze quality metrics
+      const qualityMetrics = await this.analyzeQualityMetrics(repoData, contentsData);
+      
+      // Generate AI insights
+      const aiInsights = await this.generateAIAnalysisInsights(repoData, contentsData, technologies, frameworks);
+
       return {
         repository: repoUrl,
         technologies,
@@ -719,12 +779,34 @@ export class GapAnalyzerAgent {
         skillLevel,
         recommendations,
         metadata,
+        qualityMetrics,
+        aiInsights,
       };
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('[GapAnalyzer] GitHub analysis error:', errorMessage);
-      throw new Error(`Failed to analyze repository: ${errorMessage}`);
+
+      let guidance = '';
+      if (error instanceof Error) {
+        const message = error.message.toLowerCase();
+        if (message.includes('resource not found')) {
+          guidance =
+            'Ensure the repository URL is correct. For private repositories, provide a personal access token with the "repo" scope via the GITHUB_TOKEN environment variable.';
+        } else if (message.includes('unauthorized')) {
+          guidance =
+            'Check that your GITHUB_TOKEN environment variable is set and includes the "repo" scope for private repositories.';
+        } else if (message.includes('rate limit')) {
+          guidance =
+            'GitHub rate limits were exceeded. Add a personal access token to GITHUB_TOKEN or wait before retrying.';
+        }
+      }
+
+      const detailedMessage = guidance
+        ? `Failed to analyze repository: ${errorMessage} ${guidance}`
+        : `Failed to analyze repository: ${errorMessage}`;
+
+      throw new Error(detailedMessage);
     }
   }
 
@@ -1239,7 +1321,14 @@ export class GapAnalyzerAgent {
   /**
    * Fetch data from GitHub API
    */
-  private async fetchGitHubData(url: string): Promise<any> {
+  private async fetchGitHubData(
+    url: string,
+    options?: {
+      allow404?: boolean;
+      resourceLabel?: string;
+      raw?: boolean;
+    }
+  ): Promise<any> {
     const headers: Record<string, string> = {
       'Accept': 'application/vnd.github.v3+json',
       'User-Agent': 'SkillBridge.ai-Agents'
@@ -1255,18 +1344,36 @@ export class GapAnalyzerAgent {
     }
     
     const response = await fetch(url, { headers });
+    const label = options?.resourceLabel ?? url;
 
     if (!response.ok) {
       if (response.status === 404) {
-        throw new Error('Repository not found or is private');
+        if (options?.allow404) {
+          return null;
+        }
+        throw new Error(
+          `GitHub resource not found (${label}). The repository may be private or the path does not exist.`
+        );
       }
       if (response.status === 403) {
-        throw new Error('GitHub API rate limit exceeded. Please try again later.');
+        throw new Error(
+          `GitHub API rate limit exceeded while requesting ${label}. ${
+            token
+              ? 'Ensure your personal access token has sufficient quota or scope.'
+              : 'Add a personal access token to the GITHUB_TOKEN environment variable to increase limits.'
+          }`
+        );
       }
       if (response.status === 401) {
-        throw new Error('Unauthorized access to repository');
+        throw new Error(
+          `Unauthorized access to ${label}. Check that your GITHUB_TOKEN is valid and includes the "repo" scope for private repositories.`
+        );
       }
-      throw new Error(`GitHub API error: ${response.status} - ${response.statusText}`);
+      throw new Error(`GitHub API error: ${response.status} - ${response.statusText} while requesting ${label}`);
+    }
+
+    if (options?.raw) {
+      return response.text();
     }
 
     return response.json();
@@ -2176,11 +2283,11 @@ export class GapAnalyzerAgent {
         }
         
         // If still no files, check root directory for code files
-        if (files.length === 0) {
-          const rootCodeFiles = contentsData.filter(item => 
-            item.type === 'file' && targetExtensions.some(ext => item.name.endsWith(ext))
-          );
-          console.log(`[GapAnalyzer Agentic] Found ${rootCodeFiles.length} code files in root`);
+      if (files.length === 0) {
+        const rootCodeFiles = contentsData.filter(item => 
+          item.type === 'file' && targetExtensions.some(ext => item.name.endsWith(ext))
+        );
+        console.log(`[GapAnalyzer Agentic] Found ${rootCodeFiles.length} code files in root`);
         
           for (const item of rootCodeFiles) {
             try {
@@ -2215,6 +2322,47 @@ export class GapAnalyzerAgent {
             } catch (error) {
               // Skip files that can't be read
             }
+          }
+        }
+      }
+
+      if (files.length === 0) {
+        console.log('[GapAnalyzer Agentic] Falling back to recursive search for deeply nested code files...');
+        const fallbackRepoData = { html_url: `https://github.com/${owner}/${repo}` };
+        const recursiveFiles = await this.findCodeFilesRecursively(
+          fallbackRepoData,
+          Array.isArray(contentsData) ? contentsData : []
+        );
+
+        for (const file of recursiveFiles.slice(0, 3)) {
+          try {
+            const fileData = await this.fetchGitHubData(file.download_url, {
+              raw: true,
+              resourceLabel: `${file.path} raw content`,
+            });
+
+            const content =
+              typeof fileData === 'string'
+                ? fileData
+                : fileData?.content && fileData.encoding === 'base64'
+                  ? Buffer.from(fileData.content, 'base64').toString('utf-8')
+                  : '';
+
+            if (content) {
+              const MAX_FILE_SIZE = 15_000;
+              files.push({
+                path: file.path,
+                content: content.length <= MAX_FILE_SIZE ? content : content.substring(0, MAX_FILE_SIZE),
+                language: primaryLanguages[0] || 'Unknown',
+              });
+              console.log(`[GapAnalyzer Agentic] ✓ Fallback file selected: ${file.path} (${content.length} chars)`);
+            }
+          } catch (error) {
+            console.log(`[GapAnalyzer Agentic] Could not fetch fallback file ${file.path}:`, error);
+          }
+
+          if (files.length >= 3) {
+            break;
           }
         }
       }
@@ -2580,5 +2728,442 @@ Provide recommendations that are:
       console.log('[GapAnalyzer Agentic] Using fallback recommendations');
       return fallbackRecs;
     }
+  }
+
+  /**
+   * Analyze quality metrics for README and code quality
+   */
+  private async analyzeQualityMetrics(repoData: any, contentsData: any[]): Promise<QualityMetrics> {
+    try {
+      console.log('[GapAnalyzer] Analyzing quality metrics...');
+
+      // Analyze README quality
+      const readmeAnalysis = await this.analyzeReadmeQuality(repoData, contentsData);
+      
+      // Analyze code quality
+      const codeAnalysis = await this.analyzeCodeQuality(repoData, contentsData);
+      
+      // Calculate overall quality
+      const overallScore = Math.round((readmeAnalysis.score + codeAnalysis.score) / 2);
+      const overallConfidence = Math.round((readmeAnalysis.confidence + codeAnalysis.confidence) / 2);
+
+      return {
+        readmeQuality: readmeAnalysis,
+        codeQuality: codeAnalysis,
+        overallQuality: {
+          score: overallScore,
+          confidence: overallConfidence,
+          strengths: [
+            ...readmeAnalysis.insights.filter(insight => insight.includes('good') || insight.includes('excellent')),
+            ...codeAnalysis.insights.filter(insight => insight.includes('good') || insight.includes('excellent'))
+          ].slice(0, 3),
+          weaknesses: [
+            ...readmeAnalysis.improvements,
+            ...codeAnalysis.improvements
+          ].slice(0, 3)
+        }
+      };
+    } catch (error) {
+      console.error('[GapAnalyzer] Quality analysis error:', error);
+      // Return default metrics if analysis fails
+      return {
+        readmeQuality: { score: 50, confidence: 50, insights: ['Analysis unavailable'], improvements: ['Unable to analyze'] },
+        codeQuality: { score: 50, confidence: 50, insights: ['Analysis unavailable'], improvements: ['Unable to analyze'] },
+        overallQuality: { score: 50, confidence: 50, strengths: ['Analysis unavailable'], weaknesses: ['Unable to analyze'] }
+      };
+    }
+  }
+
+  /**
+   * Analyze README quality
+   */
+  private async analyzeReadmeQuality(repoData: any, contentsData: any[]): Promise<{
+    score: number;
+    confidence: number;
+    insights: string[];
+    improvements: string[];
+  }> {
+    try {
+      const repoFullName =
+        typeof repoData?.full_name === 'string'
+          ? repoData.full_name
+          : (() => {
+              const match =
+                typeof repoData?.html_url === 'string'
+                  ? repoData.html_url.match(/github\.com\/(.+)$/)
+                  : null;
+              return match ? match[1] : 'repository';
+            })();
+
+      // Find README file
+      const readmeFile = contentsData.find(file => 
+        file.name.toLowerCase().includes('readme') && 
+        (file.name.toLowerCase().endsWith('.md') || file.name.toLowerCase().endsWith('.txt'))
+      );
+
+      if (!readmeFile) {
+        return {
+          score: 20,
+          confidence: 90,
+          insights: ['No README file found'],
+          improvements: ['Add a comprehensive README.md file']
+        };
+      }
+
+      // Get README content
+      const readmeResponse = await this.fetchGitHubData(readmeFile.download_url, {
+        raw: true,
+        resourceLabel: `${repoFullName} README raw content`,
+      });
+      const content =
+        typeof readmeResponse === 'string'
+          ? readmeResponse
+          : readmeResponse?.content && readmeResponse.encoding === 'base64'
+            ? Buffer.from(readmeResponse.content, 'base64').toString('utf-8')
+            : '';
+
+      if (!content) {
+        throw new Error('No README content found');
+      }
+
+      const prompt = `Analyze this README file and provide quality metrics:
+
+${content}
+
+Rate the README quality on a scale of 0-100 based on:
+1. Completeness (installation, usage, examples)
+2. Clarity and organization
+3. Professional presentation
+4. Documentation depth
+5. Code examples and screenshots
+
+Provide:
+- Score (0-100)
+- Confidence (0-100)
+- 3 key insights about what's good
+- 3 specific improvements needed
+
+Format as JSON:
+{
+  "score": number,
+  "confidence": number,
+  "insights": ["insight1", "insight2", "insight3"],
+  "improvements": ["improvement1", "improvement2", "improvement3"]
+}`;
+
+      const { text } = await generateText({
+        model: openai('gpt-4o-mini'),
+        prompt,
+        temperature: 0.3,
+      });
+
+      // Clean the response text to extract JSON
+      let cleanedText = text.trim();
+      
+      // Remove markdown code blocks if present
+      if (cleanedText.startsWith('```json')) {
+        cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const analysis = JSON.parse(cleanedText);
+      return analysis;
+    } catch (error) {
+      console.error('[GapAnalyzer] README analysis error:', error);
+      return {
+        score: 50,
+        confidence: 50,
+        insights: ['Unable to analyze README'],
+        improvements: ['README analysis failed']
+      };
+    }
+  }
+
+  /**
+   * Analyze code quality
+   */
+  private async analyzeCodeQuality(repoData: any, contentsData: any[]): Promise<{
+    score: number;
+    confidence: number;
+    insights: string[];
+    improvements: string[];
+  }> {
+    try {
+      // Recursively find code files in the repository
+      const codeFiles = await this.findCodeFilesRecursively(repoData, contentsData);
+
+      if (codeFiles.length === 0) {
+        return {
+          score: 30,
+          confidence: 90,
+          insights: ['No code files found'],
+          improvements: ['Add source code files']
+        };
+      }
+
+      // Get content from first few files
+      const fileContents = await Promise.all(
+        codeFiles.slice(0, 3).map(async (file) => {
+          try {
+            const contentResponse = await this.fetchGitHubData(file.download_url, {
+              raw: true,
+              resourceLabel: `${file.path} raw content`,
+            });
+            return {
+              name: file.name,
+              content:
+                (typeof contentResponse === 'string'
+                  ? contentResponse
+                  : contentResponse?.content && contentResponse.encoding === 'base64'
+                    ? Buffer.from(contentResponse.content, 'base64').toString('utf-8')
+                    : ''
+                ).substring(0, 2000),
+            };
+          } catch {
+            return { name: file.name, content: '' };
+          }
+        })
+      );
+
+      const prompt = `Analyze these code files and provide quality metrics:
+
+${fileContents.map(f => `File: ${f.name}\n${f.content}\n---`).join('\n')}
+
+Rate the code quality on a scale of 0-100 based on:
+1. Code organization and structure
+2. Naming conventions
+3. Documentation and comments
+4. Error handling
+5. Best practices adherence
+
+Provide:
+- Score (0-100)
+- Confidence (0-100)
+- 3 key insights about what's good
+- 3 specific improvements needed
+
+Format as JSON:
+{
+  "score": number,
+  "confidence": number,
+  "insights": ["insight1", "insight2", "insight3"],
+  "improvements": ["improvement1", "improvement2", "improvement3"]
+}`;
+
+      const { text } = await generateText({
+        model: openai('gpt-4o-mini'),
+        prompt,
+        temperature: 0.3,
+      });
+
+      // Clean the response text to extract JSON
+      let cleanedText = text.trim();
+      
+      // Remove markdown code blocks if present
+      if (cleanedText.startsWith('```json')) {
+        cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const analysis = JSON.parse(cleanedText);
+      return analysis;
+    } catch (error) {
+      console.error('[GapAnalyzer] Code analysis error:', error);
+      return {
+        score: 50,
+        confidence: 50,
+        insights: ['Unable to analyze code'],
+        improvements: ['Code analysis failed']
+      };
+    }
+  }
+
+  /**
+   * Generate AI analysis insights with problem-solving frameworks
+   */
+  private async generateAIAnalysisInsights(
+    repoData: any, 
+    contentsData: any[], 
+    technologies: string[], 
+    frameworks: string[]
+  ): Promise<AIAnalysisInsights> {
+    try {
+      console.log('[GapAnalyzer] Generating AI analysis insights...');
+
+      const prompt = `Analyze this GitHub repository and provide comprehensive AI insights:
+
+Repository: ${repoData.full_name}
+Description: ${repoData.description || 'No description'}
+Technologies: ${technologies.join(', ')}
+Frameworks: ${frameworks.join(', ')}
+Languages: ${Object.keys(repoData.languages || {}).join(', ')}
+Stars: ${repoData.stargazers_count}
+Forks: ${repoData.forks_count}
+
+Provide insights in these categories:
+
+1. Problem-Solving Approach (3-4 insights about how problems are solved)
+2. Frameworks & Patterns (3-4 frameworks and design patterns used)
+3. Code Patterns (3-4 specific code patterns observed)
+4. Best Practices (3-4 best practices demonstrated)
+5. Anti-Patterns (2-3 areas that could be improved)
+6. Recommendations (3-4 specific recommendations for improvement)
+
+Format as JSON:
+{
+  "problemSolvingApproach": ["approach1", "approach2", "approach3"],
+  "frameworks": ["framework1", "framework2", "framework3"],
+  "patterns": ["pattern1", "pattern2", "pattern3"],
+  "bestPractices": ["practice1", "practice2", "practice3"],
+  "antiPatterns": ["antipattern1", "antipattern2"],
+  "recommendations": ["recommendation1", "recommendation2", "recommendation3"]
+}`;
+
+      const { text } = await generateText({
+        model: openai('gpt-4o-mini'),
+        prompt,
+        temperature: 0.4,
+      });
+
+      // Clean the response text to extract JSON
+      let cleanedText = text.trim();
+      
+      // Remove markdown code blocks if present
+      if (cleanedText.startsWith('```json')) {
+        cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const insights = JSON.parse(cleanedText);
+      return insights;
+    } catch (error) {
+      console.error('[GapAnalyzer] AI insights generation error:', error);
+      return {
+        problemSolvingApproach: ['Analysis unavailable'],
+        frameworks: ['Analysis unavailable'],
+        patterns: ['Analysis unavailable'],
+        bestPractices: ['Analysis unavailable'],
+        antiPatterns: ['Analysis unavailable'],
+        recommendations: ['Analysis unavailable']
+      };
+    }
+  }
+
+  /**
+   * Get quality insights for a specific skill
+   */
+  private getQualityInsightsForSkill(skill: Skill, githubAnalysis?: GitHubAnalysis): any {
+    if (!githubAnalysis?.qualityMetrics) {
+      return null;
+    }
+
+    const qualityMetrics = githubAnalysis.qualityMetrics;
+    
+    // Map skills to relevant quality metrics
+    const skillQualityMap: { [key: string]: any } = {
+      'documentation': {
+        readmeQuality: qualityMetrics.readmeQuality.score,
+        codeQuality: qualityMetrics.codeQuality.score,
+        architecturePatterns: githubAnalysis.aiInsights?.patterns || [],
+        bestPractices: githubAnalysis.aiInsights?.bestPractices || [],
+      },
+      'readme': {
+        readmeQuality: qualityMetrics.readmeQuality.score,
+        codeQuality: qualityMetrics.codeQuality.score,
+        architecturePatterns: githubAnalysis.aiInsights?.patterns || [],
+        bestPractices: githubAnalysis.aiInsights?.bestPractices || [],
+      },
+      'testing': {
+        codeQuality: qualityMetrics.codeQuality.score,
+        architecturePatterns: githubAnalysis.aiInsights?.patterns || [],
+        bestPractices: githubAnalysis.aiInsights?.bestPractices || [],
+      },
+      'code-quality': {
+        codeQuality: qualityMetrics.codeQuality.score,
+        architecturePatterns: githubAnalysis.aiInsights?.patterns || [],
+        bestPractices: githubAnalysis.aiInsights?.bestPractices || [],
+      },
+      'software-architecture': {
+        codeQuality: qualityMetrics.codeQuality.score,
+        architecturePatterns: githubAnalysis.aiInsights?.patterns || [],
+        bestPractices: githubAnalysis.aiInsights?.bestPractices || [],
+      },
+    };
+
+    // Check if skill name or category matches any quality metrics
+    const skillKey = Object.keys(skillQualityMap).find(key => 
+      skill.name.toLowerCase().includes(key) || 
+      skill.category.toLowerCase().includes(key)
+    );
+
+    return skillKey ? skillQualityMap[skillKey] : null;
+  }
+
+  /**
+   * Recursively find code files in the repository
+   */
+  private async findCodeFilesRecursively(repoData: any, contentsData: any[]): Promise<any[]> {
+    const codeFiles: any[] = [];
+    const codeExtensions = ['js', 'ts', 'tsx', 'jsx', 'py', 'java', 'go', 'rs', 'cpp', 'c', 'cs', 'php', 'rb', 'swift', 'kt', 'scala'];
+    
+    // Extract owner and repo from URL
+    const match = repoData.html_url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+    if (!match) return codeFiles;
+    
+    const [, owner, repo] = match;
+    const cleanRepo = repo.replace(/\.git$/, '');
+    
+    const MAX_DEPTH = 8;
+
+    const searchInDirectory = async (path: string = '', depth: number = 0): Promise<void> => {
+      // Limit recursion depth to avoid infinite loops
+      if (depth >= MAX_DEPTH) return;
+      
+      try {
+        const url = `https://api.github.com/repos/${owner}/${cleanRepo}/contents/${path}`;
+        const dirContents = await this.fetchGitHubData(url, {
+          resourceLabel: `${owner}/${cleanRepo}${path ? `/${path}` : ''}`,
+          allow404: path !== '',
+        });
+        
+        if (Array.isArray(dirContents)) {
+          for (const item of dirContents) {
+            if (item.type === 'file') {
+              const ext = item.name.split('.').pop()?.toLowerCase();
+              if (ext && codeExtensions.includes(ext)) {
+                codeFiles.push(item);
+              }
+            } else if (item.type === 'dir' && !item.name.startsWith('.')) {
+              // Skip hidden directories and common non-source directories
+              const skipDirs = ['node_modules', 'vendor', 'target', 'build', 'dist', '.git', '.vscode', '.idea'];
+              if (!skipDirs.includes(item.name)) {
+                await searchInDirectory(item.path, depth + 1);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        const directoryLabel = path ? `/${path}` : '/';
+        if (error instanceof Error && error.message.includes('GitHub resource not found')) {
+          console.log(`[GapAnalyzer] Directory ${directoryLabel} not found in ${owner}/${cleanRepo}, skipping.`);
+        } else {
+          console.log(`[GapAnalyzer] Could not access directory ${directoryLabel} in ${owner}/${cleanRepo}:`, error);
+        }
+      }
+    };
+    
+    // Start searching from root and common source directories
+    await searchInDirectory();
+    
+    // Also check common source directories directly
+    const commonSourceDirs = ['src', 'app', 'lib', 'source', 'sources'];
+    for (const dir of commonSourceDirs) {
+      await searchInDirectory(dir);
+    }
+    
+    return codeFiles.slice(0, 10); // Limit to 10 files for analysis
   }
 }

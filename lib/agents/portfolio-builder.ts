@@ -7,6 +7,7 @@
 
 import { buildFrameworkSkillPlan } from '@/lib/analysis/framework-skill-plan';
 import { GitHubClient } from '@/lib/github/github-client';
+import { GitHubMCPClient } from '@/lib/mcp/github';
 import type { GitHubAnalysis, GapAnalysisResult, SkillGap } from './gap-analyzer';
 import { getTemplateCreatorClient, closeTemplateCreatorClient } from '@/lib/mcp/template-creator/client';
 
@@ -95,6 +96,7 @@ export interface IssueCreationResult {
 
 export class PortfolioBuilderAgent {
   private githubClient: GitHubClient;
+  private mcpClient: GitHubMCPClient | null = null;
 
   constructor(githubToken?: string) {
     this.githubClient = new GitHubClient(githubToken);
@@ -142,8 +144,8 @@ export class PortfolioBuilderAgent {
           severity: 'high',
           title: 'Missing or Incomplete README',
           description: hasReadme.exists
-            ? 'README exists but lacks key sections (setup, usage, features)'
-            : 'No README file found in the repository',
+            ? 'Your README needs improvement. Add sections for installation, usage examples, and project features to help others understand your project quickly.'
+            : 'Create a comprehensive README.md file to introduce your project, explain how to install and use it, and showcase its features.',
           impact: 'Makes it difficult for others to understand and use your project',
         });
       }
@@ -154,7 +156,7 @@ export class PortfolioBuilderAgent {
           type: 'testing',
           severity: 'high',
           title: 'No Test Coverage',
-          description: 'No testing framework or test files detected',
+          description: 'Add unit tests to verify your code works correctly. Start with testing core functions and gradually expand coverage to build confidence in your codebase.',
           impact: 'Reduces confidence in code quality and makes refactoring risky',
         });
       }
@@ -166,7 +168,7 @@ export class PortfolioBuilderAgent {
           severity: 'low',
           optional: true,
           title: 'No CI/CD Pipeline Detected (Optional)',
-          description: 'No automated testing or deployment pipeline configuration found. This is optional for personal/local projects or when hosting platforms already provide CI/CD.',
+          description: 'Consider adding automated testing and deployment pipelines. This helps catch bugs early and makes collaboration easier, though it\'s optional for personal projects.',
           impact: 'Automating tests and deployments can help when collaborating or shipping to production, but it is not required for every personal project.',
         });
       }
@@ -177,7 +179,7 @@ export class PortfolioBuilderAgent {
           type: 'documentation',
           severity: 'medium',
           title: 'Limited Documentation',
-          description: 'No /docs folder or comprehensive API documentation found',
+          description: 'Create detailed documentation to help contributors understand your codebase. Add API docs, architecture overview, and contribution guidelines.',
           impact: 'Makes it harder for contributors to understand the codebase',
         });
       }
@@ -191,7 +193,7 @@ export class PortfolioBuilderAgent {
           severity: 'low',
           optional: true,
           title: 'No License File',
-          description: 'No LICENSE file found',
+          description: 'Add a LICENSE file to clarify how others can use your code. Choose MIT, Apache, or GPL based on your preferences.',
           impact: 'Unclear legal status for using and contributing to the project',
         });
       }
@@ -623,6 +625,19 @@ export class PortfolioBuilderAgent {
   ): Promise<IssueCreationResult[]> {
     const results: IssueCreationResult[] = [];
     const includeOptional = options?.includeOptional ?? false;
+    const useMCP = !!process.env.GITHUB_MCP_SERVER_URL;
+
+    // Initialize MCP client if available
+    if (useMCP && !this.mcpClient) {
+      try {
+        this.mcpClient = new GitHubMCPClient();
+        await this.mcpClient.connect();
+        console.log('[Portfolio Builder] Connected to GitHub MCP server');
+      } catch (error) {
+        console.warn('[Portfolio Builder] Failed to connect to MCP server, using REST fallback:', error);
+        this.mcpClient = null;
+      }
+    }
 
     for (const recommendation of recommendations) {
       if (!includeOptional && recommendation.weakness.optional) {
@@ -634,9 +649,30 @@ export class PortfolioBuilderAgent {
 
         console.log(`[Portfolio Builder] Creating issue: ${recommendation.title}`);
 
-        const issue = await this.githubClient.createIssue(owner, repo, recommendation.title, issueBody, {
-          labels,
-        });
+        let issue: any;
+
+        if (useMCP && this.mcpClient) {
+          try {
+            // Use MCP to create issue
+            issue = await this.mcpClient.createIssue(owner, repo, recommendation.title, issueBody, {
+              labels,
+            });
+            console.log(`[Portfolio Builder] ✅ Created issue via MCP #${issue.number}: ${issue.html_url}`);
+          } catch (mcpError) {
+            console.warn(`[Portfolio Builder] MCP failed for ${recommendation.title}, falling back to REST:`, mcpError);
+            // Fall through to REST fallback
+            issue = await this.githubClient.createIssue(owner, repo, recommendation.title, issueBody, {
+              labels,
+            });
+            console.log(`[Portfolio Builder] ✅ Created issue via REST #${issue.number}: ${issue.html_url}`);
+          }
+        } else {
+          // Use REST API directly
+          issue = await this.githubClient.createIssue(owner, repo, recommendation.title, issueBody, {
+            labels,
+          });
+          console.log(`[Portfolio Builder] ✅ Created issue via REST #${issue.number}: ${issue.html_url}`);
+        }
 
         results.push({
           success: true,
@@ -645,7 +681,6 @@ export class PortfolioBuilderAgent {
           title: recommendation.title,
         });
 
-        console.log(`[Portfolio Builder] ✅ Created issue #${issue.number}: ${issue.html_url}`);
       } catch (error) {
         console.error(`[Portfolio Builder] ❌ Failed to create issue for ${recommendation.title}:`, error);
         results.push({
@@ -847,7 +882,7 @@ export class PortfolioBuilderAgent {
 
       switch (weakness.type) {
         case 'readme':
-          description = 'Create a comprehensive README that helps others understand and use your project effectively.';
+          description = 'Create a comprehensive README that helps others understand and use your project effectively. A good README is like a storefront for your code - it should welcome visitors and guide them through your project.',
           actionItems = [
             'Add a clear project title and description',
             'Include installation instructions with all dependencies',
@@ -859,7 +894,7 @@ export class PortfolioBuilderAgent {
           break;
 
         case 'testing':
-          description = 'Implement a test suite to improve code quality and confidence in your changes.';
+          description = 'Implement a test suite to improve code quality and confidence in your changes. Tests act as a safety net, catching bugs before they reach production and giving you confidence to refactor and improve your code.',
           actionItems = [
             'Choose a testing framework (Jest, Pytest, JUnit, etc.)',
             'Set up test directory structure',
@@ -883,7 +918,7 @@ export class PortfolioBuilderAgent {
           break;
 
         case 'documentation':
-          description = 'Improve project documentation to help contributors and users understand the codebase.';
+          description = 'Improve project documentation to help contributors and users understand the codebase. Good documentation is like a map - it helps people navigate your project and understand how everything fits together.',
           actionItems = [
             'Create a /docs folder for detailed documentation',
             'Document API endpoints or public interfaces',
@@ -1229,6 +1264,21 @@ export class PortfolioBuilderAgent {
       return fileNames.some((name) => docFiles.some((doc) => name.includes(doc)));
     } catch (error) {
       return false;
+    }
+  }
+
+  /**
+   * Cleanup MCP client connection
+   */
+  async cleanup(): Promise<void> {
+    if (this.mcpClient) {
+      try {
+        await this.mcpClient.disconnect();
+        this.mcpClient = null;
+        console.log('[Portfolio Builder] Disconnected from GitHub MCP server');
+      } catch (error) {
+        console.warn('[Portfolio Builder] Error disconnecting MCP client:', error);
+      }
     }
   }
 }

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { skillGapStoragePrisma } from "@/lib/storage/skill-gap-storage-prisma";
+import { DatabaseUnavailableError, skillGapStoragePrisma } from "@/lib/storage/skill-gap-storage-prisma";
 import type { GapAnalysisResult, GitHubAnalysis, ResearchContext } from "@/lib/agents/gap-analyzer";
 
 export async function POST(request: NextRequest) {
@@ -48,6 +48,17 @@ export async function POST(request: NextRequest) {
       message: "Skill gap analysis stored successfully in database",
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) {
+      console.warn("⚠️ [Prisma] Database unavailable while storing skill gap:", error.message);
+      return NextResponse.json(
+        {
+          error: error.message,
+          hint: "Start your local PostgreSQL instance or update DATABASE_URL, then rerun the request.",
+        },
+        { status: 503 }
+      );
+    }
+
     console.error("❌ [Prisma] Error storing skill gap:", error);
     return NextResponse.json(
       {
@@ -87,6 +98,17 @@ export async function GET(request: NextRequest) {
       data: summary,
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) {
+      console.warn("⚠️ [Prisma] Database unavailable while retrieving skill gap:", error.message);
+      return NextResponse.json(
+        {
+          error: error.message,
+          hint: "Start your local PostgreSQL instance or update DATABASE_URL, then rerun the request.",
+        },
+        { status: 503 }
+      );
+    }
+
     console.error("❌ [Prisma] Error retrieving skill gap:", error);
     return NextResponse.json(
       { error: "Failed to retrieve skill gap analysis" },

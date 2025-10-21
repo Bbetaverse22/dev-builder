@@ -67,7 +67,7 @@ export function LearningDisplay() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3">
+            <div className={`grid gap-3 ${researchResults.length > 4 ? 'max-h-[600px] overflow-y-auto pr-2' : ''}`}>
               {researchResults.map((resource: any, index: number) => (
                 <a
                   key={index}
@@ -130,7 +130,7 @@ export function LearningDisplay() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3">
+            <div className={`grid gap-3 ${githubExamples.length > 4 ? 'max-h-[600px] overflow-y-auto pr-2' : ''}`}>
               {githubExamples.map((example: any, index: number) => (
                 <div
                   key={index}
@@ -176,36 +176,38 @@ export function LearningDisplay() {
               Trade-offs and positioning across top learning resources
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {comparativeInsights.map((insight: any, index: number) => (
-              <div key={index} className="p-4 rounded-lg border border-purple-200/20 bg-purple-200/10">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-lg font-semibold text-white">{insight.title}</h4>
-                  <Badge variant="outline" className="text-xs text-purple-100 border-purple-200/40">
-                    Confidence: {insight.confidence}
-                  </Badge>
-                </div>
-                <p className="text-sm text-purple-100/80 leading-relaxed">{insight.insight}</p>
-                {insight.supportingResources?.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs uppercase tracking-wide text-purple-200/60 mb-1">Supporting resources</p>
-                    <div className="flex flex-wrap gap-2">
-                      {insight.supportingResources.slice(0, 4).map((url: string, idx: number) => (
-                        <a
-                          key={idx}
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-purple-100 underline decoration-dotted hover:text-purple-200"
-                        >
-                          {url}
-                        </a>
-                      ))}
-                    </div>
+          <CardContent>
+            <div className={`space-y-4 ${comparativeInsights.length > 4 ? 'max-h-[600px] overflow-y-auto pr-2' : ''}`}>
+              {comparativeInsights.map((insight: any, index: number) => (
+                <div key={index} className="p-4 rounded-lg border border-purple-200/20 bg-purple-200/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-lg font-semibold text-white">{insight.title}</h4>
+                    <Badge variant="outline" className="text-xs text-purple-100 border-purple-200/40">
+                      Confidence: {insight.confidence}
+                    </Badge>
                   </div>
-                )}
-              </div>
-            ))}
+                  <p className="text-sm text-purple-100/80 leading-relaxed">{insight.insight}</p>
+                  {insight.supportingResources?.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs uppercase tracking-wide text-purple-200/60 mb-1">Supporting resources</p>
+                      <div className="flex flex-wrap gap-2">
+                        {insight.supportingResources.slice(0, 4).map((url: string, idx: number) => (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-purple-100 underline decoration-dotted hover:text-purple-200"
+                          >
+                            {url}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -222,41 +224,43 @@ export function LearningDisplay() {
               Follow these steps to progress from fundamentals to mastery
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {learningPath.map((step: any) => (
-              <div key={step.order} className="p-4 rounded-lg border border-emerald-200/20 bg-emerald-200/10">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-100 border-emerald-400/40">
-                        Step {step.order}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs text-emerald-100 border-emerald-200/40 capitalize">
-                        {step.difficulty}
-                      </Badge>
-                      {typeof step.estimatedTimeHours === 'number' && (
-                        <Badge variant="outline" className="text-xs text-emerald-100 border-emerald-200/40">
-                          ~{step.estimatedTimeHours} hrs
+          <CardContent>
+            <div className={`space-y-4 ${learningPath.length > 4 ? 'max-h-[600px] overflow-y-auto pr-2' : ''}`}>
+              {learningPath.map((step: any) => (
+                <div key={step.order} className="p-4 rounded-lg border border-emerald-200/20 bg-emerald-200/10">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-100 border-emerald-400/40">
+                          Step {step.order}
                         </Badge>
+                        <Badge variant="outline" className="text-xs text-emerald-100 border-emerald-200/40 capitalize">
+                          {step.difficulty}
+                        </Badge>
+                        {typeof step.estimatedTimeHours === 'number' && (
+                          <Badge variant="outline" className="text-xs text-emerald-100 border-emerald-200/40">
+                            ~{step.estimatedTimeHours} hrs
+                          </Badge>
+                        )}
+                      </div>
+                      <h4 className="text-lg font-semibold text-white">{step.title}</h4>
+                      <p className="text-sm text-emerald-100/80 leading-relaxed">{step.description}</p>
+                      {step.resourceUrl && (
+                        <a
+                          href={step.resourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-sm text-emerald-100 underline decoration-dotted hover:text-emerald-200"
+                        >
+                          {step.resourceTitle ?? 'View supporting resource'}
+                          <ArrowRight className="h-3 w-3" />
+                        </a>
                       )}
                     </div>
-                    <h4 className="text-lg font-semibold text-white">{step.title}</h4>
-                    <p className="text-sm text-emerald-100/80 leading-relaxed">{step.description}</p>
-                    {step.resourceUrl && (
-                      <a
-                        href={step.resourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm text-emerald-100 underline decoration-dotted hover:text-emerald-200"
-                      >
-                        {step.resourceTitle ?? 'View supporting resource'}
-                        <ArrowRight className="h-3 w-3" />
-                      </a>
-                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

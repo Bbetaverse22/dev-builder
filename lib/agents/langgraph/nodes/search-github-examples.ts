@@ -165,29 +165,29 @@ function enhanceSkillGapQuery(skillGap: string, language?: string): string {
   // Language-specific enhancements for better relevance
   const languageSpecificEnhancements: Record<string, Record<string, string>> = {
     python: {
-      'frameworks & libraries': 'python framework django flask fastapi tutorial',
-      'frameworks and libraries': 'python framework django flask fastapi tutorial',
-      'testing & qa': 'python pytest unittest testing',
-      'testing and qa': 'python pytest unittest testing',
-      'system architecture': 'python microservices architecture design-patterns',
+      'frameworks & libraries': 'python (django OR flask OR fastapi OR "streamlit")',
+      'frameworks and libraries': 'python (django OR flask OR fastapi OR "streamlit")',
+      'testing & qa': 'python (pytest OR unittest OR nose OR behave)',
+      'testing and qa': 'python (pytest OR unittest OR nose OR behave)',
+      'system architecture': 'python (microservices OR "clean architecture" OR "hexagonal" OR "design patterns")',
     },
     javascript: {
-      'frameworks & libraries': 'javascript framework react vue angular node',
-      'frameworks and libraries': 'javascript framework react vue angular node',
-      'testing & qa': 'javascript testing jest mocha cypress',
-      'testing and qa': 'javascript testing jest mocha cypress',
+      'frameworks & libraries': 'javascript (react OR vue OR angular OR node OR nextjs)',
+      'frameworks and libraries': 'javascript (react OR vue OR angular OR node OR nextjs)',
+      'testing & qa': 'javascript (jest OR mocha OR cypress OR playwright)',
+      'testing and qa': 'javascript (jest OR mocha OR cypress OR playwright)',
     },
     typescript: {
-      'frameworks & libraries': 'typescript framework react next nest angular',
-      'frameworks and libraries': 'typescript framework react next nest angular',
-      'testing & qa': 'typescript testing jest vitest',
-      'testing and qa': 'typescript testing jest vitest',
+      'frameworks & libraries': 'typescript (react OR nextjs OR nestjs OR angular)',
+      'frameworks and libraries': 'typescript (react OR nextjs OR nestjs OR angular)',
+      'testing & qa': 'typescript (jest OR vitest OR playwright)',
+      'testing and qa': 'typescript (jest OR vitest OR playwright)',
     },
     java: {
-      'frameworks & libraries': 'java framework spring boot hibernate',
-      'frameworks and libraries': 'java framework spring boot hibernate',
-      'testing & qa': 'java testing junit mockito',
-      'testing and qa': 'java testing junit mockito',
+      'frameworks & libraries': 'java (spring OR "spring boot" OR hibernate OR micronaut)',
+      'frameworks and libraries': 'java (spring OR "spring boot" OR hibernate OR micronaut)',
+      'testing & qa': 'java (junit OR mockito OR testng)',
+      'testing and qa': 'java (junit OR mockito OR testng)',
     },
   };
 
@@ -201,16 +201,16 @@ function enhanceSkillGapQuery(skillGap: string, language?: string): string {
   }
   
   // Fallback to generic enhancements
-  const genericEnhancements: Record<string, string> = {
-    'frameworks & libraries': `${language || 'web'} framework tutorial example`,
-    'frameworks and libraries': `${language || 'web'} framework tutorial example`,
-    'testing & qa': `${language || ''} testing framework unit-test integration-test`,
-    'testing and qa': `${language || ''} testing framework unit-test integration-test`,
-    'system architecture': `${language || ''} architecture design-patterns microservices`,
-    'time management': 'productivity automation scheduler',
-    'project management': 'project-management agile scrum kanban',
-    'version control': 'git github workflow',
-    'deployment': `${language || ''} deployment CI/CD docker kubernetes`,
+const genericEnhancements: Record<string, string> = {
+    'frameworks & libraries': `${language || 'web'} (framework OR library)`,
+    'frameworks and libraries': `${language || 'web'} (framework OR library)`,
+    'testing & qa': `${language || ''} (testing OR qa) (framework OR unit-test OR integration-test)`,
+    'testing and qa': `${language || ''} (testing OR qa) (framework OR unit-test OR integration-test)`,
+    'system architecture': `${language || ''} (architecture OR "design patterns" OR microservices)`,
+    'time management': '(productivity OR "time management" OR automation)',
+    'project management': '"project management" OR agile OR scrum OR kanban',
+    'version control': '"version control" OR git OR github',
+    'deployment': `${language || ''} (deployment OR "ci/cd" OR docker OR kubernetes)`,
   };
 
   // Check for exact matches in generic enhancements

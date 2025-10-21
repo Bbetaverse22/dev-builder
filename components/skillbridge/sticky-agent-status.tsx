@@ -58,7 +58,7 @@ export function StickyAgentStatus({
   const isActive = status !== 'IDLE' && status !== 'COMPLETE' && status !== 'ERROR';
 
   if (!isActive) {
-    return null; // Don't show when idle
+    return null; // Don't show when idle, complete, or error
   }
 
   return (

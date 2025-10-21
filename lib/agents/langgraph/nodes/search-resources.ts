@@ -20,6 +20,13 @@ import { escapePromptText } from "../utils/prompt-utils";
 
 type SearchProvider = "firecrawl" | "openai";
 
+class FirecrawlUnavailableError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "FirecrawlUnavailableError";
+  }
+}
+
 const DEFAULT_MODEL = process.env.OPENAI_RESEARCH_MODEL ?? "gpt-4o-mini";
 const MAX_FIRECRAWL_RESULTS = 10;
 const MAX_TOTAL_RESULTS = 20;
@@ -30,7 +37,9 @@ const MAX_SCRAPE_COUNT = 5;
 const MAX_SUMMARY_CHARS = 600;
 const SUMMARY_KEYPOINT_LIMIT = 5;
 const SUMMARY_RETRY_LIMIT = 2;
-const SCRAPE_TIMEOUT_MS = 20_000;
+const SCRAPE_TIMEOUT_MS = Number(
+  process.env.FIRECRAWL_SCRAPE_TIMEOUT_MS ?? 8_000
+);
 const SEARCH_ITERATION_LIMIT = 3;
 const MIN_RESULTS_TARGET = 12;
 const FIRECRAWL_MIN_INTERVAL_MS = Number(
@@ -78,7 +87,7 @@ export async function searchResourcesNode(
   console.log(`   Primary language: ${state.detectedLanguage || "unknown"}`);
   console.log(`   Seed queries: ${queries.join(" | ")}`);
 
-  const firecrawl = await createFirecrawlClient();
+  let firecrawl = await createFirecrawlClient();
   let pass = 0;
   let continueSearching = true;
 
@@ -114,7 +123,10 @@ export async function searchResourcesNode(
         if (firecrawlResults.length) {
           firecrawlResults.forEach((resource) => {
             resources.push(resource);
-            if (!scrapeCandidates.some((r) => r.url === resource.url)) {
+            if (
+              resource.source === "firecrawl" &&
+              !scrapeCandidates.some((r) => r.url === resource.url)
+            ) {
               scrapeCandidates.push(resource);
             }
             sourcesUsed.add(resource.source ?? "firecrawl");
@@ -139,6 +151,12 @@ export async function searchResourcesNode(
           (error as Error)?.message ?? "Firecrawl search failed";
         iteration.errors?.push(message);
         iterationNotes.push(message);
+        if (error instanceof FirecrawlUnavailableError) {
+          iterationNotes.push(
+            "Firecrawl appears unreachable (network/DNS). Falling back to LLM-generated resources only."
+          );
+          firecrawl = null;
+        }
       }
     } else if (pass === 1) {
       iterationNotes.push("Skipped Firecrawl (no API key)");
@@ -159,7 +177,6 @@ export async function searchResourcesNode(
             source: resource.source ?? "openai",
           };
           resources.push(resourceWithSource);
-          scrapeCandidates.push(resourceWithSource);
           seenUrls.add(normalized);
         });
         usedProviders.add("openai");
@@ -397,6 +414,12 @@ async function runFirecrawlSearch(
         `[searchResourcesNode] Firecrawl search failed for "${query}":`,
         message
       );
+      if (isNetworkUnavailableError(error)) {
+        throw new FirecrawlUnavailableError(
+          `Firecrawl network request failed: ${message}`,
+          { cause: error instanceof Error ? error : undefined }
+        );
+      }
       if (/rate limit/i.test(message)) {
         rateLimitHit = true;
         break;
@@ -712,6 +735,12 @@ async function scrapeAndSummarizeResources(
         `[searchResourcesNode] Failed to scrape ${resource.url}:`,
         (error as Error)?.message ?? error
       );
+      if (isNetworkUnavailableError(error)) {
+        console.warn(
+          "[searchResourcesNode] Network unavailable during scraping. Skipping remaining scrape attempts for this run."
+        );
+        break;
+      }
     }
   }
 
@@ -723,6 +752,40 @@ function truncateMarkdown(content: string, maxChars: number): string {
     return content;
   }
   return `${content.slice(0, maxChars)}...`;
+}
+
+function isNetworkUnavailableError(error: unknown): boolean {
+  if (!error) {
+    return false;
+  }
+
+  const possibleCode =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code ?? "")
+      : "";
+
+  if (
+    ["ENOTFOUND", "EAI_AGAIN", "ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"].includes(
+      possibleCode
+    )
+  ) {
+    return true;
+  }
+
+  const message =
+    typeof error === "string"
+      ? error
+      : error instanceof Error
+      ? `${error.name}: ${error.message}`
+      : "";
+
+  if (!message) {
+    return false;
+  }
+
+  return /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|getaddrinfo|timeout of \d+ms exceeded|Network Error/i.test(
+    message
+  );
 }
 
 async function summarizeScrapedContent(
