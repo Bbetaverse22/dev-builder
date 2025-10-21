@@ -11,6 +11,57 @@ import { GitHubMCPClient } from '@/lib/mcp/github';
 import type { GitHubAnalysis, GapAnalysisResult, SkillGap } from './gap-analyzer';
 import { getTemplateCreatorClient, closeTemplateCreatorClient } from '@/lib/mcp/template-creator/client';
 
+const LICENSE_FILE_BASENAMES = new Set([
+  'license',
+  'license.md',
+  'license.txt',
+  'licence',
+  'licence.md',
+  'licence.txt',
+  'copying',
+  'copying.md',
+  'copying.txt',
+  'copyright',
+  'copyright.md',
+  'copyright.txt',
+  'unlicense',
+  'unlicense.md',
+  'unlicense.txt',
+]);
+
+const LICENSE_FILE_CANDIDATES = [
+  'LICENSE',
+  'LICENSE.md',
+  'LICENSE.txt',
+  'license',
+  'license.md',
+  'license.txt',
+  'LICENCE',
+  'LICENCE.md',
+  'LICENCE.txt',
+  'licence',
+  'licence.md',
+  'licence.txt',
+  'COPYING',
+  'COPYING.md',
+  'COPYING.txt',
+  'copying',
+  'copying.md',
+  'copying.txt',
+  'COPYRIGHT',
+  'COPYRIGHT.md',
+  'COPYRIGHT.txt',
+  'copyright',
+  'copyright.md',
+  'copyright.txt',
+  'UNLICENSE',
+  'UNLICENSE.md',
+  'UNLICENSE.txt',
+  'unlicense',
+  'unlicense.md',
+  'unlicense.txt',
+];
+
 export interface PortfolioQualityAnalysis {
   repository: string;
   owner: string;
@@ -185,7 +236,7 @@ export class PortfolioBuilderAgent {
       }
 
       // Check for additional quality indicators
-      const hasLicense = await this.githubClient.fileExists(owner, cleanRepo, 'LICENSE').catch(() => false);
+      const hasLicense = await this.checkLicenseFile(owner, cleanRepo, contents);
       if (!hasLicense) {
         weaknesses.push({
           id: 'license',
@@ -1051,6 +1102,35 @@ export class PortfolioBuilderAgent {
         skillGap: gap,
       };
     });
+  }
+
+  /**
+   * Check for a license file using common file name variants.
+   */
+  private async checkLicenseFile(owner: string, repo: string, contents: any): Promise<boolean> {
+    if (Array.isArray(contents)) {
+      const hasLicenseInRoot = contents.some((item: any) => {
+        if (!item || typeof item.name !== 'string') {
+          return false;
+        }
+
+        const normalized = item.name.toLowerCase();
+        return LICENSE_FILE_BASENAMES.has(normalized);
+      });
+
+      if (hasLicenseInRoot) {
+        return true;
+      }
+    }
+
+    for (const candidate of LICENSE_FILE_CANDIDATES) {
+      const exists = await this.githubClient.fileExists(owner, repo, candidate).catch(() => false);
+      if (exists) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
