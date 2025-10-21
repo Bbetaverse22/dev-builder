@@ -3,6 +3,25 @@ set -e  # Exit on error
 
 echo "🚀 Starting Vercel build..."
 
+# Normalize Vercel Postgres environment variables for Prisma when DATABASE_URL is missing
+if [ -z "$DATABASE_URL" ]; then
+  if [ -n "$POSTGRES_PRISMA_URL" ]; then
+    export DATABASE_URL="$POSTGRES_PRISMA_URL"
+    echo "ℹ️  Using POSTGRES_PRISMA_URL as DATABASE_URL"
+  elif [ -n "$POSTGRES_URL_NON_POOLING" ]; then
+    export DATABASE_URL="$POSTGRES_URL_NON_POOLING"
+    echo "ℹ️  Using POSTGRES_URL_NON_POOLING as DATABASE_URL"
+  elif [ -n "$POSTGRES_URL" ]; then
+    export DATABASE_URL="$POSTGRES_URL"
+    echo "ℹ️  Using POSTGRES_URL as DATABASE_URL"
+  fi
+fi
+
+if [ -z "$DIRECT_URL" ] && [ -n "$POSTGRES_URL_NON_POOLING" ]; then
+  export DIRECT_URL="$POSTGRES_URL_NON_POOLING"
+  echo "ℹ️  Using POSTGRES_URL_NON_POOLING as DIRECT_URL"
+fi
+
 # Check for required environment variables
 if [ -z "$DATABASE_URL" ] && [ -z "$POSTGRES_PRISMA_URL" ]; then
   echo "⚠️  Warning: No database URL found. Skipping Prisma generation."

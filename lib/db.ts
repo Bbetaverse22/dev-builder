@@ -6,6 +6,23 @@
 
 import { PrismaClient } from '@prisma/client'
 
+// Allow deployments (e.g. Vercel Postgres) that expose POSTGRES_* vars but not DATABASE_URL
+if (!process.env.DATABASE_URL) {
+  const fallbackDatabaseUrl =
+    process.env.POSTGRES_PRISMA_URL ??
+    process.env.POSTGRES_URL_NON_POOLING ??
+    process.env.POSTGRES_URL
+
+  if (fallbackDatabaseUrl) {
+    process.env.DATABASE_URL = fallbackDatabaseUrl
+  }
+}
+
+// Prisma uses DIRECT_URL for certain operations (migrations); populate when possible
+if (!process.env.DIRECT_URL && process.env.POSTGRES_URL_NON_POOLING) {
+  process.env.DIRECT_URL = process.env.POSTGRES_URL_NON_POOLING
+}
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
