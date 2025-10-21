@@ -31,17 +31,20 @@ An agentic AI platform that helps developers identify skill gaps and improve the
   ## Architecture Overview
   | Layer            | Notes |
   |------------------|-------|
-  | **UI**           | Next.js App Router, shadcn/ui, Tailwind, analysis context hydrates all agent pages. |
-  | **Agents**       | Vercel AI SDK powers code/README analysis; LangGraph orchestrates research, GitHub search,
-  recommendation synthesis. |
-  | **Persistence**  | Prisma schema (`prisma/schema.prisma`) stores users, gaps, technologies, recommendations,
-  research cache. |
-  | **Integrations** | GitHub REST (analysis & issues), Firecrawl (web search), OpenAI (LLM calls), MCP template
-  extractor. |
+  | **UI**           | Next.js App Router, shadcn/ui, Tailwind, shared analysis context. |
+  | **Agents**       | Vercel AI SDK for repo analysis; LangGraph handles research/recommendations. |
+  | **Persistence**  | Prisma + Postgres store users, skill gaps, recommendations, research cache. |
+  | **Integrations** | GitHub REST, Firecrawl, OpenAI, MCP template extractor. |
 
   ---
 
   ## Local Quick Start
+  **Prerequisites**
+  - Node.js 18+ (nvm recommended)
+  - pnpm 8+
+  - PostgreSQL database (local or managed)
+  - API keys: `OPENAI_API_KEY`, GitHub PAT (`repo` scope) and optionally `FIRECRAWL_API_KEY`
+
   ```bash
   git clone https://github.com/Bbetaverse22/skillbridge-agents.git
   cd skillbridge-agents
@@ -51,7 +54,7 @@ An agentic AI platform that helps developers identify skill gaps and improve the
   pnpm prisma db push         # or migrate dev --name init
   pnpm dev                    # UI at http://localhost:3000
   pnpm langgraph:dev          # optional: LangGraph UI at http://localhost:2024
-
+  ```
   ———
 
   ## Environment Variables
@@ -68,7 +71,8 @@ An agentic AI platform that helps developers identify skill gaps and improve the
   | FIRECRAWL_API_KEY | ➖ | Enables richer web research; otherwise LLM fallback only. |
   | GITHUB_MCP_SERVER_URL | ➖ | Points to template MCP endpoint. |
 
-  Copy the keys into .env.local for dev and Vercel → Project Settings → Environment Variables for production.
+  Copy the keys into .env.local for dev, 
+  Vercel → Project Settings → Environment Variables for production.
 
   ———
 
