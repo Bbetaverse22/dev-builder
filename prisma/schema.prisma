@@ -1,0 +1,184 @@
+// Prisma Schema for SkillBridge.ai
+// Optimized for Vercel Postgres Free Tier (256MB)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // Direct connection (use PRISMA_DATABASE_URL for production with Accelerate)
+}
+
+// ============================================================================
+// AUTHENTICATION & USER MANAGEMENT (NextAuth.js)
+// ============================================================================
+
+model User {
+  id             String    @id @default(cuid())
+  name           String?
+  email          String?   @unique
+  emailVerified  DateTime?
+  image          String?
+  githubUsername String?   @unique
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  accounts  Account[]
+  sessions  Session[]
+  skillGaps SkillGap[]
+
+  @@index([email])
+  @@index([githubUsername])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================================================
+// SKILL GAP ANALYSIS
+// ============================================================================
+
+model SkillGap {
+  id           String   @id @default(cuid())
+  userId       String
+  repository   String   @db.VarChar(255)
+  overallScore Int
+  skillLevel   String   @db.VarChar(50)
+  createdAt    DateTime @default(now())
+  lastAccessed DateTime @default(now())
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  technologies    Technology[]
+  skillGapItems   SkillGapItem[]
+  recommendations Recommendation[]
+  researchResults ResearchResult[]
+  githubIssues    GitHubIssue[]
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+model Technology {
+  id         String   @id @default(cuid())
+  skillGapId String
+  type       String   @db.VarChar(50) // 'language', 'framework', 'tool'
+  name       String   @db.VarChar(100)
+  skillGap   SkillGap @relation(fields: [skillGapId], references: [id], onDelete: Cascade)
+
+  @@index([skillGapId])
+}
+
+model SkillGapItem {
+  id           String   @id @default(cuid())
+  skillGapId   String
+  skillName    String   @db.VarChar(100)
+  currentLevel Int // 1-5 scale
+  targetLevel  Int // 1-5 scale
+  gap          Int
+  priority     String   @db.VarChar(20) // 'high', 'medium', 'low'
+  skillGap     SkillGap @relation(fields: [skillGapId], references: [id], onDelete: Cascade)
+
+  @@index([skillGapId])
+  @@index([priority])
+}
+
+model Recommendation {
+  id         String   @id @default(cuid())
+  skillGapId String
+  text       String   @db.Text
+  priority   String   @db.VarChar(20) // 'high', 'medium', 'low'
+  completed  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  skillGap   SkillGap @relation(fields: [skillGapId], references: [id], onDelete: Cascade)
+
+  @@index([skillGapId])
+  @@index([completed])
+}
+
+// ============================================================================
+// RESEARCH RESULTS (LangGraph Agent Output)
+// ============================================================================
+
+model ResearchResult {
+  id         String   @id @default(cuid())
+  skillGapId String
+  cacheKey   String   @unique
+  confidence Float // 0.0 - 1.0
+  confidenceBreakdown Json?
+  resources  Json // Array of { title, url, rating, description }
+  scrapedResources Json?
+  examples   Json // Array of { name, url, stars, description }
+  recommendations Json?
+  comparativeInsights Json?
+  learningPath Json?
+  queries Json?
+  searchSources Json?
+  searchNotes Json?
+  searchIterations Json?
+  summaryNotes Json?
+  iterationCount Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  skillGap   SkillGap @relation(fields: [skillGapId], references: [id], onDelete: Cascade)
+
+  @@index([skillGapId])
+  @@index([cacheKey])
+}
+
+// ============================================================================
+// GITHUB INTEGRATION
+// ============================================================================
+
+model GitHubIssue {
+  id         String   @id @default(cuid())
+  skillGapId String
+  issueUrl   String   @db.VarChar(500)
+  issueNumber Int?
+  repository String   @db.VarChar(255)
+  status     String   @db.VarChar(20) // 'open', 'closed'
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  skillGap   SkillGap @relation(fields: [skillGapId], references: [id], onDelete: Cascade)
+
+  @@index([skillGapId])
+  @@index([status])
+}

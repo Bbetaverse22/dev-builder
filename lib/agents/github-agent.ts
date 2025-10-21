@@ -1,5 +1,5 @@
 /**
- * GitHub Agent for SkillBridge
+ * GitHub Agent for SkillBridge.ai
  * Provides GitHub integration capabilities for skill assessment and analysis
  */
 

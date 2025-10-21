@@ -8,7 +8,6 @@ import {
   BookOpen, 
   Briefcase, 
   TrendingUp, 
-  MessageSquare,
   CheckCircle,
   XCircle,
   Clock
@@ -347,40 +346,6 @@ export const AGENT_COMPARISON_DATA = [
       'Goal Achievement',
       'Skill Development',
       'Project Tracking'
-    ],
-    performance: {
-      speed: 'fast' as const,
-      accuracy: 'high' as const,
-      reliability: 'high' as const
-    }
-  },
-  {
-    id: 'coordinator',
-    name: 'Coordinator Agent',
-    description: 'Orchestrates multi-agent workflows',
-    icon: <MessageSquare className="h-4 w-4" />,
-    status: 'active' as const,
-    capabilities: [
-      'Query Routing',
-      'Agent Orchestration',
-      'Workflow Management',
-      'Response Aggregation',
-      'Error Handling',
-      'Context Management'
-    ],
-    strengths: [
-      'Intelligent routing',
-      'Seamless integration',
-      'Error recovery'
-    ],
-    limitations: [
-      'Complex configuration',
-      'Performance overhead'
-    ],
-    useCases: [
-      'Multi-agent Systems',
-      'Workflow Automation',
-      'System Integration'
     ],
     performance: {
       speed: 'fast' as const,

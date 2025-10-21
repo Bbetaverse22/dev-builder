@@ -1,0 +1,8 @@
+{
+  "build": {
+    "env": {
+      "NEXT_TELEMETRY_DISABLED": "1"
+    }
+  },
+  "installCommand": "pnpm install --frozen-lockfile"
+}

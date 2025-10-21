@@ -1,15 +1,27 @@
+/**
+ * Skill Gaps API - Now using Prisma database storage
+ * Issue #33: Update API routes to use Prisma
+ */
+
 import { NextRequest, NextResponse } from "next/server";
-import { skillGapStorage } from "@/lib/storage/skill-gap-storage";
+import { DatabaseUnavailableError, skillGapStoragePrisma } from "@/lib/storage/skill-gap-storage-prisma";
+import type { GapAnalysisResult, GitHubAnalysis, ResearchContext } from "@/lib/agents/gap-analyzer";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, githubAnalysis, skillAssessment } = body;
+    const { userId, githubAnalysis, skillAssessment, context } = body as {
+      userId?: string;
+      githubAnalysis?: GitHubAnalysis;
+      skillAssessment?: GapAnalysisResult;
+      context?: ResearchContext;
+    };
 
-    console.log('📥 Received skill gap storage request:', {
+    console.log('📥 [Prisma] Received skill gap storage request:', {
       userId,
       hasGithubAnalysis: !!githubAnalysis,
       hasSkillAssessment: !!skillAssessment,
+      hasContext: !!context,
     });
 
     if (!userId || !githubAnalysis || !skillAssessment) {
@@ -20,23 +32,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const storageId = await skillGapStorage.storeSkillGap(
+    // Use Prisma storage instead of file system
+    const storageId = await skillGapStoragePrisma.storeSkillGap(
       userId,
       githubAnalysis,
-      skillAssessment
+      skillAssessment,
+      context
     );
 
-    console.log('✅ Skill gap stored successfully:', storageId);
+    console.log('✅ [Prisma] Skill gap stored successfully in database:', storageId);
 
     return NextResponse.json({
       success: true,
       storageId,
-      message: "Skill gap analysis stored successfully",
+      message: "Skill gap analysis stored successfully in database",
     });
   } catch (error) {
-    console.error("❌ Error storing skill gap:", error);
+    if (error instanceof DatabaseUnavailableError) {
+      console.warn("⚠️ [Prisma] Database unavailable while storing skill gap:", error.message);
+      return NextResponse.json(
+        {
+          error: error.message,
+          hint: "Start your local PostgreSQL instance or update DATABASE_URL, then rerun the request.",
+        },
+        { status: 503 }
+      );
+    }
+
+    console.error("❌ [Prisma] Error storing skill gap:", error);
     return NextResponse.json(
-      { 
+      {
         error: "Failed to store skill gap analysis",
         details: error instanceof Error ? error.message : String(error)
       },
@@ -50,9 +75,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId") || "user_123";
 
-    const summary = skillGapStorage.getSkillGapSummary(userId);
+    console.log('🔍 [Prisma] Retrieving skill gap summary for:', userId);
+
+    // Use Prisma storage instead of file system
+    const summary = await skillGapStoragePrisma.getSkillGapSummary(userId);
 
     if (!summary) {
+      console.log('❌ [Prisma] No skill gap found for user:', userId);
       return NextResponse.json(
         {
           success: false,
@@ -62,12 +91,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    console.log('✅ [Prisma] Skill gap summary retrieved from database');
+
     return NextResponse.json({
       success: true,
       data: summary,
     });
   } catch (error) {
-    console.error("Error retrieving skill gap:", error);
+    if (error instanceof DatabaseUnavailableError) {
+      console.warn("⚠️ [Prisma] Database unavailable while retrieving skill gap:", error.message);
+      return NextResponse.json(
+        {
+          error: error.message,
+          hint: "Start your local PostgreSQL instance or update DATABASE_URL, then rerun the request.",
+        },
+        { status: 503 }
+      );
+    }
+
+    console.error("❌ [Prisma] Error retrieving skill gap:", error);
     return NextResponse.json(
       { error: "Failed to retrieve skill gap analysis" },
       { status: 500 }

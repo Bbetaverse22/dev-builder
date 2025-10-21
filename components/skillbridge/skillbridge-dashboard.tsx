@@ -1,173 +1,151 @@
 "use client";
 
-import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, BarChart3, BookOpen, Briefcase, TrendingUp, MessageSquare, Github, Settings } from "lucide-react";
+import { AnimatedHero } from "./animated-hero";
+import { AnimatedFeatures } from "./animated-features";
+import { AnimatedHowItWorks } from "./animated-how-it-works";
+import { Brain, Github, Menu, X } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
 
-// Import existing components
-import ChatAssistant from "@/components/chat/chat-assistant";
-import { RedesignedSkillAssessment } from "./redesigned-skill-assessment";
-import { LearningPathsTab } from "./learning-paths-tab";
+export default function DevBuilderDashboard() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-export default function SkillBridgeDashboard() {
-  const [activeTab, setActiveTab] = useState("chat");
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+      setMobileMenuOpen(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900">
+      {/* Header with Navigation */}
+      <header className="border-b border-white/10 bg-slate-900/50 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-900/50 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Shield className="h-8 w-8 text-blue-600" />
-                <div>
-                  <h1 className="text-2xl font-bold">SkillBridge</h1>
-                  <p className="text-sm text-muted-foreground">
-                    Discover what you don't know
-                  </p>
-                </div>
+            {/* Logo */}
+            <div className="flex items-center space-x-2">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600">
+                <Brain className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white">DevBuilder</h1>
+                <p className="text-xs text-blue-300">
+                  Agentic Career Platform
+                </p>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-4">
-              <Button variant="outline" size="sm" asChild>
-                <a href="/github-demo">
-                  <Github className="h-4 w-4 mr-2" />
-                  GitHub Demo
-                </a>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center space-x-6">
+              <Link 
+                href="/agentic"
+                className="text-sm text-gray-300 hover:text-white transition-colors"
+              >
+                Try It
+              </Link>
+              <button 
+                onClick={() => scrollToSection('how-it-works')}
+                className="text-sm text-gray-300 hover:text-white transition-colors"
+              >
+                How It Works
+              </button>
+              <button 
+                onClick={() => scrollToSection('features')}
+                className="text-sm text-gray-300 hover:text-white transition-colors"
+              >
+                Features
+              </button>
+              <a 
+                href="https://github.com/Bbetaverse22/skillbridge-agents" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm text-gray-300 hover:text-white transition-colors flex items-center space-x-1"
+              >
+                <Github className="h-4 w-4" />
+                <span>GitHub</span>
+              </a>
+            </nav>
+
+            {/* Auth Buttons */}
+            <div className="hidden md:flex items-center space-x-3">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="text-white hover:bg-white/10"
+              >
+                Log In
               </Button>
-              <Button variant="outline" size="sm">
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
+              <Button 
+                size="sm"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              >
+                Sign Up Free
               </Button>
             </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              className="md:hidden text-white"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
+
+          {/* Mobile Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden mt-4 pb-4 space-y-3 border-t border-white/10 pt-4">
+              <Link 
+                href="/agentic"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block w-full text-left text-sm text-gray-300 hover:text-white py-2"
+              >
+                Try It
+              </Link>
+              <button 
+                onClick={() => scrollToSection('how-it-works')}
+                className="block w-full text-left text-sm text-gray-300 hover:text-white py-2"
+              >
+                How It Works
+              </button>
+              <button 
+                onClick={() => scrollToSection('features')}
+                className="block w-full text-left text-sm text-gray-300 hover:text-white py-2"
+              >
+                Features
+              </button>
+              <a 
+                href="https://github.com/Bbetaverse22/skillbridge-agents" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="block w-full text-left text-sm text-gray-300 hover:text-white py-2"
+              >
+                GitHub
+              </a>
+              <div className="pt-3 space-y-2">
+                <Button variant="outline" size="sm" className="w-full">
+                  Log In
+                </Button>
+                <Button size="sm" className="w-full bg-gradient-to-r from-blue-600 to-purple-600">
+                  Sign Up Free
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
-        <section className="space-y-6 py-8 text-center">
-          <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            The Unknown Unknowns of Your Career
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            SkillBridge analyzes your work to surface hidden skill gaps, curated learning paths, and actionable guidance so you can focus on the next best step in your career.
-          </p>
-          <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
-            <span className="flex items-center space-x-2">
-              <Shield className="h-4 w-4" />
-              <span>Secure, privacy-aware workflows</span>
-            </span>
-            <span className="flex items-center space-x-2">
-              <BarChart3 className="h-4 w-4" />
-              <span>Automatic skill gap analysis</span>
-            </span>
-            <span className="flex items-center space-x-2">
-              <BookOpen className="h-4 w-4" />
-              <span>Knowledge-backed recommendations</span>
-            </span>
-          </div>
+      <main className="container mx-auto px-4 py-10 space-y-16">
+        <AnimatedHero />
+        <section id="features">
+          <AnimatedFeatures />
         </section>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="gaps" className="flex items-center space-x-2">
-              <BarChart3 className="h-4 w-4" />
-              <span>Skill Analysis</span>
-            </TabsTrigger>
-            <TabsTrigger value="learning" className="flex items-center space-x-2">
-              <BookOpen className="h-4 w-4" />
-              <span>Learning Paths</span>
-            </TabsTrigger>
-            <TabsTrigger value="career" className="flex items-center space-x-2">
-              <Briefcase className="h-4 w-4" />
-              <span>Career</span>
-            </TabsTrigger>
-            <TabsTrigger value="progress" className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4" />
-              <span>Progress</span>
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="flex items-center space-x-2">
-              <MessageSquare className="h-4 w-4" />
-              <span>Assistant</span>
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Skill Analysis Tab */}
-          <TabsContent value="gaps" className="space-y-6">
-            <RedesignedSkillAssessment onNavigateToLearning={() => setActiveTab('learning')} />
-          </TabsContent>
-
-          {/* Learning Tab */}
-          <TabsContent value="learning" className="space-y-6">
-            <LearningPathsTab />
-          </TabsContent>
-
-          {/* Career Tab */}
-          <TabsContent value="career" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>💼 Career Development</CardTitle>
-                <CardDescription>
-                  Resume generation, skill badges, and OSS opportunities
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Briefcase className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Career Tools Coming Soon</h3>
-                  <p className="text-muted-foreground mb-4">
-                    This feature will help you build your professional profile and find opportunities.
-                  </p>
-                  <Button disabled>Generate Resume</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Progress Tab */}
-          <TabsContent value="progress" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>📈 Progress Tracking</CardTitle>
-                <CardDescription>
-                  Track your learning progress and analytics
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Progress Analytics Coming Soon</h3>
-                  <p className="text-muted-foreground mb-4">
-                    This feature will provide detailed progress tracking and analytics.
-                  </p>
-                  <Button disabled>View Progress</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Chat Tab */}
-          <TabsContent value="chat" className="space-y-6">
-            <Card className="h-[600px]">
-              <CardHeader>
-                <CardTitle>💬 Multi-Agent Chat</CardTitle>
-                <CardDescription>
-                  Chat with the SkillBridge AI assistant backed by multi-agent routing and knowledge base retrieval
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="h-full">
-                <div className="h-full">
-                  <ChatAssistant activeTab={activeTab} onSuggestTab={setActiveTab} />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <AnimatedHowItWorks />
       </main>
     </div>
   );

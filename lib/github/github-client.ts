@@ -1,6 +1,6 @@
 /**
  * GitHub API Client using native fetch
- * Provides GitHub integration functionality for the SkillBridge agents
+ * Provides GitHub integration functionality for the SkillBridge.ai agents
  */
 
 export interface GitHubRepository {
@@ -10,6 +10,7 @@ export interface GitHubRepository {
   description: string | null;
   html_url: string;
   clone_url: string;
+  homepage: string | null;
   language: string | null;
   stargazers_count: number;
   forks_count: number;
@@ -81,11 +82,12 @@ export class GitHubClient {
     this.token = token || process.env.GITHUB_TOKEN || '';
   }
 
-  private async makeRequest<T>(endpoint: string): Promise<T> {
+  private async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'SkillBridge-Agents/1.0.0',
+      'User-Agent': 'SkillBridge.ai-Agents/1.0.0',
+      ...((options.headers as Record<string, string>) || {}),
     };
 
     if (this.token) {
@@ -93,10 +95,30 @@ export class GitHubClient {
     }
 
     try {
-      const response = await fetch(url, { headers });
-      
+      const response = await fetch(url, { ...options, headers });
+
       if (!response.ok) {
-        throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+        let errorMessage = `GitHub API error: ${response.status} ${response.statusText}`;
+        let responseBody: any = null;
+        try {
+          responseBody = await response.json();
+        } catch {
+          // ignore parse errors
+        }
+
+        const remaining = response.headers.get('x-ratelimit-remaining');
+        const reset = response.headers.get('x-ratelimit-reset');
+        if (response.status === 403 && remaining === '0') {
+          const resetDate = reset ? new Date(Number(reset) * 1000) : null;
+          const waitHint = resetDate ? ` Try again after ${resetDate.toLocaleTimeString()}.` : '';
+          errorMessage = `GitHub API rate limit exceeded.${waitHint} Configure a personal access token via GITHUB_TOKEN to increase your quota.`;
+        } else if (response.status === 401) {
+          errorMessage = 'GitHub API authentication failed. Please verify the configured GITHUB_TOKEN has valid scopes.';
+        } else if (responseBody?.message) {
+          errorMessage = responseBody.message;
+        }
+
+        throw new Error(errorMessage);
       }
 
       return await response.json();
@@ -179,7 +201,7 @@ export class GitHubClient {
     per_page?: number;
     page?: number;
   } = {}): Promise<GitHubPullRequest[]> {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams();1
     Object.entries(options).forEach(([key, value]) => {
       if (value !== undefined) {
         params.append(key, value.toString());
@@ -251,8 +273,61 @@ export class GitHubClient {
   async getRepositoryReadme(owner: string, repo: string): Promise<{ content: string; encoding: string }> {
     return this.makeRequest<{ content: string; encoding: string }>(`/repos/${owner}/${repo}/readme`);
   }
+
+  /**
+   * Create an issue in a repository
+   */
+  async createIssue(
+    owner: string,
+    repo: string,
+    title: string,
+    body: string,
+    options?: {
+      labels?: string[];
+      assignees?: string[];
+      milestone?: number;
+    }
+  ): Promise<GitHubIssue> {
+    const issueData: any = {
+      title,
+      body,
+    };
+
+    if (options?.labels) {
+      issueData.labels = options.labels;
+    }
+
+    if (options?.assignees) {
+      issueData.assignees = options.assignees;
+    }
+
+    if (options?.milestone) {
+      issueData.milestone = options.milestone;
+    }
+
+    return this.makeRequest<GitHubIssue>(`/repos/${owner}/${repo}/issues`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(issueData),
+    });
+  }
+
+  /**
+   * Check if a file exists in the repository
+   */
+  async fileExists(owner: string, repo: string, path: string): Promise<boolean> {
+    try {
+      await this.getRepositoryContents(owner, repo, path);
+      return true;
+    } catch (error) {
+      // Silently return false on any error (404, network errors, etc.)
+      // This is expected behavior when checking for optional files
+      return false;
+    }
+  }
 }
 
 // Export a default instance
 export const githubClient = new GitHubClient();
-

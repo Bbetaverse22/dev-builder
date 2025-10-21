@@ -1,88 +1,44 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { GitHubAnalysisComponent } from './github-analysis';
-import { AIChatAnalysis } from './ai-chat-analysis';
 import { SkillRadarChart } from './skill-radar-chart';
 import {
-  GitHubAnalysis,
   GapAnalyzerAgent,
   type GapAnalysisResult,
-  type Skill,
+  type GitHubAnalysis,
 } from '@/lib/agents/gap-analyzer';
-import { 
-  Github, 
-  BarChart3, 
-  Target, 
-  CheckCircle,
-  AlertCircle,
-  Brain,
-  TrendingUp,
-  BookOpen
-} from 'lucide-react';
+import { Target, CheckCircle, AlertCircle, TrendingUp, BookOpen, Github } from 'lucide-react';
+import { cn, formatGapValue } from '@/lib/utils';
+
+const primaryCard =
+  'relative overflow-hidden rounded-3xl border border-purple-500/40 bg-gradient-to-br from-[#1a1441] via-[#231856] to-[#351c72] p-8 shadow-[0_20px_60px_rgba(76,29,149,0.35)]';
+const translucentCard = 'border-white/10 bg-white/5 backdrop-blur rounded-3xl';
 
 export function AutomaticGapAnalysis() {
   const [githubAnalysis, setGitHubAnalysis] = useState<GitHubAnalysis | null>(null);
-  const [aiChatAnalysis, setAIChatAnalysis] = useState<any>(null);
   const [skillAssessment, setSkillAssessment] = useState<GapAnalysisResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [analysisType, setAnalysisType] = useState<'github' | 'ai-chat'>('github');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([
-    'technical',
-    'soft',
-    'domain',
-  ]);
+  const [targetRole, setTargetRole] = useState('');
+  const [targetIndustry, setTargetIndustry] = useState('');
+  const [professionalGoals, setProfessionalGoals] = useState('');
+
   const gapAnalyzer = useMemo(() => new GapAnalyzerAgent(), []);
 
-  const normalizeLevel = useCallback((value: number) => {
-    if (Number.isNaN(value)) {
-      return 1;
-    }
-    return Math.min(5, Math.max(1, Math.round(value * 10) / 10));
-  }, []);
-
-  const CATEGORY_OPTIONS = useMemo(
-    () => [
-      { id: 'technical', label: 'Technical' },
-      { id: 'soft', label: 'Soft Skills' },
-      { id: 'domain', label: 'Domain Knowledge' },
-    ],
-    []
-  );
-
-  const toggleCategory = (categoryId: string) => {
-    setSelectedCategories((prev) => {
-      if (prev.includes(categoryId)) {
-        if (prev.length === 1) {
-          return prev;
-        }
-        return prev.filter((id) => id !== categoryId);
-      }
-      return [...prev, categoryId];
-    });
-  };
-
-  interface AssessmentOptions {
-    sourceGithub?: GitHubAnalysis | null;
-    sourceChat?: any;
-    finalizeProcessing?: boolean;
-  }
-
   const handleSkillAssessmentComplete = useCallback(
-    async (assessment: GapAnalysisResult, options: AssessmentOptions = {}) => {
-      const { sourceGithub, sourceChat, finalizeProcessing = true } = options;
+    async (assessment: GapAnalysisResult, options: { sourceGithub?: GitHubAnalysis | null; finalizeProcessing?: boolean } = {}) => {
+      const { sourceGithub, finalizeProcessing = true } = options;
 
       if (sourceGithub) {
         assessment.githubAnalysis = sourceGithub;
-      }
-      if (sourceChat) {
-        assessment.chatAnalysis = sourceChat;
       }
 
       setSkillAssessment(assessment);
@@ -91,462 +47,209 @@ export function AutomaticGapAnalysis() {
         setIsProcessing(false);
       }
 
-      if (!finalizeProcessing) {
+      const analysisToStore = sourceGithub ?? assessment.githubAnalysis ?? null;
+      if (!analysisToStore) {
         return;
       }
 
-      const analysisToStore = sourceGithub ?? assessment.githubAnalysis ?? null;
-      if (analysisToStore) {
-        const userId = 'user_123';
-        try {
-          // Store on the server via API call
-          const response = await fetch('/api/skill-gaps', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId,
-              githubAnalysis: analysisToStore,
-              skillAssessment: assessment,
-            }),
-          });
+      const userId = 'user_123';
+      try {
+        const response = await fetch('/api/skill-gaps', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            githubAnalysis: analysisToStore,
+            skillAssessment: assessment,
+            context: {
+              targetRole: targetRole || undefined,
+              targetIndustry: targetIndustry || undefined,
+              professionalGoals: professionalGoals || undefined,
+            },
+          }),
+        });
 
-          if (response.ok) {
-            const result = await response.json();
-            console.log('✅ Skill gap analysis stored for chat access:', {
-              storageId: result.storageId,
-              userId,
-              repository: analysisToStore.repository,
-              skillCount: assessment.skillGaps.length,
-              overallScore: assessment.overallScore,
-            });
-          } else {
-            console.error('❌ Failed to store skill gap analysis:', await response.text());
-          }
-        } catch (storageError) {
-          console.error('❌ Failed to store skill gap analysis:', storageError);
+        if (!response.ok) {
+          console.error('Failed to store skill gap analysis:', await response.text());
         }
+      } catch (storageError) {
+        console.error('Failed to store skill gap analysis:', storageError);
       }
     },
-    []
+    [professionalGoals, targetIndustry, targetRole]
   );
 
-  const handleGitHubAnalysisComplete = useCallback(async (
-    analysis: GitHubAnalysis
-  ) => {
-    setGitHubAnalysis(analysis);
-    setAnalysisType('github');
+  const handleGitHubAnalysisComplete = useCallback(
+    async (analysis: GitHubAnalysis) => {
+      setGitHubAnalysis(analysis);
 
-    try {
-      const assessment = await gapAnalyzer.generateAutomaticSkillAssessment(
-        analysis,
-        { includeCategories: selectedCategories }
-      );
-      assessment.analysisType = 'github';
-      handleSkillAssessmentComplete(assessment, {
-        sourceGithub: analysis,
-      });
-    } catch (assessmentError) {
-      console.error('GitHub assessment error:', assessmentError);
-      setError('Unable to evaluate skill gaps from the repository.');
-      setIsProcessing(false);
-    }
-  }, [gapAnalyzer, selectedCategories, handleSkillAssessmentComplete]);
-
-  const createSkillsFromAIChat = useCallback((analysis: any): Skill[] => {
-    const skills: Skill[] = [];
-
-    const addSkill = (skill: Skill) => {
-      if (!skills.some((current) => current.id === skill.id)) {
-        skills.push({
-          ...skill,
-          currentLevel: normalizeLevel(skill.currentLevel),
-          targetLevel: normalizeLevel(skill.targetLevel ?? 5),
-        });
+      try {
+        const assessment = await gapAnalyzer.generateAutomaticSkillAssessment(analysis);
+        assessment.analysisType = 'github';
+        handleSkillAssessmentComplete(assessment, { sourceGithub: analysis });
+      } catch (assessmentError) {
+        console.error('GitHub assessment error:', assessmentError);
+        setError('Unable to evaluate skill gaps from the repository.');
+        setIsProcessing(false);
       }
-    };
-
-    const baseLevel = analysis.skillLevel === 'advanced' ? 4 : analysis.skillLevel === 'intermediate' ? 3 : 2;
-
-    analysis.technologies?.forEach((tech: string) => {
-      addSkill({
-        id: `ai-tech-${tech}`,
-        name: tech,
-        currentLevel: baseLevel,
-        targetLevel: 5,
-        importance: 4,
-        category: 'technical',
-      });
-    });
-
-    analysis.concepts?.forEach((concept: string) => {
-      addSkill({
-        id: `ai-concept-${concept}`,
-        name: concept,
-        currentLevel: baseLevel - 1,
-        targetLevel: 5,
-        importance: 3,
-        category: 'technical',
-      });
-    });
-
-    if ((analysis.learningPatterns?.debuggingQuestions ?? 0) > 0) {
-      addSkill({
-        id: 'ai-debugging',
-        name: 'Debugging & Troubleshooting',
-        currentLevel: baseLevel,
-        targetLevel: 5,
-        importance: 4,
-        category: 'technical',
-      });
-    }
-
-    if ((analysis.learningPatterns?.learningQuestions ?? 0) > 0) {
-      addSkill({
-        id: 'ai-learning-agility',
-        name: 'Learning Agility',
-        currentLevel: baseLevel,
-        targetLevel: 5,
-        importance: 3,
-        category: 'soft',
-      });
-    }
-
-    if ((analysis.promptingSignals ?? 0) > 0) {
-      addSkill({
-        id: 'prompt-engineering',
-        name: 'Prompt Engineering',
-        currentLevel: baseLevel,
-        targetLevel: 5,
-        importance: 4,
-        category: 'technical',
-      });
-    }
-
-    if ((analysis.contextSignals ?? 0) > 0) {
-      addSkill({
-        id: 'context-engineering',
-        name: 'Context & Retrieval Practices',
-        currentLevel: baseLevel - 1,
-        targetLevel: 5,
-        importance: 3,
-        category: 'technical',
-      });
-    }
-
-    if ((analysis.questionCount ?? 0) > 0 && skills.length === 0) {
-      addSkill({
-        id: 'ai-questioning',
-        name: 'Problem Framing',
-        currentLevel: baseLevel,
-        targetLevel: 5,
-        importance: 3,
-        category: 'soft',
-      });
-    }
-
-    if (skills.length === 0) {
-      addSkill({
-        id: 'ai-overview',
-        name: 'AI Session Review',
-        currentLevel: 2,
-        targetLevel: 5,
-        importance: 2,
-        category: 'technical',
-      });
-    }
-
-    return skills;
-  }, [normalizeLevel]);
-
-  const handleAIChatAnalysisComplete = useCallback((analysis: any) => {
-    setAIChatAnalysis(analysis);
-    setAnalysisType('ai-chat');
-
-    try {
-      const skills = createSkillsFromAIChat(analysis);
-      const assessment = gapAnalyzer.analyzeSkillGaps(skills, {
-        includeCategories: selectedCategories,
-      });
-      assessment.chatAnalysis = analysis;
-      assessment.analysisType = 'ai-chat';
-      handleSkillAssessmentComplete(assessment, {
-        sourceChat: analysis,
-      });
-    } catch (assessmentError) {
-      console.error('AI chat assessment error:', assessmentError);
-      setError('Unable to infer skill gaps from the chat session.');
-      setIsProcessing(false);
-    }
-  }, [createSkillsFromAIChat, gapAnalyzer, selectedCategories, handleSkillAssessmentComplete]);
-
-
+    },
+    [gapAnalyzer, handleSkillAssessmentComplete]
+  );
 
   const handleAnalysisStart = () => {
     setIsProcessing(true);
     setError(null);
+    setSkillAssessment(null);
+    setGitHubAnalysis(null);
   };
-
-  useEffect(() => {
-    if (isProcessing) {
-      return;
-    }
-
-    if (!selectedCategories.length) {
-      return;
-    }
-
-    const updateAssessment = async () => {
-      try {
-        if (githubAnalysis) {
-          const assessment = await gapAnalyzer.generateAutomaticSkillAssessment(
-            githubAnalysis,
-            { includeCategories: selectedCategories }
-          );
-          assessment.analysisType = 'github';
-          handleSkillAssessmentComplete(assessment, {
-            sourceGithub: githubAnalysis,
-            finalizeProcessing: false,
-          });
-        } else if (aiChatAnalysis) {
-          const skills = createSkillsFromAIChat(aiChatAnalysis);
-          const assessment = gapAnalyzer.analyzeSkillGaps(skills, {
-            includeCategories: selectedCategories,
-          });
-          assessment.chatAnalysis = aiChatAnalysis;
-          assessment.analysisType = 'ai-chat';
-          handleSkillAssessmentComplete(assessment, {
-            sourceChat: aiChatAnalysis,
-            finalizeProcessing: false,
-          });
-        }
-      } catch (updateError) {
-        console.error('Category update error:', updateError);
-      }
-    };
-
-    updateAssessment();
-  }, [
-    selectedCategories,
-    githubAnalysis,
-    aiChatAnalysis,
-    gapAnalyzer,
-    createSkillsFromAIChat,
-    handleSkillAssessmentComplete,
-    isProcessing,
-  ]);
 
   const resetAnalysis = () => {
     setGitHubAnalysis(null);
-    setAIChatAnalysis(null);
     setSkillAssessment(null);
     setIsProcessing(false);
     setError(null);
-    setAnalysisType('github');
-  };
-
-  const getProgress = () => {
-    const hasAnalysis = githubAnalysis || aiChatAnalysis;
-    if (!hasAnalysis && !skillAssessment) return 0;
-    if (hasAnalysis && !skillAssessment) return 50;
-    if (hasAnalysis && skillAssessment) return 100;
-    return 0;
-  };
-
-  const getProgressText = () => {
-    const hasAnalysis = githubAnalysis || aiChatAnalysis;
-    if (!hasAnalysis && !skillAssessment) return 'Ready to analyze';
-    if (hasAnalysis && !skillAssessment) return 'Analyzing skills...';
-    if (hasAnalysis && skillAssessment) return 'Analysis complete!';
-    return '';
+    setTargetRole('');
+    setTargetIndustry('');
+    setProfessionalGoals('');
   };
 
   return (
-    <div className="space-y-6">
-      {/* Progress Header */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Target className="h-5 w-5" />
-            <span>Automatic Skill Gap Analysis</span>
+    <div className="space-y-6 text-white">
+      <Card className={primaryCard}>
+        <CardHeader className="space-y-3 text-white">
+          <CardTitle className="flex items-center gap-3 text-2xl font-semibold text-white">
+            <Target className="h-6 w-6" />
+            <span>Agentic Skill Analyzer</span>
           </CardTitle>
-          <CardDescription>
-            Enter a GitHub repository URL to automatically analyze your skills and identify gaps
+          <CardDescription className="text-slate-300">
+            Drop a GitHub username or repository URL and let autonomous agents audit your work, map skill gaps, and build a market-aligned learning plan.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-sm">
-              <span>{getProgressText()}</span>
-              <span>{getProgress()}% Complete</span>
-            </div>
-            <Progress value={getProgress()} />
+        <CardContent className="space-y-6 text-white">
+          <div className="space-y-4 rounded-2xl border border-white/15 bg-white/10 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]">
+            <GitHubAnalysisComponent
+              onAnalysisStart={handleAnalysisStart}
+              onAnalysisComplete={handleGitHubAnalysisComplete}
+              onAnalysisError={(message) => {
+                setIsProcessing(false);
+                setError(message);
+              }}
+              showContainer={false}
+              showHeader={false}
+              autoGenerateAssessment={false}
+            />
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-muted-foreground uppercase tracking-wide">
-                <span>Focus Categories</span>
-                <span>{selectedCategories.length} selected</span>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-200">
+                  Target Role (Optional)
+                </label>
+                <Input
+                  value={targetRole}
+                  onChange={(event) => setTargetRole(event.target.value)}
+                  placeholder="e.g. Senior Frontend Engineer"
+                  className="h-11 rounded-2xl border border-white/15 bg-white/10 text-white placeholder:text-slate-300 focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-purple-200/40 focus-visible:ring-offset-0"
+                />
               </div>
-              <div className="flex flex-wrap gap-2">
-                {CATEGORY_OPTIONS.map(({ id, label }) => {
-                  const isSelected = selectedCategories.includes(id);
-                  return (
-                    <Button
-                      key={id}
-                      variant={isSelected ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => toggleCategory(id)}
-                      className="rounded-full"
-                    >
-                      {label}
-                    </Button>
-                  );
-                })}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-200">
+                  Target Industry (Optional)
+                </label>
+                <Input
+                  value={targetIndustry}
+                  onChange={(event) => setTargetIndustry(event.target.value)}
+                  placeholder="e.g. Healthcare, Fintech, Climate"
+                  className="h-11 rounded-2xl border border-white/15 bg-white/10 text-white placeholder:text-slate-300 focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-purple-200/40 focus-visible:ring-offset-0"
+                />
               </div>
             </div>
-            
-            {/* Step Indicators */}
-            <div className="flex justify-between">
-              <div className={`flex items-center space-x-2 ${analysisType === 'github' && githubAnalysis ? 'text-green-600' : analysisType === 'ai-chat' && aiChatAnalysis ? 'text-green-600' : 'text-gray-400'}`}>
-                {analysisType === 'github' ? (
-                  <>
-                    <Github className="h-4 w-4" />
-                    <span className="text-sm">GitHub Analysis</span>
-                  </>
-                ) : (
-                  <>
-                    <Brain className="h-4 w-4" />
-                    <span className="text-sm">Chat Analysis</span>
-                  </>
-                )}
-              </div>
-              <div className={`flex items-center space-x-2 ${skillAssessment ? 'text-green-600' : isProcessing ? 'text-blue-600' : 'text-gray-400'}`}>
-                <BarChart3 className="h-4 w-4" />
-                <span className="text-sm">Skill Assessment</span>
-              </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-200">
+                Professional Goals (Optional)
+              </label>
+              <Textarea
+                value={professionalGoals}
+                onChange={(event) => setProfessionalGoals(event.target.value)}
+                placeholder="Describe what you want to achieve in the next 6-12 months"
+                rows={3}
+                className="rounded-2xl border border-white/15 bg-white/10 text-white placeholder:text-slate-300 focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-purple-200/40 focus-visible:ring-offset-0"
+              />
             </div>
           </div>
+
         </CardContent>
       </Card>
 
-      {/* Error Display */}
       {error && (
-        <Alert variant="destructive">
+        <Alert
+          variant="destructive"
+          className="border-red-400/40 bg-red-500/10 text-red-200"
+        >
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      {/* Analysis Options */}
-      {!skillAssessment && (
-        <div className="space-y-6">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">Choose Your Analysis Method</h3>
-            <p className="text-muted-foreground">
-              Select either GitHub repository analysis or AI chat session analysis
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className={`cursor-pointer transition-all ${analysisType === 'github' ? 'ring-2 ring-primary' : 'hover:shadow-md'}`}>
-              <CardHeader onClick={() => setAnalysisType('github')}>
-                <CardTitle className="flex items-center space-x-2">
-                  <Github className="h-5 w-5" />
-                  <span>GitHub Repository</span>
-                </CardTitle>
-                <CardDescription>
-                  Analyze your code repositories to discover skills and technologies
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <GitHubAnalysisComponent
-                  onAnalysisComplete={handleGitHubAnalysisComplete}
-                  showContainer={false}
-                  showHeader={false}
-                  selectedCategories={selectedCategories}
-                  autoGenerateAssessment={false}
-                />
-              </CardContent>
-            </Card>
-
-            <Card className={`cursor-pointer transition-all ${analysisType === 'ai-chat' ? 'ring-2 ring-primary' : 'hover:shadow-md'}`}>
-              <CardHeader onClick={() => setAnalysisType('ai-chat')}>
-                <CardTitle className="flex items-center space-x-2">
-                  <Brain className="h-5 w-5" />
-                  <span>AI Chat Session</span>
-                </CardTitle>
-                <CardDescription>
-                  Analyze your AI coding conversations to identify learning patterns
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AIChatAnalysis
-                  onAnalysisComplete={handleAIChatAnalysisComplete}
-                  onAnalysisStart={handleAnalysisStart}
-                  isAnalyzing={isProcessing}
-                  showContainer={false}
-                  showHeader={false}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {/* Processing State */}
-      {isProcessing && !skillAssessment && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <h3 className="text-lg font-semibold mb-2">Analyzing Your Skills</h3>
-              <p className="text-muted-foreground">
-                {analysisType === 'github' 
-                  ? "We're automatically assessing your skills based on the repository analysis..."
-                  : "We're analyzing your AI chat session to identify skills and learning patterns..."
-                }
+      {!skillAssessment && !isProcessing && (
+        <Card className={cn(translucentCard, 'border-dashed border-white/20')}>
+          <CardContent className="flex flex-col items-center justify-center space-y-4 py-16 text-center text-slate-200">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-white/10">
+              <Github className="h-10 w-10 text-white" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold text-white">No Analysis Yet</h3>
+              <p className="max-w-md text-sm text-slate-300">
+                Enter your GitHub profile or repository URL and activate the agent to start mapping skill gaps and recommendations.
               </p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Results */}
+      {isProcessing && !skillAssessment && (
+        <Card className={translucentCard}>
+          <CardContent className="pt-6">
+            <div className="py-8 text-center">
+              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-white"></div>
+              <h3 className="mb-2 text-lg font-semibold text-white">Analyzing Your Skills</h3>
+              <p className="text-slate-300">
+                We&apos;re automatically assessing your GitHub footprint to identify strengths, gaps, and next-step recommendations.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {skillAssessment && (
         <div className="space-y-6">
-          {/* Overall Score */}
-          <Card>
+          <Card className={translucentCard}>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
+              <CardTitle className="flex items-center gap-2 text-white">
+                <CheckCircle className="h-5 w-5 text-emerald-300" />
                 <span>Skill Gap Analysis Complete!</span>
               </CardTitle>
-              <CardDescription>
-                {analysisType === 'github' 
-                  ? 'Based on your GitHub repository analysis'
-                  : 'Based on your AI chat session analysis'
-                }
+              <CardDescription className="text-slate-300">
+                Based on your GitHub repository analysis
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Overall Score */}
+              <div className="grid gap-6 lg:grid-cols-2">
                 <div className="text-center">
-                  <div className="text-4xl font-bold text-blue-600 mb-2">
+                  <div className="mb-2 text-4xl font-bold text-white">
                     {skillAssessment.overallScore}%
                   </div>
-                  <div className="text-sm text-muted-foreground">Overall Skill Score</div>
-                  <Progress value={skillAssessment.overallScore} className="mt-2" />
+                  <div className="text-sm text-slate-300">Overall Skill Score</div>
+                  <Progress value={skillAssessment.overallScore} className="mt-2 bg-white/10" />
                 </div>
 
-                {/* Radar Chart */}
                 <div className="mt-6">
-                  <h3 className="text-lg font-semibold mb-4 text-center">Skill Visualization</h3>
+                  <h3 className="mb-4 text-center text-lg font-semibold text-white">Skill Visualization</h3>
                   <SkillRadarChart
                     categories={skillAssessment.categories}
-                    currentSkills={skillAssessment.skillGaps.map(gap => gap.skill)}
-                    targetSkills={skillAssessment.skillGaps.map(gap => ({
+                    currentSkills={skillAssessment.skillGaps.map((gap) => gap.skill)}
+                    targetSkills={skillAssessment.skillGaps.map((gap) => ({
                       ...gap.skill,
-                      currentLevel: gap.skill.targetLevel
+                      currentLevel: gap.skill.targetLevel,
                     }))}
                   />
                 </div>
@@ -554,159 +257,49 @@ export function AutomaticGapAnalysis() {
             </CardContent>
           </Card>
 
-          {/* AI Chat Analysis Insights */}
-          {analysisType === 'ai-chat' && aiChatAnalysis && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Brain className="h-5 w-5" />
-                  <span>Chat Analysis Insights</span>
-                </CardTitle>
-                <CardDescription>
-                  Key findings from your AI coding session
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <h4 className="font-semibold mb-2">Questions Analyzed</h4>
-                      <div className="text-2xl font-bold text-primary">{aiChatAnalysis.questionCount || 0}</div>
-                      <p className="text-sm text-muted-foreground">User questions</p>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold mb-2">AI Responses</h4>
-                      <div className="text-2xl font-bold text-primary">{aiChatAnalysis.responseCount || 0}</div>
-                      <p className="text-sm text-muted-foreground">Assistant responses</p>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold mb-2">Prompting Signals</h4>
-                      <div className="text-2xl font-bold text-primary">{aiChatAnalysis.promptingSignals || 0}</div>
-                      <p className="text-sm text-muted-foreground">Prompt engineering references</p>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold mb-2">Context Signals</h4>
-                      <div className="text-2xl font-bold text-primary">{aiChatAnalysis.contextSignals || 0}</div>
-                      <p className="text-sm text-muted-foreground">Context & retrieval mentions</p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h4 className="font-semibold mb-2">Technologies Discussed</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {aiChatAnalysis.technologies.map((tech: string, index: number) => (
-                          <Badge key={index} variant="outline">{tech}</Badge>
-                        ))}
-                        {aiChatAnalysis.technologies.length === 0 && (
-                          <span className="text-sm text-muted-foreground">No specific technologies mentioned in questions</span>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold mb-2">Concepts Covered</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {aiChatAnalysis.concepts.map((concept: string, index: number) => (
-                          <Badge key={index} variant="secondary">{concept}</Badge>
-                        ))}
-                        {aiChatAnalysis.concepts.length === 0 && (
-                          <span className="text-sm text-muted-foreground">No specific concepts mentioned in questions</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {aiChatAnalysis.learningPatterns && (
-                    <div>
-                      <h4 className="font-semibold mb-2">Learning Patterns</h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="flex justify-between">
-                          <span>Beginner Questions:</span>
-                          <span className="font-medium">{aiChatAnalysis.learningPatterns.beginnerQuestions || 0}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Intermediate Questions:</span>
-                          <span className="font-medium">{aiChatAnalysis.learningPatterns.intermediateQuestions || 0}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Advanced Questions:</span>
-                          <span className="font-medium">{aiChatAnalysis.learningPatterns.advancedQuestions || 0}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Debugging Questions:</span>
-                          <span className="font-medium">{aiChatAnalysis.learningPatterns.debuggingQuestions || 0}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <h4 className="font-semibold mb-2">Skill Level</h4>
-                    <div className="flex items-center space-x-4">
-                      <Badge className={`${aiChatAnalysis.skillLevel === 'advanced' ? 'bg-green-100 text-green-800' : aiChatAnalysis.skillLevel === 'intermediate' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {aiChatAnalysis.skillLevel}
-                      </Badge>
-                      <p className="text-sm text-muted-foreground">
-                        Confidence: {aiChatAnalysis.confidence}%
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-semibold mb-2">Key Insights</h4>
-                    <ul className="text-sm space-y-1">
-                      {aiChatAnalysis.insights.map((insight: string, index: number) => (
-                        <li key={index} className="flex items-start space-x-2">
-                          <CheckCircle className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span>{insight}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Top Skill Gaps */}
-          <Card>
+          <Card className={translucentCard}>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
+              <CardTitle className="flex items-center space-x-2 text-white">
                 <TrendingUp className="h-5 w-5" />
                 <span>Top Skill Gaps</span>
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-slate-300">
                 Areas where you can improve your skills
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {skillAssessment.skillGaps.slice(0, 5).map((gap) => {
-                  const gapValue = (Math.round(gap.gap * 10) / 10).toFixed(1);
-                  const currentLevel = (Math.round(gap.skill.currentLevel * 10) / 10).toFixed(1);
-                  const targetLevel = (Math.round(gap.skill.targetLevel * 10) / 10).toFixed(1);
+                  const gapValue = formatGapValue(gap.gap);
+                  const currentLevel = formatGapValue(gap.skill.currentLevel);
+                  const targetLevel = formatGapValue(gap.skill.targetLevel);
 
                   return (
-                    <div key={`${gap.skill.id}-${gapValue}`} className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium">{gap.skill.name}</span>
-                        <Badge variant={gap.gap > 2 ? "destructive" : gap.gap > 1 ? "default" : "secondary"}>
+                    <div
+                      key={`${gap.skill.id}-${gapValue}`}
+                      className="rounded-lg border border-white/10 bg-slate-900/40 p-4"
+                    >
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="font-medium text-white">{gap.skill.name}</span>
+                        <Badge variant={gap.gap > 2 ? 'destructive' : gap.gap > 1 ? 'default' : 'secondary'}>
                           Gap: {gapValue}
                         </Badge>
                       </div>
-                      <div className="text-sm text-muted-foreground mb-2">
+                      <div className="mb-2 text-sm text-slate-300">
                         Current: {currentLevel}/5 → Target: {targetLevel}/5
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      <div className="h-2 w-full rounded-full bg-white/10">
+                        <div
+                          className="h-2 rounded-full bg-emerald-400/80 transition-all duration-300"
                           style={{ width: `${(gap.skill.currentLevel / 5) * 100}%` }}
                         />
                       </div>
                       {gap.recommendations.length > 0 && (
                         <div className="mt-2">
-                          <div className="text-xs font-medium text-muted-foreground mb-1">Recommendation:</div>
-                          <div className="text-xs">{gap.recommendations[0]}</div>
+                          <div className="mb-1 text-xs font-medium uppercase tracking-[0.2em] text-slate-400">
+                            Recommendation
+                          </div>
+                          <div className="text-sm text-slate-200">{gap.recommendations[0]}</div>
                         </div>
                       )}
                     </div>
@@ -716,60 +309,70 @@ export function AutomaticGapAnalysis() {
             </CardContent>
           </Card>
 
-          {/* Learning Path */}
-          <Card>
+          <Card className={translucentCard}>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
+              <CardTitle className="flex items-center space-x-2 text-white">
                 <BookOpen className="h-5 w-5" />
                 <span>Recommended Learning Path</span>
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-slate-300">
                 Personalized steps to improve your skills
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 {skillAssessment.learningPath.map((step, index) => (
-                  <div key={index} className="flex items-start space-x-3 p-3 bg-muted/50 rounded-lg">
-                    <div className="flex-shrink-0 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
+                  <div
+                    key={index}
+                    className="flex items-start space-x-3 rounded-lg border border-white/10 bg-slate-900/40 p-3"
+                  >
+                    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-white text-xs font-medium text-slate-900">
                       {index + 1}
                     </div>
-                    <div className="text-sm">{step}</div>
+                    <div className="text-sm text-slate-200">{step}</div>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
 
-          {/* General Recommendations */}
-          <Card>
+          <Card className={translucentCard}>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
+              <CardTitle className="flex items-center space-x-2 text-white">
                 <Target className="h-5 w-5" />
                 <span>General Recommendations</span>
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-slate-300">
                 Additional insights for your skill development
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid gap-3 md:grid-cols-2">
                 {skillAssessment.recommendations.map((rec, index) => (
-                  <div key={index} className="flex items-start space-x-2 p-3 border rounded-lg">
-                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">{rec}</span>
+                  <div
+                    key={index}
+                    className="flex items-start space-x-2 rounded-lg border border-white/10 bg-slate-900/40 p-3"
+                  >
+                    <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-300" />
+                    <span className="text-sm text-slate-200">{rec}</span>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
 
-          {/* Action Buttons */}
           <div className="flex justify-center space-x-4">
-            <Button onClick={resetAnalysis} variant="outline">
+            <Button
+              onClick={resetAnalysis}
+              variant="outline"
+              className="rounded-xl border-white/40 text-white hover:bg-white/10"
+            >
               Analyze Another Repository
             </Button>
-            <Button onClick={() => window.print()}>
+            <Button
+              onClick={() => window.print()}
+              className="rounded-xl bg-white text-slate-900 hover:bg-slate-200"
+            >
               Export Results
             </Button>
           </div>

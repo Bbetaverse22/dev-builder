@@ -11,3 +11,12 @@ export function assertEnv(variable: string, value: string | undefined) {
   }
   return value;
 }
+
+export function formatGapValue(value: number, decimals = 2): string {
+  if (!Number.isFinite(value)) {
+    return '';
+  }
+
+  const fixed = value.toFixed(decimals);
+  return fixed.replace(/\.?0+$/, '');
+}

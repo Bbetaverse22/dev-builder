@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SkillCategory, Skill, GapAnalysisResult, GapAnalyzerAgent } from '@/lib/agents/gap-analyzer';
 import { SkillRadarChart } from './skill-radar-chart';
 import { BarChart3, Target, TrendingUp, BookOpen, CheckCircle, AlertCircle } from 'lucide-react';
+import { formatGapValue } from '@/lib/utils';
 
 interface SkillAssessmentFormProps {
   onAnalysisComplete?: (result: GapAnalysisResult) => void;
@@ -271,11 +272,11 @@ export function SkillAssessmentForm({ onAnalysisComplete }: SkillAssessmentFormP
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium">{gap.skill.name}</span>
                         <Badge variant={gap.gap > 2 ? "destructive" : gap.gap > 1 ? "default" : "secondary"}>
-                          Gap: {gap.gap}
+                          Gap: {formatGapValue(gap.gap)}
                         </Badge>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Current: {gap.skill.currentLevel}/5 → Target: {gap.skill.targetLevel}/5
+                        Current: {formatGapValue(gap.skill.currentLevel)}/5 → Target: {formatGapValue(gap.skill.targetLevel)}/5
                       </div>
                       {gap.recommendations.length > 0 && (
                         <div className="mt-2">

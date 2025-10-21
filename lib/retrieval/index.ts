@@ -1,6 +1,2 @@
-export { VectorizeService } from "./vectorize";
-export type {
-  VectorizeDocument,
-  VectorizeRetrieveOptions,
-} from "./vectorize";
+// Vectorize service removed - not used in production
 
