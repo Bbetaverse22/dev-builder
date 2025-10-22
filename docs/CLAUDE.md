@@ -54,7 +54,7 @@ This project strictly uses **pnpm**. Do not use npm or yarn.
 - `lib/storage/` - Prisma database operations
 - `lib/contexts/analysis-context.tsx` - Shared state management across pages
 - `components/ui/` - shadcn/ui components
-- `components/skillbridge/` - Custom SkillBridge components
+- `components/devbuilder/` - Custom DevBuilder components
   - `agentic-skill-analyzer.tsx` - Main analysis component
   - `interactive-skill-card.tsx` - Individual skill gap cards with AI insights
   - `portfolio-display.tsx` - Portfolio quality display
@@ -93,7 +93,7 @@ This project strictly uses **pnpm**. Do not use npm or yarn.
   - Slate base color with CSS variables
   - Import aliases: `@/components`, `@/lib`, `@/components/ui`
   - Lucide React for icons
-- **Custom SkillBridge Components**:
+- **Custom DevBuilder Components**:
   - Glowing card effects with theme-based gradients
   - Skill radar charts
   - Interactive skill gap cards with AI insights

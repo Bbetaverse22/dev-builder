@@ -1,6 +1,6 @@
-# SkillBridge.ai - Progress Submission (Week 2)
+# DevBuilder - Progress Submission (Week 2)
 
-**Project:** SkillBridge.ai – Agentic Portfolio Builder  
+**Project:** DevBuilder – Agentic Portfolio Builder  
 **Developer:** [Your Name]  
 **Week Ending:** October 14, 2025  
 **Demo Video:** _TBD (record after Issue #16 QA)_
@@ -20,8 +20,8 @@
 | Area | Deliverable | Files |
 | --- | --- | --- |
 | Template Automation | Preview & PR workflow (`/api/templates`, `TemplateExampleGenerator`) | `app/api/templates/route.ts`, `lib/agents/template-example-generator.ts` |
-| Portfolio Builder | Research-enriched recommendations; UI integration | `lib/agents/portfolio-builder.ts`, `components/skillbridge/agentic-skill-analyzer.tsx` |
-| Skill Guidance | Contextual narratives & actions | `lib/analysis/framework-skill-plan.ts`, `lib/agents/gap-analyzer.ts`, `components/skillbridge/interactive-skill-card.tsx` |
+| Portfolio Builder | Research-enriched recommendations; UI integration | `lib/agents/portfolio-builder.ts`, `components/devbuilder/agentic-skill-analyzer.tsx` |
+| Skill Guidance | Contextual narratives & actions | `lib/analysis/framework-skill-plan.ts`, `lib/agents/gap-analyzer.ts`, `components/devbuilder/interactive-skill-card.tsx` |
 | LangGraph | Search, examples, evaluation, synthesis nodes wired | `lib/agents/langgraph/nodes/*.ts`, `docs/langgraph-platform.md` |
 | Docs/Config | Week 2 progress report, README/env updates | `docs/CAPSTONE_PROGRESS_REPORT.md`, `README.md`, `.env.example` |
 
@@ -56,8 +56,8 @@
 
 ## 6. Supporting Artifacts
 - `docs/CAPSTONE_PROGRESS_REPORT.md` – Week 1–2 comprehensive status report.
-- `PORTFOLIO_BUILDER_STATUS.md` – Updated portfolio builder capabilities (Oct 14).
-- `docs/CURRENT_STATUS_SUMMARY.md` – Stakeholder snapshot (Week 2).
+- `project-docs/agents/portfolio-builder.md` – Portfolio builder agent architecture and integration notes.
+- `project-docs/agents/langgraph-research-agent.md` – Research workflow details for hand-offs and QA.
 - `V1_DEVELOPMENT_PLAN.md` – Updated issue tracker (Issues #0, #1, #5a–#5c, #11, #12, #15 closed; Issue #16 in progress).
 
 ---

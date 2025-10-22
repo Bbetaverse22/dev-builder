@@ -133,7 +133,7 @@ export async function searchGitHubExamplesNode(
  * // Returns: "React hooks authentication language:TypeScript stars:>100 pushed:>2023-01-01"
  */
 function buildSearchQuery(
-  skillGap: string,
+  skillGap: string | undefined,
   language: string | undefined,
   starThreshold: number,
   pushedAfter: string
@@ -158,8 +158,17 @@ function buildSearchQuery(
  * Enhance generic skill names to be more specific for GitHub search
  * Uses language-specific keywords to find more relevant examples
  */
-function enhanceSkillGapQuery(skillGap: string, language?: string): string {
-  const lower = skillGap.toLowerCase();
+function enhanceSkillGapQuery(skillGap?: string, language?: string): string {
+  const fallbackLanguage = language && language.toLowerCase() !== 'unknown'
+    ? `${language} developer best practices`
+    : 'software engineering best practices';
+
+  const baseSkillGap = skillGap?.trim();
+  if (!baseSkillGap) {
+    return fallbackLanguage;
+  }
+
+  const lower = baseSkillGap.toLowerCase();
   const lang = (language || '').toLowerCase();
   
   // Language-specific enhancements for better relevance
@@ -201,7 +210,7 @@ function enhanceSkillGapQuery(skillGap: string, language?: string): string {
   }
   
   // Fallback to generic enhancements
-const genericEnhancements: Record<string, string> = {
+  const genericEnhancements: Record<string, string> = {
     'frameworks & libraries': `${language || 'web'} (framework OR library)`,
     'frameworks and libraries': `${language || 'web'} (framework OR library)`,
     'testing & qa': `${language || ''} (testing OR qa) (framework OR unit-test OR integration-test)`,
@@ -221,7 +230,7 @@ const genericEnhancements: Record<string, string> = {
   }
 
   // If no match, return the original (might be already specific enough)
-  return skillGap;
+  return baseSkillGap;
 }
 
 function buildLanguageCandidates(state: ResearchState): string[] {

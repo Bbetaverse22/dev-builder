@@ -255,7 +255,7 @@ function buildResearchGraph() {
         value: (left?: number, right?: number) => right ?? left ?? 0,
       },
       iterationCount: {
-        value: (left?: number, right?: number) => (right ?? 0) + (left ?? 0),
+        value: (left?: number, right?: number) => right ?? left ?? 0,
       },
       marketSignals: {
         value: (left?: MarketSignal[], right?: MarketSignal[]) => right ?? left ?? [],

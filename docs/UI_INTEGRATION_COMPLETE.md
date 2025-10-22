@@ -6,7 +6,7 @@ Your UI now uses the **NEW agentic gap analyzer** with AI-powered analysis!
 
 ### File Updated:
 ```
-components/skillbridge/agentic-skill-analyzer.tsx
+components/devbuilder/agentic-skill-analyzer.tsx
 ```
 
 ### Changes Made:
@@ -259,4 +259,3 @@ Cache AI analysis results to reduce costs and improve speed
 **Your app is now AI-powered!** 🚀 
 
 Test it out and watch the terminal logs to see the AI in action!
-

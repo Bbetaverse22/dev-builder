@@ -20,7 +20,7 @@ The platform routes user input (repository URL, target role context) through a s
 
 ### 3. LangGraph Research Workflow
 1. Learning journeys post to `POST /api/research` with the target skill gap and user context.
-2. The API seeds a `ResearchState`, invokes the compiled LangGraph `graph`:
+2. The API seeds a `ResearchState` (defaulting `forceRefresh` to `true` so each request runs a fresh search) and invokes the compiled LangGraph `graph`:
    - `load_state` pulls prior seeds from Prisma and merges them into the working state.
    - `search` queries the web for resources; `search_github` fetches GitHub examples.
    - Conditional edge loops until enough examples exist or iteration limits hit.

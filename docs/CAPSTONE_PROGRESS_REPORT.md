@@ -47,7 +47,7 @@ During Weeks 1–2 we built the LangGraph research foundation, migrated storage 
 ### 3.2 Portfolio Builder Agent (Weeks 1–2)
 - **Quality Analysis** – `lib/agents/portfolio-builder.ts` computes overall score, strengths/weaknesses, and research-enriched recommendations.
 - **Issue Template Improvements** – Markdown issue bodies contain resource lists, example repos, and framework guidance (Issue #12 completed).
-- **UI Integration** – `components/skillbridge/agentic-skill-analyzer.tsx` displays analysis, tasks, template actions; `interactive-skill-card.tsx` renders severity, narratives, focus-framework badges.
+- **UI Integration** – `components/devbuilder/agentic-skill-analyzer.tsx` displays analysis, tasks, template actions; `interactive-skill-card.tsx` renders severity, narratives, focus-framework badges.
 - **Database Persistence** – Analyzer stores gap analyses via Prisma (`lib/storage/skill-gap-storage-prisma.ts`); `scripts/view-database.ts` assists inspection.
 
 ### 3.3 Template Workflow & Automation (Week 2)
