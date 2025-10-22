@@ -1,4 +1,4 @@
-import DevBuilderDashboard from "@/components/skillbridge/skillbridge-dashboard";
+import DevBuilderDashboard from "@/components/devbuilder/skillbridge-dashboard";
 
 export default function Home() {
   return (

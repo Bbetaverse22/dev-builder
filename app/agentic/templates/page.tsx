@@ -1,7 +1,7 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
-import { TemplateGeneratorDisplay } from "@/components/skillbridge/template-generator-display";
+import { TemplateGeneratorDisplay } from "@/components/devbuilder/template-generator-display";
 
 export default function TemplateGeneratorPage() {
   return (
@@ -26,4 +26,3 @@ export default function TemplateGeneratorPage() {
     </div>
   );
 }
-

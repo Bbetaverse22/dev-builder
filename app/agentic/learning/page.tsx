@@ -1,7 +1,7 @@
 "use client";
 
 import { BookOpen } from "lucide-react";
-import { LearningDisplay } from "@/components/skillbridge/learning-display";
+import { LearningDisplay } from "@/components/devbuilder/learning-display";
 
 export default function LearningResourcesPage() {
   return (

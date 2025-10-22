@@ -1,7 +1,7 @@
 "use client";
 
 import { Briefcase } from "lucide-react";
-import { PortfolioDisplay } from "@/components/skillbridge/portfolio-display";
+import { PortfolioDisplay } from "@/components/devbuilder/portfolio-display";
 
 export default function AgenticPortfolioPage() {
   return (

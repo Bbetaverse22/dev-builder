@@ -1,7 +1,7 @@
 "use client";
 
 import { Target } from "lucide-react";
-import { AgenticSkillAnalyzer } from "@/components/skillbridge/agentic-skill-analyzer";
+import { AgenticSkillAnalyzer } from "@/components/devbuilder/agentic-skill-analyzer";
 
 export default function SkillGapsPage() {
   return (

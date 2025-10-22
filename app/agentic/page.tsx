@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AnimatedHero } from "@/components/skillbridge/animated-hero";
+import { AnimatedHero } from "@/components/devbuilder/animated-hero";
 import { Target, Briefcase, TrendingUp, BookOpen, Sparkles, ArrowRight } from "lucide-react";
 
 export default function AgenticDashboardPage() {

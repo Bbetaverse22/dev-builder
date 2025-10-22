@@ -1,6 +1,6 @@
 "use client";
 
-import { AutomaticGapAnalysis } from "@/components/skillbridge/automatic-gap-analysis";
+import { AutomaticGapAnalysis } from "@/components/devbuilder/automatic-gap-analysis";
 
 export default function AutomaticGapAnalysisPage() {
   return (
