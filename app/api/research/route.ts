@@ -20,6 +20,8 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[Research Agent] Starting workflow for:", body.skillGap);
+    console.log("[Research Agent] User skill level:", body.userSkillLevel || 'intermediate');
+    console.log("[Research Agent] Skill gap:", body.skillGapValue || 2, `(${body.skillCurrentLevel || 2}/5 → ${body.skillTargetLevel || 4}/5)`);
     console.log("[Research Agent] Force refresh:", body.forceRefresh ?? false);
     console.log("[Research Agent] Environment summary:", {
       hasOpenAIKey: Boolean(process.env.OPENAI_API_KEY),
@@ -40,6 +42,11 @@ export async function POST(request: NextRequest) {
       learningObjectives: body.learningObjectives || [],
       iterationCount: 0,
       forceRefresh: body.forceRefresh ?? true, // Default to true to ensure fresh research
+      // Adaptive learning fields
+      userSkillLevel: body.userSkillLevel || 'intermediate',
+      skillCurrentLevel: body.skillCurrentLevel || 2,
+      skillTargetLevel: body.skillTargetLevel || 4,
+      skillGapValue: body.skillGapValue || 2,
     };
 
     // Run the research agent

@@ -2,6 +2,7 @@ import { buildFrameworkSkillPlan } from '@/lib/analysis/framework-skill-plan';
 import { generateObject, generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
+import { GitHubMCPClient, type GitHubSkillAssessment } from '@/lib/mcp/github';
 
 export interface SkillCategory {
   id: string;
@@ -99,6 +100,7 @@ export interface GitHubAnalysis {
   specialties?: string[];
   qualityMetrics?: QualityMetrics;
   aiInsights?: AIAnalysisInsights;
+  mcpSkillAssessment?: GitHubSkillAssessment | null;
 }
 
 export interface GapAnalysisResult {
@@ -110,6 +112,7 @@ export interface GapAnalysisResult {
   githubAnalysis?: GitHubAnalysis;
   chatAnalysis?: any;
   analysisType?: 'github' | 'ai-chat';
+  externalAssessments?: Record<string, unknown>;
 }
 
 export interface ResearchContext {
@@ -173,11 +176,101 @@ export interface DetectedSkill {
 }
 
 export class GapAnalyzerAgent {
+  private githubMCPClient: GitHubMCPClient | null = null;
+  private githubRepoContext: { owner: string; repo: string; defaultBranch?: string } | null = null;
+  private githubMcpAvailableTools: Set<string> | null = null;
+
   private clampSkillLevel(level: number): number {
     if (Number.isNaN(level)) {
       return 1;
     }
     return Math.min(5, Math.max(1, Math.round(level * 10) / 10));
+  }
+
+  private shouldUseGitHubMCP(): boolean {
+    return Boolean(process.env.GITHUB_MCP_SERVER_URL);
+  }
+
+  private async ensureGitHubMCPClient(): Promise<GitHubMCPClient | null> {
+    if (!this.shouldUseGitHubMCP()) {
+      return null;
+    }
+
+    if (this.githubMCPClient) {
+      return this.githubMCPClient;
+    }
+
+    try {
+      console.log('[GapAnalyzer] 🔌 Attempting to connect to GitHub MCP server...');
+      console.log('[GapAnalyzer] MCP Server URL:', process.env.GITHUB_MCP_SERVER_URL || 'NOT SET');
+      console.log('[GapAnalyzer] MCP Bearer Token:', process.env.GITHUB_MCP_BEARER ? 'SET' : 'NOT SET');
+      
+      const client = new GitHubMCPClient();
+      await client.connect();
+      this.githubMCPClient = client;
+      await this.loadGitHubMcpTools(client);
+      console.log('[GapAnalyzer] ✅ GitHub MCP client connected successfully');
+      return this.githubMCPClient;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorDetails = error instanceof Error && error.cause ? ` | Cause: ${error.cause}` : '';
+      console.warn(`[GapAnalyzer] ⚠️ Failed to connect to GitHub MCP server${errorDetails}`);
+      console.warn(`[GapAnalyzer] Error: ${errorMessage}`);
+      console.log('[GapAnalyzer] 🔄 Using GitHub REST API fallback');
+      this.githubMCPClient = null;
+      return null;
+    }
+  }
+
+  private setGitHubRepoContext(context: { owner: string; repo: string; defaultBranch?: string } | null) {
+    this.githubRepoContext = context;
+  }
+
+  private async loadGitHubMcpTools(client: GitHubMCPClient): Promise<Set<string> | null> {
+    try {
+      const tools = await client.listTools();
+      if (Array.isArray(tools)) {
+        this.githubMcpAvailableTools = new Set(
+          tools
+            .map((tool: any) => (typeof tool === 'string' ? tool : tool?.name))
+            .filter((name): name is string => Boolean(name))
+        );
+      } else {
+        this.githubMcpAvailableTools = null;
+      }
+    } catch (error) {
+      console.warn('[GapAnalyzer] ⚠️ Unable to list GitHub MCP tools:', error);
+      this.githubMcpAvailableTools = null;
+    }
+    return this.githubMcpAvailableTools;
+  }
+
+  private async ensureMcpToolsLoaded(): Promise<Set<string> | null> {
+    if (!this.githubMCPClient) {
+      return null;
+    }
+    if (this.githubMcpAvailableTools) {
+      return this.githubMcpAvailableTools;
+    }
+    return await this.loadGitHubMcpTools(this.githubMCPClient);
+  }
+
+  private async fetchGitHubSkillAssessment(owner: string, repo: string): Promise<GitHubSkillAssessment | null> {
+    if (!this.githubMCPClient) {
+      console.log('[GapAnalyzer] GitHub MCP client not available, skipping skill assessment');
+      return null;
+    }
+
+    try {
+      const defaultBranch = this.githubRepoContext?.defaultBranch;
+      console.log(`[GapAnalyzer] Fetching MCP skill assessment for ${owner}/${repo}...`);
+      const assessment = await this.githubMCPClient.getSkillAssessment(owner, repo, defaultBranch ? { ref: defaultBranch } : undefined);
+      console.log(`[GapAnalyzer] ✅ MCP skill assessment received:`, assessment.summary);
+      return assessment;
+    } catch (error) {
+      console.warn(`[GapAnalyzer] ⚠️ GitHub MCP skill assessment failed for ${owner}/${repo}:`, error);
+      return null;
+    }
   }
 
   /**
@@ -712,6 +805,8 @@ export class GapAnalyzerAgent {
    * Analyze GitHub repository for skills and technologies
    */
   async analyzeGitHubRepository(repoUrl: string): Promise<GitHubAnalysis> {
+    let usingMCP = false;
+    let mcpSkillAssessment: GitHubSkillAssessment | null = null;
     try {
       // Extract owner and repo from URL
       const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
@@ -724,27 +819,60 @@ export class GapAnalyzerAgent {
 
       console.log(`[GapAnalyzer] Analyzing repository: ${owner}/${cleanRepo}`);
 
-      // Fetch repository data from GitHub API
-      let repoData, languagesData, contentsData;
+      // Fetch repository data (prefer MCP when available)
+      let repoData: any;
+      let languagesData: any;
+      let contentsData: any;
 
-      try {
-        [repoData, languagesData, contentsData] = await Promise.all([
-          this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}`, {
-            resourceLabel: `${owner}/${cleanRepo}`,
-          }),
-          this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}/languages`, {
-            resourceLabel: `${owner}/${cleanRepo} languages`,
-          }),
-          this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}/contents`, {
-            resourceLabel: `${owner}/${cleanRepo} contents`,
-          })
-        ]);
-      } catch (apiError) {
-        console.error('[GapAnalyzer] GitHub API error:', apiError);
-        throw apiError;
+      const mcpClient = await this.ensureGitHubMCPClient();
+
+      if (mcpClient) {
+        try {
+          repoData = await mcpClient.getRepository(owner, cleanRepo);
+          languagesData = await mcpClient.getRepositoryLanguages(owner, cleanRepo);
+          contentsData = await mcpClient.listRepositoryContents(owner, cleanRepo);
+          usingMCP = true;
+          this.setGitHubRepoContext({
+            owner,
+            repo: cleanRepo,
+            defaultBranch: repoData?.default_branch ?? 'main',
+          });
+          console.log('[GapAnalyzer] Repository data fetched via GitHub MCP');
+        } catch (mcpError) {
+          console.warn('[GapAnalyzer] MCP data fetch failed, falling back to REST API:', mcpError);
+          usingMCP = false;
+          this.setGitHubRepoContext(null);
+        }
+      }
+
+      if (!repoData || !languagesData || !contentsData) {
+        try {
+          [repoData, languagesData, contentsData] = await Promise.all([
+            this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}`, {
+              resourceLabel: `${owner}/${cleanRepo}`,
+            }),
+            this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}/languages`, {
+              resourceLabel: `${owner}/${cleanRepo} languages`,
+            }),
+            this.fetchGitHubData(`https://api.github.com/repos/${owner}/${cleanRepo}/contents`, {
+              resourceLabel: `${owner}/${cleanRepo} contents`,
+            })
+          ]);
+          console.log('[GapAnalyzer] Repository data fetched via GitHub REST API');
+          this.setGitHubRepoContext({
+            owner,
+            repo: cleanRepo,
+            defaultBranch: repoData?.default_branch ?? 'main',
+          });
+        } catch (apiError) {
+          console.error('[GapAnalyzer] GitHub API error:', apiError);
+          throw apiError;
+        }
       }
 
       console.log(`[GapAnalyzer] Repository data fetched successfully`);
+
+      mcpSkillAssessment = await this.fetchGitHubSkillAssessment(owner, cleanRepo);
 
       // Extract technologies and frameworks
       const technologies = this.extractTechnologies(repoData, languagesData, contentsData);
@@ -781,6 +909,7 @@ export class GapAnalyzerAgent {
         metadata,
         qualityMetrics,
         aiInsights,
+        mcpSkillAssessment,
       };
 
     } catch (error) {
@@ -807,6 +936,8 @@ export class GapAnalyzerAgent {
         : `Failed to analyze repository: ${errorMessage}`;
 
       throw new Error(detailedMessage);
+    } finally {
+      this.setGitHubRepoContext(null);
     }
   }
 
@@ -834,6 +965,11 @@ export class GapAnalyzerAgent {
 
     // Include the GitHub analysis in the result for storage
     analysisResult.githubAnalysis = githubAnalysis;
+    analysisResult.externalAssessments = analysisResult.externalAssessments ?? {};
+
+    if (githubAnalysis.mcpSkillAssessment) {
+      this.integrateExternalSkillAssessment(analysisResult, githubAnalysis.mcpSkillAssessment);
+    }
 
     return analysisResult;
   }
@@ -1314,9 +1450,277 @@ export class GapAnalyzerAgent {
     if (githubAnalysis.frameworks.some(f => ['react', 'vue', 'angular'].includes(f.toLowerCase()))) {
       recommendations.push('Explore state management solutions and advanced frontend patterns');
     }
-    
+
     return recommendations;
   }
+
+  private integrateExternalSkillAssessment(result: GapAnalysisResult, assessment: GitHubSkillAssessment): void {
+    if (!assessment) {
+      return;
+    }
+
+    result.externalAssessments = {
+      ...(result.externalAssessments ?? {}),
+      githubMcp: assessment,
+    };
+
+    const externalSkillGaps = this.extractSkillGapsFromExternalAssessment(assessment);
+    if (externalSkillGaps.length > 0) {
+      externalSkillGaps.forEach((gap) => this.mergeExternalSkillGap(result, gap));
+    }
+
+    const additionalRecommendations: string[] = [];
+    if (assessment.summary && typeof assessment.summary === 'string') {
+      additionalRecommendations.push(assessment.summary.trim());
+    }
+    if (Array.isArray(assessment.recommendations)) {
+      assessment.recommendations
+        .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+        .forEach((rec) => additionalRecommendations.push(rec.trim()));
+    }
+
+    if (additionalRecommendations.length > 0) {
+      this.appendUniqueRecommendations(result.recommendations, additionalRecommendations);
+    }
+  }
+
+  private extractSkillGapsFromExternalAssessment(assessment: GitHubSkillAssessment): SkillGap[] {
+    const entries: Record<string, unknown>[] = [];
+
+    if (Array.isArray(assessment.skill_gaps)) {
+      entries.push(...assessment.skill_gaps);
+    }
+    if (Array.isArray(assessment.skillGaps)) {
+      entries.push(...assessment.skillGaps);
+    }
+    if (Array.isArray(assessment.skills)) {
+      entries.push(...assessment.skills);
+    }
+
+    const converted: SkillGap[] = [];
+    for (const entry of entries) {
+      if (entry && typeof entry === 'object') {
+        const gap = this.convertExternalSkillGap(entry as Record<string, unknown>);
+        if (gap) {
+          converted.push(gap);
+        }
+      }
+    }
+
+    return converted;
+  }
+
+  private convertExternalSkillGap(entry: Record<string, unknown>): SkillGap | null {
+    const name = this.extractSkillName(entry);
+    if (!name) {
+      return null;
+    }
+
+    const currentRaw = entry.current_level ?? entry.currentLevel ?? entry.level ?? entry.proficiency ?? entry.score ?? 0;
+    const targetRaw = entry.target_level ?? entry.targetLevel ?? entry.desired_level ?? entry.goal_level ?? (typeof currentRaw === 'number' ? currentRaw + 1 : currentRaw);
+    const importanceRaw = entry.importance ?? entry.weight ?? 3;
+    const category = typeof entry.category === 'string' && entry.category.trim().length > 0
+      ? entry.category
+      : 'technical';
+
+    const currentLevel = this.normalizeExternalLevel(currentRaw);
+    const targetLevel = Math.max(currentLevel, this.normalizeExternalLevel(targetRaw));
+    const gapValue = Math.max(0, targetLevel - currentLevel);
+    const importance = this.normalizeExternalLevel(importanceRaw, 1, 5);
+    const recommendations = this.extractEntryRecommendations(entry);
+    const description = this.extractEntryDescription(entry, name);
+    const guidanceSteps = recommendations.length > 0 ? [...recommendations] : [`Practice ${name} to increase proficiency.`];
+    const confidenceValue = typeof entry.confidence === 'number' ? entry.confidence : undefined;
+
+    const guidance: SkillGuidance = {
+      currentState: typeof entry.current_state === 'string' ? entry.current_state : `Current proficiency at ${currentLevel}/5`,
+      careerImpact: typeof entry.career_impact === 'string'
+        ? entry.career_impact
+        : typeof entry.impact === 'string'
+          ? entry.impact
+          : `Improving ${name} will strengthen your portfolio and project delivery.`,
+      marketContext: typeof entry.market_context === 'string' ? entry.market_context : '',
+      recommendedSteps: guidanceSteps,
+    };
+
+    const slug = this.generateSkillId(name);
+    const confidence: SkillGapConfidence = confidenceValue !== undefined
+      ? (confidenceValue >= 0.75 ? 'high' : confidenceValue >= 0.4 ? 'medium' : 'low')
+      : 'medium';
+
+    return {
+      skill: {
+        id: `mcp-${slug}`,
+        name,
+        currentLevel,
+        targetLevel,
+        importance,
+        category,
+      },
+      gap: parseFloat(gapValue.toFixed(1)),
+      priority: Math.max(1, Math.round(gapValue * 10 + importance * 2)),
+      recommendations: recommendations.length > 0 ? recommendations : [`Improve your ${name} skill through focused practice and projects.`],
+      guidance,
+      confidence,
+      aiInsights: undefined,
+    };
+  }
+
+  private extractSkillName(entry: Record<string, unknown>): string | null {
+    const nameCandidates = [entry.name, entry.skill, entry.skill_name, entry.title, entry.area];
+    for (const candidate of nameCandidates) {
+      if (typeof candidate === 'string' && candidate.trim().length > 0) {
+        return candidate.trim();
+      }
+    }
+    return null;
+  }
+
+  private normalizeExternalLevel(value: unknown, min: number = 1, max: number = 5): number {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      if (value > 1 && value <= 5) {
+        return this.clampSkillLevel(value);
+      }
+      // Normalize from 0-1 scale if detected
+      if (value >= 0 && value <= 1) {
+        return this.clampSkillLevel(min + (max - min) * value);
+      }
+      return this.clampSkillLevel(value);
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      const mapping: Record<string, number> = {
+        novice: 1,
+        beginner: 1,
+        'beginner+': 2,
+        junior: 2,
+        intermediate: 3,
+        proficient: 4,
+        senior: 4,
+        advanced: 4,
+        expert: 5,
+        master: 5,
+      };
+      if (mapping[normalized] !== undefined) {
+        return mapping[normalized];
+      }
+      const numeric = Number.parseFloat(value);
+      if (!Number.isNaN(numeric)) {
+        return this.normalizeExternalLevel(numeric, min, max);
+      }
+    }
+
+    return min;
+  }
+
+  private generateSkillId(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-');
+  }
+
+  private extractEntryRecommendations(entry: Record<string, unknown>): string[] {
+    const recommendations: string[] = [];
+    const fields = [entry.recommendations, entry.next_steps, entry.nextSteps, entry.actions];
+
+    for (const field of fields) {
+      if (Array.isArray(field)) {
+        field
+          .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+          .forEach((item) => recommendations.push(item.trim()));
+      } else if (typeof field === 'string' && field.trim().length > 0) {
+        recommendations.push(field.trim());
+      }
+    }
+
+    return this.mergeUniqueStrings([], recommendations);
+  }
+
+  private extractEntryDescription(entry: Record<string, unknown>, skillName: string): string {
+    const fields = [entry.description, entry.summary, entry.detail, entry.details];
+    for (const field of fields) {
+      if (typeof field === 'string' && field.trim().length > 0) {
+        return field.trim();
+      }
+    }
+    return `Improve your ${skillName} proficiency to unlock more advanced opportunities.`;
+  }
+
+  private mergeExternalSkillGap(result: GapAnalysisResult, newGap: SkillGap): void {
+    const existingIndex = result.skillGaps.findIndex((gap) =>
+      gap.skill.id === newGap.skill.id || gap.skill.name.toLowerCase() === newGap.skill.name.toLowerCase()
+    );
+
+    if (existingIndex >= 0) {
+      const existing = result.skillGaps[existingIndex];
+      existing.skill.currentLevel = Math.min(existing.skill.currentLevel, newGap.skill.currentLevel);
+      existing.skill.targetLevel = Math.max(existing.skill.targetLevel, newGap.skill.targetLevel);
+      existing.gap = parseFloat((existing.skill.targetLevel - existing.skill.currentLevel).toFixed(1));
+      existing.recommendations = this.mergeUniqueStrings(existing.recommendations, newGap.recommendations);
+      existing.guidance.recommendedSteps = this.mergeUniqueStrings(existing.guidance.recommendedSteps, newGap.guidance.recommendedSteps);
+      if (newGap.guidance.currentState) {
+        existing.guidance.currentState = newGap.guidance.currentState;
+      }
+      if (newGap.guidance.careerImpact) {
+        existing.guidance.careerImpact = newGap.guidance.careerImpact;
+      }
+      if (newGap.guidance.marketContext) {
+        existing.guidance.marketContext = newGap.guidance.marketContext;
+      }
+      existing.priority = Math.max(existing.priority, newGap.priority);
+      existing.confidence = this.mergeConfidence(existing.confidence, newGap.confidence);
+      if (newGap.aiInsights) {
+        existing.aiInsights = {
+          ...existing.aiInsights,
+          ...newGap.aiInsights,
+        };
+      }
+    } else {
+      result.skillGaps.push(newGap);
+    }
+
+    const headline = newGap.recommendations[0];
+    if (headline) {
+      this.appendUniqueRecommendations(result.recommendations, [`Focus on ${newGap.skill.name}: ${headline}`]);
+    }
+  }
+
+  private mergeUniqueStrings(existing: string[], additions: string[]): string[] {
+    const seen = new Set<string>();
+    const combined: string[] = [];
+    [...existing, ...additions].forEach((item) => {
+      const trimmed = item.trim();
+      if (trimmed.length === 0) {
+        return;
+      }
+      if (!seen.has(trimmed)) {
+        seen.add(trimmed);
+        combined.push(trimmed);
+      }
+    });
+    return combined;
+  }
+
+  private appendUniqueRecommendations(existing: string[], additions: string[]): void {
+    additions.forEach((addition) => {
+      const trimmed = addition.trim();
+      if (trimmed.length === 0) {
+        return;
+      }
+      if (!existing.includes(trimmed)) {
+        existing.push(trimmed);
+      }
+    });
+  }
+
+  private mergeConfidence(current: SkillGapConfidence, incoming: SkillGapConfidence): SkillGapConfidence {
+    const order: Record<SkillGapConfidence, number> = { low: 0, medium: 1, high: 2 };
+    return order[incoming] > order[current] ? incoming : current;
+  }
+
 
   /**
    * Fetch data from GitHub API
@@ -1329,6 +1733,17 @@ export class GapAnalyzerAgent {
       raw?: boolean;
     }
   ): Promise<any> {
+    if (this.githubMCPClient && this.githubRepoContext) {
+      try {
+        const mcpResult = await this.fetchGitHubDataViaMCP(url, options);
+        if (typeof mcpResult !== 'undefined') {
+          return mcpResult;
+        }
+      } catch (mcpError) {
+        console.warn(`[GapAnalyzer] MCP fetch failed for ${options?.resourceLabel ?? url}, falling back to REST:`, mcpError);
+      }
+    }
+
     const headers: Record<string, string> = {
       'Accept': 'application/vnd.github.v3+json',
       'User-Agent': 'SkillBridge.ai-Agents'
@@ -1377,6 +1792,75 @@ export class GapAnalyzerAgent {
     }
 
     return response.json();
+  }
+
+  private async fetchGitHubDataViaMCP(
+    url: string,
+    options?: {
+      allow404?: boolean;
+      resourceLabel?: string;
+      raw?: boolean;
+    }
+  ): Promise<any | undefined> {
+    if (!this.githubMCPClient || !this.githubRepoContext) {
+      return undefined;
+    }
+
+    try {
+      const parsedUrl = new URL(url);
+      const { owner, repo, defaultBranch } = this.githubRepoContext;
+
+      if (parsedUrl.hostname === 'api.github.com') {
+        const segments = parsedUrl.pathname.split('/').filter(Boolean);
+        if (segments.length >= 3 && segments[0] === 'repos' && segments[1] === owner && segments[2] === repo) {
+          const endpoint = segments.slice(3);
+
+          if (endpoint.length === 0) {
+            return await this.githubMCPClient.getRepository(owner, repo);
+          }
+
+          if (endpoint[0] === 'languages') {
+            return await this.githubMCPClient.getRepositoryLanguages(owner, repo);
+          }
+
+          if (endpoint[0] === 'readme') {
+            const ref = parsedUrl.searchParams.get('ref') ?? defaultBranch;
+            const readme = await this.githubMCPClient.getRepositoryReadme(owner, repo, ref || undefined);
+            return {
+              ...readme,
+              content: readme.content,
+              encoding: readme.encoding,
+            };
+          }
+
+          if (endpoint[0] === 'contents') {
+            const ref = parsedUrl.searchParams.get('ref') ?? undefined;
+            const path = endpoint.slice(1).join('/');
+            const contents = await this.githubMCPClient.listRepositoryContents(owner, repo, path || undefined, ref);
+            return contents;
+          }
+        }
+      }
+
+      if (parsedUrl.hostname === 'raw.githubusercontent.com') {
+        const parts = parsedUrl.pathname.split('/').filter(Boolean);
+        if (parts.length >= 4) {
+          const [rawOwner, rawRepo, ref, ...pathParts] = parts;
+          if (rawOwner === owner && rawRepo === repo) {
+            const path = pathParts.join('/');
+            const file = await this.githubMCPClient.getFileContents(owner, repo, path, ref);
+            return options?.raw ? file.decodedContent : file;
+          }
+        }
+      }
+
+      return undefined;
+    } catch (error) {
+      if (options?.allow404) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**

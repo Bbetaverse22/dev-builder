@@ -64,8 +64,8 @@ export interface SearchRepositoriesResponse {
     incomplete_results: boolean;
     items: GitHubRepository[];
 }
-  
-  // Simplified repository for minimal_output=true
+
+// Simplified repository for minimal_output=true
 export interface MinimalRepository {
     name: string;
     full_name: string;
@@ -74,6 +74,10 @@ export interface MinimalRepository {
     language: string | null;
     url: string;
     topics: string[];
+}
+
+export interface RepositoryLanguages {
+    [language: string]: number;
 }
   
   // ============================================================================
@@ -106,10 +110,12 @@ export interface FileContent {
       html: string;
     };
 }
-  
+
 export interface DecodedFileContent extends FileContent {
     decodedContent: string; // UTF-8 decoded content
 }
+
+export type RepositoryContent = FileContent | FileContent[];
   
   // ============================================================================
   // Issue Types
@@ -199,23 +205,45 @@ export interface GitHubMCPClientConfig {
   timeout?: number;
   retryAttempts?: number;
   toolsets?: string[]; // e.g., ['repos', 'issues', 'pull_requests']
-  transport?: 'stdio' | 'http'; // NEW: Transport type
-  serverUrl?: string; // NEW: Server URL for HTTP transport (e.g., https://your-app.vercel.app/api/github-mcp)
+  serverUrl?: string; // Server URL for HTTP transport (e.g., https://your-app.vercel.app/api/github-mcp)
+  readOnly?: boolean;
+  headers?: Record<string, string>;
 }
-  
-  // ============================================================================
-  // Utility Types
-  // ============================================================================
-  
-  export type SortOrder = 'asc' | 'desc';
-  export type RepositorySort = 'stars' | 'forks' | 'help-wanted-issues' | 'updated';
-  
-  // For LangGraph integration
-  export interface GitHubExample {
+
+// ============================================================================
+// Utility Types
+// ============================================================================
+
+export type SortOrder = 'asc' | 'desc';
+export type RepositorySort = 'stars' | 'forks' | 'help-wanted-issues' | 'updated';
+
+// For LangGraph integration
+export interface GitHubExample {
+  name: string;
+  url: string;
+  stars: number;
+  description: string;
+  language: string;
+  topics?: string[];
+}
+
+export interface GitHubSkillAssessment {
+  summary?: string;
+  recommendations?: string[];
+  skills?: Array<{
     name: string;
-    url: string;
-    stars: number;
-    description: string;
-    language: string;
-    topics?: string[];
-  }
+    level?: number | string;
+    current_level?: number;
+    currentLevel?: number;
+    target_level?: number;
+    targetLevel?: number;
+    importance?: number;
+    category?: string;
+    confidence?: number;
+    description?: string;
+    recommendations?: string[];
+  }>;
+  skill_gaps?: Array<Record<string, unknown>>;
+  skillGaps?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+}

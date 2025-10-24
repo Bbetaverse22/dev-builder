@@ -125,6 +125,21 @@ async function generateRecommendations(
       "Learning path should be 3-6 steps, ordered from foundational to advanced.",
     ].join("\n");
 
+    // Get skill level context
+    const userSkillLevel = state.userSkillLevel ?? 'intermediate';
+    const skillCurrentLevel = state.skillCurrentLevel ?? 2;
+    const skillTargetLevel = state.skillTargetLevel ?? 4;
+    const skillGap = state.skillGapValue ?? 2;
+    
+    // Get adaptive learning configuration
+    const config = getSkillLevelConfig(userSkillLevel);
+    
+    const skillLevelInstructions = {
+      beginner: 'Focus on fundamentals and building confidence. Recommend tutorials, step-by-step guides, and beginner-friendly resources. Emphasize hands-on practice with simple projects.',
+      intermediate: 'Emphasize practical application and advanced concepts. Recommend real-world projects, best practices guides, and intermediate to advanced resources. Balance theory with implementation.',
+      advanced: 'Concentrate on optimization, architecture, and leadership. Recommend system design resources, performance optimization guides, and advanced architectural patterns. Focus on mastery and innovation.',
+    };
+
     const humanPrompt = [
       `Skill gap: ${state.skillGap}`,
       `**PRIMARY LANGUAGE/FRAMEWORK: ${state.detectedLanguage || "unknown"}**`,
@@ -132,6 +147,15 @@ async function generateRecommendations(
       `User context: ${state.userContext}`,
       `Target role: ${state.targetRole || "not specified"}`,
       `Learning objectives: ${(state.learningObjectives ?? []).join(", ") || "not specified"}`,
+      "",
+      `🎯 USER SKILL LEVEL: ${userSkillLevel.toUpperCase()}`,
+      `Current proficiency: ${skillCurrentLevel}/5`,
+      `Target proficiency: ${skillTargetLevel}/5`,
+      `Skill gap: ${skillGap} levels`,
+      `Learning path focus: ${config.pathDescription}`,
+      "",
+      `📋 ADAPTIVE INSTRUCTIONS FOR ${userSkillLevel.toUpperCase()} LEVEL:`,
+      skillLevelInstructions[userSkillLevel],
       "",
       "Top Learning Resources:",
       ...topResources.map((r, i) => {
@@ -229,7 +253,10 @@ async function generateRecommendations(
         }))
       : fallback.comparativeInsights;
 
-    const learningPath = validated.data.learning_path.length
+    // Use adaptive learning path if skill level is available, otherwise use LLM-generated or fallback
+    const learningPath = state.userSkillLevel
+      ? generateAdaptiveLearningPath(state, resources, examples)
+      : validated.data.learning_path.length
       ? validated.data.learning_path
           .map((step, index) => ({
             order: step.order ?? index + 1,
@@ -489,4 +516,236 @@ function buildFallbackLearningPath(
   }
 
   return steps;
+}
+
+/**
+ * Get skill level-specific learning path configuration
+ */
+function getSkillLevelConfig(userSkillLevel: 'beginner' | 'intermediate' | 'advanced') {
+  const configs = {
+    beginner: {
+      minDifficulty: 'beginner',
+      maxDifficulty: 'intermediate',
+      focusAreas: ['Foundation', 'Practice', 'Application', 'Next Steps'],
+      timeMultiplier: 1.5, // Beginners need more time
+      resourceTypes: ['tutorial', 'documentation', 'basic-example'],
+      pathDescription: 'Building strong fundamentals and confidence',
+    },
+    intermediate: {
+      minDifficulty: 'beginner',
+      maxDifficulty: 'advanced',
+      focusAreas: ['Review', 'Advanced Concepts', 'Real Projects', 'Best Practices'],
+      timeMultiplier: 1.0, // Standard time
+      resourceTypes: ['advanced-tutorial', 'best-practices', 'real-world-project'],
+      pathDescription: 'Advancing skills with practical application',
+    },
+    advanced: {
+      minDifficulty: 'intermediate',
+      maxDifficulty: 'advanced',
+      focusAreas: ['Optimization', 'Architecture', 'Innovation', 'Leadership'],
+      timeMultiplier: 0.75, // Advanced users are faster
+      resourceTypes: ['architecture', 'optimization', 'system-design', 'research'],
+      pathDescription: 'Mastering advanced concepts and leadership',
+    },
+  };
+
+  return configs[userSkillLevel];
+}
+
+/**
+ * Determine appropriate difficulty based on skill level and gap
+ */
+function determineDifficulty(
+  userSkillLevel: 'beginner' | 'intermediate' | 'advanced',
+  skillGap: number,
+  stepIndex: number,
+  totalSteps: number
+): 'beginner' | 'intermediate' | 'advanced' {
+  const config = getSkillLevelConfig(userSkillLevel);
+  
+  // Calculate progression through the path (0 to 1)
+  const progression = stepIndex / totalSteps;
+  
+  // For large gaps, start easier
+  if (skillGap >= 2.0) {
+    if (progression < 0.3) return 'beginner';
+    if (progression < 0.7) return 'intermediate';
+    return config.maxDifficulty as 'beginner' | 'intermediate' | 'advanced';
+  }
+  
+  // For medium gaps, balanced approach
+  if (skillGap >= 1.0) {
+    if (userSkillLevel === 'beginner') {
+      return progression < 0.5 ? 'beginner' : 'intermediate';
+    }
+    if (userSkillLevel === 'intermediate') {
+      return progression < 0.4 ? 'intermediate' : 'advanced';
+    }
+    return 'advanced';
+  }
+  
+  // For small gaps, focus on refinement
+  if (userSkillLevel === 'beginner') return 'intermediate';
+  if (userSkillLevel === 'intermediate') return 'advanced';
+  return 'advanced';
+}
+
+/**
+ * Calculate adaptive time estimate based on difficulty and skill level
+ */
+function calculateAdaptiveTimeEstimate(
+  userSkillLevel: 'beginner' | 'intermediate' | 'advanced',
+  difficulty: 'beginner' | 'intermediate' | 'advanced',
+  baseHours: number
+): number {
+  const config = getSkillLevelConfig(userSkillLevel);
+  
+  // Base difficulty multipliers
+  const difficultyMultipliers = {
+    beginner: 1.0,
+    intermediate: 1.5,
+    advanced: 2.0,
+  };
+  
+  // Apply skill level adjustment
+  const adjustedTime = baseHours * difficultyMultipliers[difficulty] * config.timeMultiplier;
+  
+  // Round to reasonable increments
+  if (adjustedTime < 2) return Math.ceil(adjustedTime * 2) / 2; // Round to 0.5 hour increments
+  if (adjustedTime < 10) return Math.ceil(adjustedTime); // Round to 1 hour increments
+  return Math.ceil(adjustedTime / 5) * 5; // Round to 5 hour increments
+}
+
+/**
+ * Generate adaptive learning path based on skill level
+ */
+export function generateAdaptiveLearningPath(
+  state: ResearchState,
+  resources: ScoredResource[],
+  examples: GitHubProject[]
+): LearningPathStep[] {
+  const userSkillLevel = state.userSkillLevel ?? 'intermediate';
+  const skillGap = state.skillGapValue ?? 2;
+  const config = getSkillLevelConfig(userSkillLevel);
+  
+  console.log(`📚 Generating adaptive learning path for ${userSkillLevel} level (gap: ${skillGap})`);
+  
+  const steps: LearningPathStep[] = [];
+  const focusAreas = config.focusAreas;
+  
+  // Generate steps for each focus area
+  focusAreas.forEach((area, index) => {
+    const difficulty = determineDifficulty(userSkillLevel, skillGap, index, focusAreas.length);
+    const baseHours = index === 0 ? 5 : index === focusAreas.length - 1 ? 10 : 8;
+    const estimatedTime = calculateAdaptiveTimeEstimate(userSkillLevel, difficulty, baseHours);
+    
+    // Find relevant resource for this step
+    const relevantResource = resources.find(r => 
+      r.title.toLowerCase().includes(area.toLowerCase()) ||
+      r.description.toLowerCase().includes(area.toLowerCase())
+    );
+    
+    steps.push({
+      order: index + 1,
+      title: `${area}: ${state.skillGap}`,
+      description: getStepDescription(area, userSkillLevel, skillGap),
+      difficulty,
+      estimatedTimeHours: estimatedTime,
+      resourceUrl: relevantResource?.url,
+      resourceTitle: relevantResource?.title,
+    });
+  });
+  
+  // Add example-based steps if available
+  if (examples.length > 0 && userSkillLevel !== 'beginner') {
+    const practiceStep: LearningPathStep = {
+      order: steps.length + 1,
+      title: `Hands-on Practice: Study Real Examples`,
+      description: userSkillLevel === 'advanced' 
+        ? `Analyze production-level implementations and architectural patterns in real-world projects.`
+        : `Learn from real-world implementations by studying and replicating working examples.`,
+      difficulty: userSkillLevel === 'advanced' ? 'advanced' : 'intermediate',
+      estimatedTimeHours: calculateAdaptiveTimeEstimate(userSkillLevel, 'intermediate', 12),
+      resourceUrl: examples[0]?.url,
+      resourceTitle: examples[0]?.name,
+    };
+    steps.push(practiceStep);
+  }
+  
+  return steps.slice(0, 6); // Limit to 6 steps
+}
+
+/**
+ * Get contextual step description based on focus area and skill level
+ */
+function getStepDescription(
+  area: string,
+  userSkillLevel: 'beginner' | 'intermediate' | 'advanced',
+  skillGap: number
+): string {
+  const descriptions: Record<string, Record<string, string>> = {
+    Foundation: {
+      beginner: 'Start with core concepts and fundamental principles. Build a solid understanding through guided tutorials.',
+      intermediate: 'Review foundational concepts and fill knowledge gaps to ensure strong fundamentals.',
+      advanced: 'Quickly review fundamentals and identify any gaps in core understanding.',
+    },
+    Practice: {
+      beginner: 'Apply what you learned through simple exercises and guided projects.',
+      intermediate: 'Solidify understanding through structured practice and small projects.',
+      advanced: 'Reinforce concepts through targeted practice and quick implementations.',
+    },
+    Review: {
+      beginner: 'Review and consolidate learning from previous steps.',
+      intermediate: 'Revisit core concepts and assess your current understanding.',
+      advanced: 'Quick review of essential concepts before advancing.',
+    },
+    'Advanced Concepts': {
+      beginner: 'Introduction to more complex topics and patterns.',
+      intermediate: 'Deep dive into advanced features, patterns, and best practices.',
+      advanced: 'Explore cutting-edge techniques and architectural patterns.',
+    },
+    'Real Projects': {
+      beginner: 'Work on a small real-world project applying what you learned.',
+      intermediate: 'Build production-quality projects implementing advanced concepts.',
+      advanced: 'Architect and implement complex, scalable solutions.',
+    },
+    Application: {
+      beginner: 'Build a small project to apply your new skills in a practical context.',
+      intermediate: 'Create meaningful applications demonstrating your mastery.',
+      advanced: 'Design and implement production-grade solutions.',
+    },
+    'Next Steps': {
+      beginner: 'Continue learning path with next-level resources and community involvement.',
+      intermediate: 'Plan next learning goals and consider contributing to open source.',
+      advanced: 'Explore leadership opportunities and cutting-edge developments.',
+    },
+    'Best Practices': {
+      beginner: 'Learn industry standards and common conventions.',
+      intermediate: 'Master best practices and coding standards for production code.',
+      advanced: 'Define and advocate for best practices within your team.',
+    },
+    Optimization: {
+      beginner: 'Introduction to basic optimization concepts.',
+      intermediate: 'Learn performance optimization techniques.',
+      advanced: 'Master advanced optimization, profiling, and system-level performance tuning.',
+    },
+    Architecture: {
+      beginner: 'Understanding basic software architecture concepts.',
+      intermediate: 'Learn common architectural patterns and when to apply them.',
+      advanced: 'Design scalable architectures and lead architectural decisions.',
+    },
+    Innovation: {
+      beginner: 'Explore new tools and emerging technologies.',
+      intermediate: 'Experiment with innovative approaches and new paradigms.',
+      advanced: 'Pioneer new solutions and contribute to technology evolution.',
+    },
+    Leadership: {
+      beginner: 'Begin developing soft skills and collaboration practices.',
+      intermediate: 'Take on mentoring roles and lead small initiatives.',
+      advanced: 'Lead technical teams, mentor others, and drive strategic decisions.',
+    },
+  };
+  
+  return descriptions[area]?.[userSkillLevel] ?? 
+    `Progress through ${area.toLowerCase()} to advance your skills.`;
 }

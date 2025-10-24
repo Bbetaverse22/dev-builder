@@ -36,6 +36,12 @@ export interface ResearchState {
   recommendedAudience?: AudienceSegment[];
   summaryNotes?: string[];
   forceRefresh?: boolean;
+  
+  // Adaptive Learning Fields
+  userSkillLevel?: 'beginner' | 'intermediate' | 'advanced';
+  skillCurrentLevel?: number; // 1-5 scale
+  skillTargetLevel?: number; // 1-5 scale
+  skillGapValue?: number; // Numeric gap value
 
   // Search phase
   searchQuery?: string;
@@ -268,6 +274,19 @@ function buildResearchGraph() {
       },
       loadedFromStorage: {
         value: (left?: boolean, right?: boolean) => right ?? left ?? false,
+      },
+      userSkillLevel: {
+        value: (left?: 'beginner' | 'intermediate' | 'advanced', right?: 'beginner' | 'intermediate' | 'advanced') => 
+          right ?? left ?? 'intermediate',
+      },
+      skillCurrentLevel: {
+        value: (left?: number, right?: number) => right ?? left ?? 2,
+      },
+      skillTargetLevel: {
+        value: (left?: number, right?: number) => right ?? left ?? 4,
+      },
+      skillGapValue: {
+        value: (left?: number, right?: number) => right ?? left ?? 2,
       },
     },
   } as any);

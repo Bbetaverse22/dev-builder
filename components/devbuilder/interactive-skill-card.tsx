@@ -41,6 +41,14 @@ interface SkillGap {
     recommendations?: string[];
     readmeQuality?: number;
   };
+  mcpInsights?: {
+    current?: number | string;
+    target?: number | string;
+    importance?: number;
+    confidence?: number;
+    description?: string;
+    recommendations?: string[];
+  };
 }
 
 interface InteractiveSkillCardProps {
@@ -277,27 +285,66 @@ export function InteractiveSkillCard({ skill, onStartLearning }: InteractiveSkil
               </div>
             )}
 
-            {/* AI Insights Section */}
-            {skill.aiInsights && (
+            {/* AI & MCP Insights Section - Combined */}
+            {(skill.aiInsights || skill.mcpInsights) && (
               <div className="pt-3 border-t space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Sparkles className="h-4 w-4 text-purple-500" />
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      AI-Powered Insights
+                      AI & MCP Insights
                     </p>
-                    <Badge variant="secondary" className="text-[10px] bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300">
-                      GPT-4o-mini
-                    </Badge>
                   </div>
-                  <p className="text-[9px] text-muted-foreground italic">
-                    Skill-specific analysis
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    {skill.aiInsights && (
+                      <p className="text-[9px] text-muted-foreground italic">
+                        Code Analysis
+                      </p>
+                    )}
+                    {skill.aiInsights && skill.mcpInsights && (
+                      <span className="text-[9px] text-muted-foreground">•</span>
+                    )}
+                    {skill.mcpInsights && (
+                      <p className="text-[9px] text-emerald-600 dark:text-emerald-400 italic font-medium">
+                        GitHub MCP
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid gap-3">
+                  {/* MCP Level Metrics (if available) */}
+                  {skill.mcpInsights && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {skill.mcpInsights.current !== undefined && (
+                        <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30">
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wide font-medium">Current</p>
+                          <p className="text-sm text-emerald-700 dark:text-emerald-300 font-bold">{skill.mcpInsights.current}</p>
+                        </div>
+                      )}
+                      {skill.mcpInsights.target !== undefined && (
+                        <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30">
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wide font-medium">Target</p>
+                          <p className="text-sm text-emerald-700 dark:text-emerald-300 font-bold">{skill.mcpInsights.target}</p>
+                        </div>
+                      )}
+                      {typeof skill.mcpInsights.importance === 'number' && (
+                        <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30">
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wide font-medium">Importance</p>
+                          <p className="text-sm text-emerald-700 dark:text-emerald-300 font-bold">{Math.round(skill.mcpInsights.importance)}/10</p>
+                        </div>
+                      )}
+                      {typeof skill.mcpInsights.confidence === 'number' && (
+                        <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30">
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wide font-medium">Confidence</p>
+                          <p className="text-sm text-emerald-700 dark:text-emerald-300 font-bold">{Math.round(skill.mcpInsights.confidence * 100)}%</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   {/* Code Quality */}
-                  {skill.aiInsights.codeQuality !== undefined && (
+                  {skill.aiInsights?.codeQuality !== undefined && (
                     <div className="flex items-center justify-between p-2 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800/30">
                       <span className="text-xs font-medium">Code Quality Score</span>
                       <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
@@ -307,7 +354,7 @@ export function InteractiveSkillCard({ skill, onStartLearning }: InteractiveSkil
                   )}
 
                   {/* README Quality */}
-                  {skill.aiInsights.readmeQuality !== undefined && (
+                  {skill.aiInsights?.readmeQuality !== undefined && (
                     <div className="flex items-center justify-between p-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/30">
                       <div className="flex items-center gap-1.5">
                         <FileText className="h-3 w-3 text-blue-600 dark:text-blue-400" />
@@ -320,7 +367,7 @@ export function InteractiveSkillCard({ skill, onStartLearning }: InteractiveSkil
                   )}
 
                   {/* Architecture Patterns */}
-                  {skill.aiInsights.architecturePatterns && skill.aiInsights.architecturePatterns.length > 0 && (
+                  {skill.aiInsights?.architecturePatterns && skill.aiInsights.architecturePatterns.length > 0 && (
                     <div className="space-y-1.5">
                       <p className="text-xs font-medium text-muted-foreground">🏗️ Architecture Detected</p>
                       <div className="flex flex-wrap gap-1.5">
@@ -334,7 +381,7 @@ export function InteractiveSkillCard({ skill, onStartLearning }: InteractiveSkil
                   )}
 
                   {/* Code Smells */}
-                  {skill.aiInsights.relatedCodeSmells && skill.aiInsights.relatedCodeSmells.length > 0 && (
+                  {skill.aiInsights?.relatedCodeSmells && skill.aiInsights.relatedCodeSmells.length > 0 && (
                     <div className="space-y-1.5">
                       <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400">⚠️ Related Code Smells</p>
                       <div className="space-y-1.5">
@@ -356,11 +403,34 @@ export function InteractiveSkillCard({ skill, onStartLearning }: InteractiveSkil
                   )}
 
                   {/* AI Recommendations */}
-                  {skill.aiInsights.recommendations && skill.aiInsights.recommendations.length > 0 && (
+                  {skill.aiInsights?.recommendations && skill.aiInsights.recommendations.length > 0 && (
                     <div className="space-y-1.5">
-                      <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">✅ AI Recommendations</p>
+                      <p className="text-xs font-medium text-purple-600 dark:text-purple-400">💡 AI Recommendations</p>
                       <div className="space-y-1">
                         {skill.aiInsights.recommendations.slice(0, 3).map((recommendation, i) => (
+                          <div key={i} className="flex items-start gap-1.5 p-1.5 rounded bg-purple-50 dark:bg-purple-950/20">
+                            <CheckCircle2 className="h-3 w-3 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0" />
+                            <p className="text-[10px] text-purple-900 dark:text-purple-100">{recommendation}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* MCP Description */}
+                  {skill.mcpInsights?.description && (
+                    <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30">
+                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wide font-medium mb-1">MCP Analysis</p>
+                      <p className="text-xs text-emerald-900 dark:text-emerald-100">{skill.mcpInsights.description}</p>
+                    </div>
+                  )}
+
+                  {/* MCP Recommendations */}
+                  {skill.mcpInsights?.recommendations && skill.mcpInsights.recommendations.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">✅ MCP Recommendations</p>
+                      <div className="space-y-1">
+                        {skill.mcpInsights.recommendations.slice(0, 3).map((recommendation, i) => (
                           <div key={i} className="flex items-start gap-1.5 p-1.5 rounded bg-emerald-50 dark:bg-emerald-950/20">
                             <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
                             <p className="text-[10px] text-emerald-900 dark:text-emerald-100">{recommendation}</p>

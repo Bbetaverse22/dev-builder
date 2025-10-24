@@ -90,6 +90,7 @@ export interface AnalysisResults {
   confidenceBreakdown?: ConfidenceBreakdownContext | null;
   templates: any[];
   agentLogs: Array<{ agent: string; status: string; message: string; timestamp: Date }>;
+  externalAssessments?: Record<string, unknown> | null;
 }
 
 interface AnalysisContextType {

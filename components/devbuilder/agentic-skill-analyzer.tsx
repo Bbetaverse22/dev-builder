@@ -37,7 +37,8 @@ import {
   Activity,
   Zap,
   Search,
-  BookOpen
+  BookOpen,
+  ChevronDown
 } from 'lucide-react';
 
 type AgentStatus = 'IDLE' | 'ANALYZING' | 'RESEARCHING' | 'PLANNING' | 'ACTING' | 'MONITORING' | 'COMPLETE' | 'ERROR';
@@ -73,6 +74,51 @@ interface AgenticSkillAnalyzerProps {
 
 const MAX_DISPLAY_RESOURCES = 3;
 const MAX_DISPLAY_EXAMPLES = 3;
+
+type NormalizedMcpSkill = {
+  name: string;
+  current?: number | string;
+  target?: number | string;
+  importance?: number;
+  confidence?: number;
+  description?: string;
+  recommendations: string[];
+};
+
+function normalizeMcpSkillList(assessment: any): NormalizedMcpSkill[] {
+  if (!assessment || typeof assessment !== 'object') {
+    return [];
+  }
+
+  const rawSkills = Array.isArray(assessment.skills)
+    ? assessment.skills
+    : Array.isArray(assessment.skillGaps)
+      ? assessment.skillGaps
+      : Array.isArray(assessment.skill_gaps)
+        ? assessment.skill_gaps
+        : [];
+
+  return rawSkills
+    .filter((skill: any) => skill && typeof skill === 'object')
+    .map((skill: any, index: number) => {
+      const name = skill.name || skill.skill || `Skill ${index + 1}`;
+      const current = skill.currentLevel ?? skill.current_level ?? skill.level;
+      const target = skill.targetLevel ?? skill.target_level;
+      const recs = Array.isArray(skill.recommendations)
+        ? skill.recommendations.filter((rec: any) => typeof rec === 'string')
+        : [];
+
+      return {
+        name,
+        current,
+        target,
+        importance: typeof skill.importance === 'number' ? skill.importance : undefined,
+        confidence: typeof skill.confidence === 'number' ? skill.confidence : undefined,
+        description: typeof skill.description === 'string' ? skill.description : undefined,
+        recommendations: recs,
+      };
+    });
+}
 export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnalyzerProps) {
   const { analysisResults, setAnalysisResults } = useAnalysis();
   const [repoUrlInput, setRepoUrlInput] = useState('');
@@ -92,6 +138,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
   const [isCreatingIssues, setIsCreatingIssues] = useState(false);
   const [createdIssues, setCreatedIssues] = useState<any[]>([]);
   const [skillAssessment, setSkillAssessment] = useState<any | null>(null);
+  const [mcpSkillAssessment, setMcpSkillAssessment] = useState<any | null>(null);
   const [selectedRecommendations, setSelectedRecommendations] = useState<string[]>([]);
   const [resourcesExpanded, setResourcesExpanded] = useState(false);
   const [examplesExpanded, setExamplesExpanded] = useState(false);
@@ -102,16 +149,12 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
   const activityLogRef = useRef<HTMLDivElement>(null);
   const activityLogContainerRef = useRef<HTMLDivElement>(null);
 
-  // Debug logging
+  // Log external assessments when available for MCP debugging
   useEffect(() => {
-    console.log('[AgenticSkillAnalyzer] Component state:', {
-      hasAnalysisResults: !!analysisResults,
-      skillGapsCount: analysisResults?.skillGaps?.length || 0,
-      localSkillGapsCount: skillGaps.length,
-      agentStatus,
-      hasLoadedFromContext
-    });
-  }, [analysisResults, skillGaps, agentStatus, hasLoadedFromContext]);
+    if (analysisResults?.externalAssessments) {
+      console.log('[AgenticSkillAnalyzer] External assessments loaded:', analysisResults.externalAssessments);
+    }
+  }, [analysisResults]);
 
   const groupedResearchRecommendations = useMemo(() => {
     const recs = Array.isArray(researchResults?.recommendations)
@@ -140,6 +183,8 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
     };
   }, [researchResults]);
 
+  const normalizedMcpSkills = useMemo<NormalizedMcpSkill[]>(() => normalizeMcpSkillList(mcpSkillAssessment), [mcpSkillAssessment]);
+
   useEffect(() => {
     setResourcesExpanded(false);
     setExamplesExpanded(false);
@@ -152,13 +197,12 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
   // Load existing results from context on mount
   useEffect(() => {
     if (!hasLoadedFromContext && analysisResults && analysisResults.skillGaps.length > 0) {
-      console.log('[AgenticSkillAnalyzer] Loading results from context:', analysisResults);
       
       // Helper function to filter AI insights by skill relevance (for context loading - TECHNICAL ONLY)
       const getSkillSpecificInsightsFromContext = (skillName: string) => {
-        if (!analysisResults.githubAnalysis?.agenticAnalysis && !analysisResults.githubAnalysis?.readmeAnalysis) {
-          return undefined;
-        }
+    if (!analysisResults.githubAnalysis?.agenticAnalysis && !analysisResults.githubAnalysis?.readmeAnalysis) {
+      return undefined;
+    }
 
         const skillLower = skillName.toLowerCase();
         const agenticAnalysis = analysisResults.githubAnalysis.agenticAnalysis;
@@ -236,6 +280,75 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
       };
 
       // Convert context data back to local state format (filter out generic soft skills, keep documentation)
+      const contextMcpSkills = normalizeMcpSkillList(
+        analysisResults.externalAssessments?.githubMcp ?? analysisResults.githubAnalysis?.mcpSkillAssessment
+      );
+      
+      const contextMcpAssessment = analysisResults.externalAssessments?.githubMcp ?? analysisResults.githubAnalysis?.mcpSkillAssessment;
+
+      // Helper: Map general MCP recommendations to specific skills (context loading)
+      const mapMcpRecommendationsToSkillFromContext = (skillName: string): string[] => {
+        if (!contextMcpAssessment || !Array.isArray(contextMcpAssessment.recommendations)) {
+          return [];
+        }
+        
+        const skillLower = skillName.toLowerCase();
+        const relevantRecs: string[] = [];
+        
+        contextMcpAssessment.recommendations.forEach((rec: string) => {
+          const recLower = rec.toLowerCase();
+          
+          // Testing-related skills
+          if (skillLower.includes('test') || skillLower.includes('qa') || skillLower.includes('quality assurance')) {
+            if (recLower.includes('test') || recLower.includes('jest') || recLower.includes('vitest') || 
+                recLower.includes('playwright') || recLower.includes('cypress')) {
+              relevantRecs.push(rec);
+            }
+          }
+          
+          // Documentation skills
+          if (skillLower.includes('documentation') || skillLower.includes('technical writing')) {
+            if (recLower.includes('documentation') || recLower.includes('readme') || recLower.includes('comment')) {
+              relevantRecs.push(rec);
+            }
+          }
+          
+          // DevOps/CI-CD skills
+          if (skillLower.includes('devops') || skillLower.includes('ci') || skillLower.includes('cd') || 
+              skillLower.includes('deployment') || skillLower.includes('pipeline')) {
+            if (recLower.includes('ci/cd') || recLower.includes('pipeline') || recLower.includes('deployment') ||
+                recLower.includes('automated testing')) {
+              relevantRecs.push(rec);
+            }
+          }
+          
+          // Code quality / Linting skills
+          if (skillLower.includes('code quality') || skillLower.includes('linting') || skillLower.includes('eslint') ||
+              skillLower.includes('prettier') || skillLower.includes('formatting')) {
+            if (recLower.includes('eslint') || recLower.includes('prettier') || recLower.includes('code quality')) {
+              relevantRecs.push(rec);
+            }
+          }
+          
+          // Performance / Monitoring skills
+          if (skillLower.includes('performance') || skillLower.includes('monitoring') || skillLower.includes('observability')) {
+            if (recLower.includes('performance') || recLower.includes('monitoring') || recLower.includes('error tracking')) {
+              relevantRecs.push(rec);
+            }
+          }
+          
+          // For programming languages, show general code quality recommendations
+          const programmingLanguages = ['javascript', 'typescript', 'python', 'java', 'c++', 'go', 'rust', 'ruby', 'php', 'swift', 'kotlin'];
+          if (programmingLanguages.some(lang => skillLower.includes(lang))) {
+            if (recLower.includes('code quality') || recLower.includes('eslint') || recLower.includes('prettier')) {
+              relevantRecs.push(rec);
+            }
+          }
+        });
+        
+        return relevantRecs;
+      };
+
       const convertedSkillGaps = analysisResults.skillGaps
         .filter(gap => {
           const skillLower = gap.skill.toLowerCase();
@@ -250,6 +363,28 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
         const currentLevel = gap.currentLevel ?? (priority >= 85 ? 2 : priority >= 70 ? 3 : 4);
         const targetLevel = gap.targetLevel ?? 5;
         const gapSize = gap.gap ?? (targetLevel - currentLevel);
+        const gapSkillLower = gap.skill.toLowerCase();
+        const mcpMatch = contextMcpSkills.find((skill) =>
+          skill.name.toLowerCase() === gapSkillLower || skill.name.toLowerCase().includes(gapSkillLower) || gapSkillLower.includes(skill.name.toLowerCase())
+        );
+        
+        // Get relevant MCP recommendations for this skill
+        const relevantMcpRecs = mapMcpRecommendationsToSkillFromContext(gap.skill);
+        
+        // Build MCP insights
+        const mcpInsights = mcpMatch || relevantMcpRecs.length > 0
+          ? {
+              current: mcpMatch?.current,
+              target: mcpMatch?.target,
+              importance: mcpMatch?.importance,
+              confidence: mcpMatch?.confidence,
+              description: mcpMatch?.description || (relevantMcpRecs.length > 0 ? `MCP detected ${relevantMcpRecs.length} relevant improvement areas for this skill.` : undefined),
+              recommendations: [
+                ...(mcpMatch?.recommendations || []),
+                ...relevantMcpRecs
+              ].filter((rec, idx, arr) => arr.indexOf(rec) === idx) // Remove duplicates
+            }
+          : undefined;
         
         return {
           id: gap.skill,
@@ -265,6 +400,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
           recommendations: [],
           // Restore skill-specific AI insights
           aiInsights: getSkillSpecificInsightsFromContext(gap.skill),
+          mcpInsights: mcpInsights?.recommendations?.length ? mcpInsights : undefined,
         };
       });
 
@@ -287,6 +423,9 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
         }))
       };
       setSkillAssessment(mockAssessment);
+      setMcpSkillAssessment(
+        analysisResults.externalAssessments?.githubMcp ?? analysisResults.githubAnalysis?.mcpSkillAssessment ?? null
+      );
       
       // Mark as complete if we have data
       setAgentStatus('COMPLETE');
@@ -301,8 +440,6 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
         icon: <CheckCircle2 className="h-4 w-4" />
       };
       setActionLogs([log]);
-      
-      console.log('[AgenticSkillAnalyzer] Loaded skill gaps:', convertedSkillGaps);
     }
   }, [analysisResults, hasLoadedFromContext]);
 
@@ -380,6 +517,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
     setRepoUrl(null);
     setCreatedIssues([]);
     setSkillAssessment(null);
+    setMcpSkillAssessment(null);
     setSelectedRecommendations([]);
     setShowClearConfirm(false);
     setHasLoadedFromContext(false);
@@ -484,6 +622,11 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
 
       const agenticData = await agenticResponse.json();
       const githubAnalysis = agenticData.result;
+      const initialExternalAssessment = githubAnalysis?.mcpSkillAssessment
+        ?? githubAnalysis?.externalAssessments?.githubMcp
+        ?? agenticData?.externalAssessments?.githubMcp
+        ?? null;
+      setMcpSkillAssessment(initialExternalAssessment);
       
       // Show analysis mode
       if (agenticData.analysisMode === 'agentic' && !agenticData.usedFallback) {
@@ -526,6 +669,9 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
       addLog('info', `Identified ${gapAnalysis.skillGaps.length} skill gaps`, <Target className="h-4 w-4" />);
       setProgress(55);
       setSkillAssessment(gapAnalysis);
+      const gapExternalAssessment = gapAnalysis.externalAssessments?.githubMcp ?? null;
+      const combinedExternalAssessment = gapExternalAssessment ?? initialExternalAssessment ?? null;
+      setMcpSkillAssessment(combinedExternalAssessment);
 
       // Store results on server
       try {
@@ -550,6 +696,7 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
             userId: 'user_123',
             githubAnalysis: githubAnalysis,
             skillAssessment: gapAnalysis,
+            externalAssessments: gapAnalysis.externalAssessments ?? undefined,
             context: contextPayload,
           }),
         });
@@ -658,8 +805,117 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
         return isDocumentationSkill || !softSkills.some(soft => skillLower.includes(soft));
       });
 
-      // Set REAL skill gaps with skill-specific AI insights (TECHNICAL ONLY)
-      const topGaps = technicalSkillGaps.slice(0, 5).map(sg => ({
+      // Group skill gaps by category and select top 5 from each
+      const skillGapsByCategory = new Map<string, any[]>();
+      
+      technicalSkillGaps.forEach(sg => {
+        const category = sg.skill.category || 'technical'; // Default to technical if no category
+        if (!skillGapsByCategory.has(category)) {
+          skillGapsByCategory.set(category, []);
+        }
+        skillGapsByCategory.get(category)!.push(sg);
+      });
+
+      // Select top 5 from each category based on priority
+      const topGapsByCategory: any[] = [];
+      skillGapsByCategory.forEach((gaps, category) => {
+        const sortedGaps = gaps.sort((a, b) => b.priority - a.priority);
+        const top5FromCategory = sortedGaps.slice(0, 5);
+        topGapsByCategory.push(...top5FromCategory);
+      });
+
+      // Helper: Map general MCP recommendations to specific skills
+      const mapMcpRecommendationsToSkill = (skillName: string): string[] => {
+        if (!mcpSkillAssessment || !Array.isArray(mcpSkillAssessment.recommendations)) {
+          return [];
+        }
+        
+        const skillLower = skillName.toLowerCase();
+        const relevantRecs: string[] = [];
+        
+        mcpSkillAssessment.recommendations.forEach((rec: string) => {
+          const recLower = rec.toLowerCase();
+          
+          // Testing-related skills
+          if (skillLower.includes('test') || skillLower.includes('qa') || skillLower.includes('quality assurance')) {
+            if (recLower.includes('test') || recLower.includes('jest') || recLower.includes('vitest') || 
+                recLower.includes('playwright') || recLower.includes('cypress')) {
+              relevantRecs.push(rec);
+            }
+          }
+          
+          // Documentation skills
+          if (skillLower.includes('documentation') || skillLower.includes('technical writing')) {
+            if (recLower.includes('documentation') || recLower.includes('readme') || recLower.includes('comment')) {
+              relevantRecs.push(rec);
+            }
+          }
+          
+          // DevOps/CI-CD skills
+          if (skillLower.includes('devops') || skillLower.includes('ci') || skillLower.includes('cd') || 
+              skillLower.includes('deployment') || skillLower.includes('pipeline')) {
+            if (recLower.includes('ci/cd') || recLower.includes('pipeline') || recLower.includes('deployment') ||
+                recLower.includes('automated testing')) {
+              relevantRecs.push(rec);
+            }
+          }
+          
+          // Code quality / Linting skills
+          if (skillLower.includes('code quality') || skillLower.includes('linting') || skillLower.includes('eslint') ||
+              skillLower.includes('prettier') || skillLower.includes('formatting')) {
+            if (recLower.includes('eslint') || recLower.includes('prettier') || recLower.includes('code quality')) {
+              relevantRecs.push(rec);
+            }
+          }
+          
+          // Performance / Monitoring skills
+          if (skillLower.includes('performance') || skillLower.includes('monitoring') || skillLower.includes('observability')) {
+            if (recLower.includes('performance') || recLower.includes('monitoring') || recLower.includes('error tracking')) {
+              relevantRecs.push(rec);
+            }
+          }
+          
+          // For programming languages, show general code quality recommendations
+          const programmingLanguages = ['javascript', 'typescript', 'python', 'java', 'c++', 'go', 'rust', 'ruby', 'php', 'swift', 'kotlin'];
+          if (programmingLanguages.some(lang => skillLower.includes(lang))) {
+            if (recLower.includes('code quality') || recLower.includes('eslint') || recLower.includes('prettier')) {
+              relevantRecs.push(rec);
+            }
+          }
+        });
+        
+        return relevantRecs;
+      };
+
+      // Set REAL skill gaps with skill-specific AI insights and MCP data
+      const topGaps = topGapsByCategory.map(sg => {
+        const gapSkillLower = sg.skill.name.toLowerCase();
+        
+        // Try to match with specific MCP skills
+        const mcpMatch = normalizedMcpSkills.find((skill) => {
+          const mcpName = skill.name.toLowerCase();
+          return mcpName === gapSkillLower || mcpName.includes(gapSkillLower) || gapSkillLower.includes(mcpName);
+        });
+
+        // Get relevant MCP recommendations for this skill
+        const relevantMcpRecs = mapMcpRecommendationsToSkill(sg.skill.name);
+        
+        // Build MCP insights
+        const mcpInsights = mcpMatch || relevantMcpRecs.length > 0
+          ? {
+              current: mcpMatch?.current,
+              target: mcpMatch?.target,
+              importance: mcpMatch?.importance,
+              confidence: mcpMatch?.confidence,
+              description: mcpMatch?.description || (relevantMcpRecs.length > 0 ? `MCP detected ${relevantMcpRecs.length} relevant improvement areas for this skill.` : undefined),
+              recommendations: [
+                ...(mcpMatch?.recommendations || []),
+                ...relevantMcpRecs
+              ].filter((rec, idx, arr) => arr.indexOf(rec) === idx) // Remove duplicates
+            }
+          : undefined;
+
+        return {
         id: sg.skill.id,
         name: sg.skill.name,
         currentLevel: sg.skill.currentLevel,
@@ -670,9 +926,12 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
         recommendations: sg.guidance?.recommendedSteps?.length
           ? sg.guidance.recommendedSteps
           : sg.recommendations,
+        category: sg.skill.category || 'technical',
         // Add skill-specific AI insights
         aiInsights: getSkillSpecificInsights(sg.skill.name),
-      }));
+        mcpInsights: mcpInsights?.recommendations?.length ? mcpInsights : undefined,
+      };
+      });
       setSkillGaps(topGaps);
       setProgress(60);
 
@@ -685,61 +944,229 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
 
       try {
         // Run research agent for each skill gap
-        addLog('info', `Researching ${topGaps.length} skill gaps...`, <Search className="h-4 w-4" />);
+        const categorySummary = Array.from(skillGapsByCategory.entries())
+          .map(([category, gaps]) => `${category}: ${Math.min(gaps.length, 5)} gaps`)
+          .join(', ');
+        addLog('info', `Researching top 5 skill gaps per category (${categorySummary})`, <Search className="h-4 w-4" />);
 
-        const researchResponse = await fetch('/api/research', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: 'user_123',
-            skillGap: topGaps[0]?.name || gapAnalysis.skillGaps[0]?.skill.name,
-            detectedLanguage: githubAnalysis.languages[0] || 'unknown',
-            userContext: professionalGoals || `Learning ${topGaps[0]?.name || 'new skills'}`,
-            targetRole,
-            targetIndustry,
-            focusSkills: topGaps.map(g => ({
-              name: g.name,
-              gap: g.gap,
-              priority: g.priority
-            })),
-            learningObjectives: gapAnalysis.recommendations?.slice(0, 3) || [],
-          }),
+        // Research all skill gaps in parallel
+        const researchPromises = topGaps.map(async (gap, index) => {
+          addLog('info', `Researching ${gap.category} skill gap ${index + 1}/${topGaps.length}: ${gap.name}`, <Search className="h-4 w-4" />);
+          
+          const researchResponse = await fetch('/api/research', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: 'user_123',
+              skillGap: gap.name,
+              detectedLanguage: githubAnalysis.languages[0] || 'unknown',
+              userContext: professionalGoals || `Learning ${gap.name}`,
+              targetRole,
+              targetIndustry,
+              focusSkills: [{
+                name: gap.name,
+                gap: gap.gap,
+                priority: gap.priority
+              }],
+              learningObjectives: gapAnalysis.recommendations?.slice(0, 3) || [],
+              // Adaptive learning fields
+              userSkillLevel: githubAnalysis.skillLevel || 'intermediate',
+              skillCurrentLevel: gap.currentLevel,
+              skillTargetLevel: gap.targetLevel,
+              skillGapValue: gap.gap,
+            }),
+          });
+
+          if (researchResponse.ok) {
+            const researchData = await researchResponse.json();
+            return { gap, researchData };
+          } else {
+            console.error(`Research failed for ${gap.name}:`, researchResponse.statusText);
+            return { gap, researchData: null };
+          }
         });
 
-        if (researchResponse.ok) {
-          const researchData = await researchResponse.json();
+        // Wait for all research to complete
+        const researchResults = await Promise.all(researchPromises);
+        
+        // Combine all research results
+        const combinedResearchData = {
+          resources: [] as any[],
+          examples: [] as any[],
+          scrapedResources: [] as any[],
+          recommendations: [] as any[],
+          comparativeInsights: [] as any[],
+          learningPath: [] as any[],
+          confidence: 0,
+          skillGapResults: researchResults.filter(r => r.researchData !== null)
+        };
 
-          // Store research results for display AND context
-          setResearchResults(researchData);
-          researchDataForContext = researchData; // Capture for context saving
+        // Helper: Normalize URL for deduplication
+        const normalizeUrl = (url: string): string => {
+          try {
+            const parsed = new URL(url);
+            // Remove trailing slashes, anchors, and common tracking params
+            let normalized = parsed.origin + parsed.pathname;
+            normalized = normalized.replace(/\/+$/, ''); // Remove trailing slashes
+            return normalized.toLowerCase();
+          } catch {
+            return url.toLowerCase().replace(/\/+$/, '');
+          }
+        };
 
-          const resourceCount = researchData.resources?.length || 0;
-          const exampleCount = researchData.examples?.length || 0;
+        // Helper: Check if two titles are similar (fuzzy match)
+        const areTitlesSimilar = (title1: string, title2: string): boolean => {
+          const t1 = title1.toLowerCase().trim();
+          const t2 = title2.toLowerCase().trim();
+          // Exact match
+          if (t1 === t2) return true;
+          // One contains the other (with some length threshold)
+          if (t1.length > 15 && t2.length > 15) {
+            if (t1.includes(t2) || t2.includes(t1)) return true;
+          }
+          return false;
+        };
 
-          if (resourceCount === 0 && exampleCount === 0) {
+        // Aggregate results with deduplication
+        const seenResourceUrls = new Map<string, any>(); // normalized URL -> resource
+        const seenExampleUrls = new Map<string, any>();
+        const seenScrapedUrls = new Map<string, any>();
+        const seenRecommendationTitles = new Set<string>();
+        const seenInsightTitles = new Set<string>();
+        
+        let learningPathCreated = false;
+        researchResults.forEach(({ gap, researchData }, index) => {
+          if (researchData) {
+            // Deduplicate resources by URL
+            if (researchData.resources) {
+              researchData.resources.forEach((resource: any) => {
+                const normalizedUrl = normalizeUrl(resource.url || '');
+                const existing = seenResourceUrls.get(normalizedUrl);
+                
+                if (!existing) {
+                  // New resource
+                  seenResourceUrls.set(normalizedUrl, resource);
+                } else {
+                  // Duplicate URL - keep the one with more info (longer description or higher score)
+                  const existingScore = existing.score || 0;
+                  const newScore = resource.score || 0;
+                  const existingDescLength = (existing.description || '').length;
+                  const newDescLength = (resource.description || '').length;
+                  
+                  if (newScore > existingScore || (newScore === existingScore && newDescLength > existingDescLength)) {
+                    seenResourceUrls.set(normalizedUrl, resource);
+                  }
+                }
+              });
+            }
+            
+            // Deduplicate GitHub examples by URL
+            if (researchData.examples) {
+              researchData.examples.forEach((example: any) => {
+                const normalizedUrl = normalizeUrl(example.url || '');
+                const existing = seenExampleUrls.get(normalizedUrl);
+                
+                if (!existing) {
+                  seenExampleUrls.set(normalizedUrl, example);
+                } else {
+                  // Keep the one with more stars
+                  if ((example.stars || 0) > (existing.stars || 0)) {
+                    seenExampleUrls.set(normalizedUrl, example);
+                  }
+                }
+              });
+            }
+            
+            // Deduplicate scraped resources by URL
+            if (researchData.scrapedResources) {
+              researchData.scrapedResources.forEach((scraped: any) => {
+                const normalizedUrl = normalizeUrl(scraped.url || '');
+                if (!seenScrapedUrls.has(normalizedUrl)) {
+                  seenScrapedUrls.set(normalizedUrl, scraped);
+                }
+              });
+            }
+            
+            // Deduplicate recommendations by title (fuzzy match)
+            if (researchData.recommendations) {
+              researchData.recommendations.forEach((rec: any) => {
+                const recTitle = (rec.title || '').toLowerCase().trim();
+                let isDuplicate = false;
+                
+                for (const seenTitle of seenRecommendationTitles) {
+                  if (areTitlesSimilar(recTitle, seenTitle)) {
+                    isDuplicate = true;
+                    break;
+                  }
+                }
+                
+                if (!isDuplicate && recTitle.length > 0) {
+                  seenRecommendationTitles.add(recTitle);
+                  combinedResearchData.recommendations.push(rec);
+                }
+              });
+            }
+            
+            // Deduplicate comparative insights by title
+            if (researchData.comparativeInsights) {
+              researchData.comparativeInsights.forEach((insight: any) => {
+                const insightTitle = (insight.title || '').toLowerCase().trim();
+                if (!seenInsightTitles.has(insightTitle) && insightTitle.length > 0) {
+                  seenInsightTitles.add(insightTitle);
+                  combinedResearchData.comparativeInsights.push(insight);
+                }
+              });
+            }
+            
+            // For learning path, create a unified path instead of concatenating all paths
+            // Use only the first valid learning path (from highest priority skill) and customize it
+            if (researchData.learningPath && researchData.learningPath.length > 0 && !learningPathCreated) {
+              const customizedPath = researchData.learningPath.map((step: any, stepIndex: number) => ({
+                ...step,
+                title: step.title.includes(':') ? step.title : `${step.title}`,
+                order: stepIndex + 1,
+              }));
+              combinedResearchData.learningPath = customizedPath;
+              learningPathCreated = true;
+            }
+            
+            combinedResearchData.confidence = Math.max(combinedResearchData.confidence, researchData.confidence || 0);
+          }
+        });
+
+        // Convert Maps back to arrays
+        combinedResearchData.resources = Array.from(seenResourceUrls.values());
+        combinedResearchData.examples = Array.from(seenExampleUrls.values());
+        combinedResearchData.scrapedResources = Array.from(seenScrapedUrls.values());
+
+        // Store research results for display AND context
+        setResearchResults(combinedResearchData);
+        researchDataForContext = combinedResearchData; // Capture for context saving
+
+        const resourceCount = combinedResearchData.resources?.length || 0;
+        const exampleCount = combinedResearchData.examples?.length || 0;
+        const successfulResearches = researchResults.filter(r => r.researchData !== null).length;
+
+        addLog('success', `Successfully researched ${successfulResearches}/${topGaps.length} skill gaps`, <CheckCircle2 className="h-4 w-4" />);
+
+        if (resourceCount === 0 && exampleCount === 0) {
           addLog('warning', 'Research Agent found no learning resources or GitHub examples', <AlertCircle className="h-4 w-4" />);
-            addLog('info', 'Learning Resources and Templates pages will show empty. This may happen for niche skills or specific tech stacks.', <AlertCircle className="h-4 w-4" />);
-          } else {
-            addLog('success', `Found ${resourceCount} learning resources`, <CheckCircle2 className="h-4 w-4" />);
-            addLog('success', `Scraped ${researchData.scrapedResources?.length || 0} detailed sources`, <CheckCircle2 className="h-4 w-4" />);
-            addLog('success', `Found ${exampleCount} GitHub examples`, <CheckCircle2 className="h-4 w-4" />);
-            addLog('success', `Generated ${researchData.recommendations?.length || 0} personalized recommendations`, <CheckCircle2 className="h-4 w-4" />);
-          }
-
-          if (researchData.comparativeInsights?.length) {
-            addLog('info', `Comparative insights generated`, <Brain className="h-4 w-4" />);
-          }
-          if (researchData.learningPath?.length) {
-            addLog('info', `Learning path with ${researchData.learningPath.length} steps ready`, <BookOpen className="h-4 w-4" />);
-          }
-          if (researchData.confidenceBreakdown) {
-            addLog('info', `Confidence breakdown prepared`, <Activity className="h-4 w-4" />);
-          }
-          setProgress(65);
+          addLog('info', 'Learning Resources and Templates pages will show empty. This may happen for niche skills or specific tech stacks.', <AlertCircle className="h-4 w-4" />);
         } else {
-          addLog('warning', 'Research agent API call failed, continuing...', <AlertCircle className="h-4 w-4" />);
-          addLog('info', 'Learning Resources and Templates will be empty', <AlertCircle className="h-4 w-4" />);
+          addLog('success', `Found ${resourceCount} unique learning resources (duplicates removed)`, <CheckCircle2 className="h-4 w-4" />);
+          addLog('success', `Scraped ${combinedResearchData.scrapedResources?.length || 0} detailed sources`, <CheckCircle2 className="h-4 w-4" />);
+          addLog('success', `Found ${exampleCount} unique GitHub examples`, <CheckCircle2 className="h-4 w-4" />);
+          addLog('success', `Generated ${combinedResearchData.recommendations?.length || 0} personalized recommendations`, <CheckCircle2 className="h-4 w-4" />);
         }
+
+        if (combinedResearchData.comparativeInsights?.length) {
+          addLog('info', `Comparative insights generated`, <Brain className="h-4 w-4" />);
+        }
+        if (combinedResearchData.learningPath?.length) {
+          addLog('info', `Learning path with ${combinedResearchData.learningPath.length} steps ready`, <BookOpen className="h-4 w-4" />);
+        }
+        
+        setProgress(65);
       } catch (researchError) {
         addLog('warning', 'Research agent failed, using fallback data', <AlertCircle className="h-4 w-4" />);
         console.error('Research error:', researchError);
@@ -884,6 +1311,14 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
           timestamp: new Date()
         }));
 
+        const externalAssessmentsPayload: Record<string, unknown> = {
+          ...(gapAnalysis.externalAssessments ?? {}),
+        };
+        if (combinedExternalAssessment) {
+          externalAssessmentsPayload.githubMcp = combinedExternalAssessment;
+        }
+        const hasExternalAssessments = Object.keys(externalAssessmentsPayload).length > 0;
+
         setAnalysisResults({
           repoUrl,
           githubAnalysis: githubAnalysis, // Store the full GitHub analysis including AI insights
@@ -935,7 +1370,8 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
             .flatMap((rec: any) => rec.templates || [])
             .filter((template: any) => template && Object.keys(template).length > 0)
             .slice(0, 10), // Limit to 10 templates
-          agentLogs: agentLogsForContext
+          agentLogs: agentLogsForContext,
+          externalAssessments: hasExternalAssessments ? externalAssessmentsPayload : undefined,
         });
       }
 
@@ -1106,7 +1542,10 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
               <Input
                 placeholder="https://github.com/owner/repo"
                 value={repoUrlInput}
-                onChange={(e) => setRepoUrlInput(e.target.value)}
+                onChange={(e) => {
+                  console.log('[Input] Changed:', e.target.value);
+                  setRepoUrlInput(e.target.value);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && repoUrlInput.trim() && canEditInputs) {
                     runAgenticWorkflow();
@@ -1355,6 +1794,8 @@ export function AgenticSkillAnalyzer({ showMarketing = true }: AgenticSkillAnaly
               </CardContent>
             </Card>
           )}
+
+          {/* MCP insights are now fully integrated into individual skill cards */}
 
           <Card id="skill-gaps-card" className="mb-6 border-2 border-blue-400/40 bg-gradient-to-br from-blue-700/40 via-indigo-900/30 to-slate-950/60 shadow-[0_0_40px_rgba(59,130,246,0.25)] backdrop-blur-md">
             <CardHeader>

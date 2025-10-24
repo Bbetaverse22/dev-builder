@@ -17,6 +17,8 @@ export type {
   GetFileContentsOptions,
   FileContent,
   DecodedFileContent,
+  RepositoryContent,
+  RepositoryLanguages,
 
   // Issue Types
   CreateIssueOptions,
@@ -24,6 +26,7 @@ export type {
 
   // Client Configuration
   GitHubMCPClientConfig,
+  GitHubSkillAssessment,
 
   // Utility Types
   GitHubExample,

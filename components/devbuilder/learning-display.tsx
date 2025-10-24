@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { BookOpen, Github, FileText, ArrowRight, Sparkles, Compass, BarChart3 } from 'lucide-react';
+import { BookOpen, Github, FileText, ArrowRight, Sparkles, Compass, BarChart3, Target, TrendingUp, Award } from 'lucide-react';
 import Link from 'next/link';
 
 export function LearningDisplay() {
@@ -52,8 +52,97 @@ export function LearningDisplay() {
     confidenceBreakdown,
   } = analysisResults || {};
 
+  const skillLevel = analysisResults?.githubAnalysis?.skillLevel || 'intermediate';
+  const overallScore = analysisResults?.skillAssessmentScore ?? 75;
+  
+  // Skill level configuration
+  const skillLevelConfig = {
+    beginner: {
+      color: 'emerald',
+      icon: Target,
+      label: 'Beginner',
+      description: 'Building strong fundamentals and confidence',
+      gradient: 'from-emerald-600/30 via-emerald-800/20 to-slate-950/60',
+      border: 'border-emerald-400/40',
+      shadow: 'shadow-[0_0_40px_rgba(16,185,129,0.25)]',
+    },
+    intermediate: {
+      color: 'blue',
+      icon: TrendingUp,
+      label: 'Intermediate',
+      description: 'Advancing skills with practical application',
+      gradient: 'from-blue-600/30 via-blue-800/20 to-slate-950/60',
+      border: 'border-blue-400/40',
+      shadow: 'shadow-[0_0_40px_rgba(59,130,246,0.25)]',
+    },
+    advanced: {
+      color: 'purple',
+      icon: Award,
+      label: 'Advanced',
+      description: 'Mastering advanced concepts and leadership',
+      gradient: 'from-purple-600/30 via-purple-800/20 to-slate-950/60',
+      border: 'border-purple-400/40',
+      shadow: 'shadow-[0_0_40px_rgba(168,85,247,0.25)]',
+    },
+  };
+
+  const currentConfig = skillLevelConfig[skillLevel as keyof typeof skillLevelConfig] || skillLevelConfig.intermediate;
+  const SkillIcon = currentConfig.icon;
+
   return (
     <div className="space-y-6 text-white">
+      {/* Adaptive Learning Level Indicator */}
+      <Card className={`border-2 ${currentConfig.border} bg-gradient-to-br ${currentConfig.gradient} ${currentConfig.shadow} backdrop-blur-md`}>
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-xl bg-${currentConfig.color}-500/20 border border-${currentConfig.color}-400/40`}>
+              <SkillIcon className="h-8 w-8 text-white" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-1">
+                    {currentConfig.label} Level Learning Path
+                  </h3>
+                  <p className="text-sm text-white/80">
+                    {currentConfig.description}
+                  </p>
+                </div>
+                <Badge variant="secondary" className={`bg-${currentConfig.color}-500/30 text-${currentConfig.color}-100 border-${currentConfig.color}-400/40 px-4 py-2 text-base`}>
+                  {overallScore}% Proficiency
+                </Badge>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+                <div className="flex flex-col">
+                  <span className="text-white/60 mb-1">Learning Focus</span>
+                  <span className="text-white font-medium">
+                    {skillLevel === 'beginner' ? 'Fundamentals' : skillLevel === 'intermediate' ? 'Practical Skills' : 'Mastery'}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-white/60 mb-1">Content Type</span>
+                  <span className="text-white font-medium">
+                    {skillLevel === 'beginner' ? 'Tutorials' : skillLevel === 'intermediate' ? 'Projects' : 'Architecture'}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-white/60 mb-1">Estimated Pace</span>
+                  <span className="text-white font-medium">
+                    {skillLevel === 'beginner' ? 'Thorough' : skillLevel === 'intermediate' ? 'Moderate' : 'Accelerated'}
+                  </span>
+                </div>
+              </div>
+              <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
+                <p className="text-xs text-white/70">
+                  💡 <strong>Personalized for you:</strong> This learning path adapts to your {currentConfig.label.toLowerCase()} skill level, 
+                  providing resources and time estimates suited to your experience.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Learning Resources */}
       {researchResults.length > 0 && (
         <Card className="border-2 border-indigo-400/40 bg-gradient-to-br from-indigo-700/40 via-indigo-900/30 to-slate-950/60 shadow-[0_0_40px_rgba(99,102,241,0.25)] backdrop-blur-md">
@@ -226,8 +315,8 @@ export function LearningDisplay() {
           </CardHeader>
           <CardContent>
             <div className={`space-y-4 ${learningPath.length > 4 ? 'max-h-[600px] overflow-y-auto pr-2' : ''}`}>
-              {learningPath.map((step: any) => (
-                <div key={step.order} className="p-4 rounded-lg border border-emerald-200/20 bg-emerald-200/10">
+              {learningPath.map((step: any, index: number) => (
+                <div key={`${step.title}-${step.order}-${index}`} className="p-4 rounded-lg border border-emerald-200/20 bg-emerald-200/10">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-3">
