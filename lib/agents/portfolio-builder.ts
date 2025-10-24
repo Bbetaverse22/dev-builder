@@ -705,9 +705,22 @@ export class PortfolioBuilderAgent {
         if (useMCP && this.mcpClient) {
           try {
             // Use MCP to create issue
-            issue = await this.mcpClient.createIssue(owner, repo, recommendation.title, issueBody, {
+            const mcpIssue = await this.mcpClient.createIssue(owner, repo, recommendation.title, issueBody, {
               labels,
             });
+            
+            // Log raw MCP response
+            console.log(`[Portfolio Builder] MCP raw response:`, mcpIssue);
+            console.log(`[Portfolio Builder] MCP response keys:`, Object.keys(mcpIssue));
+            
+            // Normalize MCP response to match REST API format
+            // MCP returns: { id, url } but we need: { number, html_url }
+            issue = {
+              ...mcpIssue,
+              number: mcpIssue.number || this.extractIssueNumberFromUrl(mcpIssue.url),
+              html_url: mcpIssue.html_url || mcpIssue.url,
+            };
+            
             console.log(`[Portfolio Builder] ✅ Created issue via MCP #${issue.number}: ${issue.html_url}`);
           } catch (mcpError) {
             console.warn(`[Portfolio Builder] MCP failed for ${recommendation.title}, falling back to REST:`, mcpError);
@@ -725,6 +738,9 @@ export class PortfolioBuilderAgent {
           console.log(`[Portfolio Builder] ✅ Created issue via REST #${issue.number}: ${issue.html_url}`);
         }
 
+        // Log the normalized issue object for debugging
+        console.log(`[Portfolio Builder] Normalized issue data: number=${issue.number}, html_url=${issue.html_url}`);
+        
         results.push({
           success: true,
           issueUrl: issue.html_url,
@@ -743,6 +759,25 @@ export class PortfolioBuilderAgent {
     }
 
     return results;
+  }
+
+  /**
+   * Extract issue number from GitHub issue URL
+   * Example: "https://github.com/owner/repo/issues/123" -> 123
+   */
+  private extractIssueNumberFromUrl(url: string): number | undefined {
+    if (!url) return undefined;
+    
+    try {
+      const match = url.match(/\/issues\/(\d+)$/);
+      if (match && match[1]) {
+        return parseInt(match[1], 10);
+      }
+    } catch (error) {
+      console.warn('[Portfolio Builder] Failed to extract issue number from URL:', url);
+    }
+    
+    return undefined;
   }
 
   /**
@@ -859,7 +894,7 @@ export class PortfolioBuilderAgent {
         body += `</details>\n\n`;
       });
 
-      body += `> 🤖 Templates automatically extracted and cleaned by SkillBridge.ai Template Creator MCP\n\n`;
+      body += `> 🤖 Templates automatically extracted and cleaned by Dev-Builder AI Template Creator MCP\n\n`;
     }
 
     body += `## 🔖 Metadata\n\n`;
@@ -868,7 +903,7 @@ export class PortfolioBuilderAgent {
     body += `- **Category**: ${recommendation.weakness.type}\n\n`;
 
     body += `---\n\n`;
-    body += `🤖 Generated with [SkillBridge.ai](https://github.com/Bbetaverse22/skillbridge-agents) - AI-Powered Developer Career Growth\n`;
+    body += `🤖 Generated with [Dev-Builder AI](https://github.com/Bbetaverse22/dev-builder) - AI-Powered Developer Career Growth\n`;
 
     return body;
   }

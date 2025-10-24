@@ -131,7 +131,7 @@ export class GitHubMCPClient {
     
     this.mcpClient = await createMCPClient({
       transport: new StreamableHTTPClientTransport(url, {
-        sessionId: `skillbridge-${Date.now()}`,
+        sessionId: `devbuilder-${Date.now()}`,
         requestInit,
         fetch: fetchWithTimeout,
       }),

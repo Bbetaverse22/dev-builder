@@ -93,11 +93,21 @@ export function PortfolioDisplay() {
           const failedIssues = result.issues.filter((issue: any) => !issue.success);
           
           console.log(`[Portfolio Display] Created ${successfulIssues.length}/${result.issues.length} issues successfully`);
+          console.log('[Portfolio Display] Successful issues data:', successfulIssues);
           if (failedIssues.length > 0) {
             console.error('[Portfolio Display] Failed issues:', failedIssues);
           }
           
-          setCreatedIssues(successfulIssues);
+          // Validate issue data
+          const validatedIssues = successfulIssues.map((issue: any) => ({
+            ...issue,
+            issueUrl: issue.issueUrl || issue.url || '#',
+            issueNumber: issue.issueNumber || issue.number || 'N/A',
+          }));
+          
+          console.log('[Portfolio Display] Validated issues:', validatedIssues);
+          
+          setCreatedIssues(validatedIssues);
           setCreationMessage({
             type: 'success',
             text: `Successfully created ${successfulIssues.length} GitHub issue${successfulIssues.length !== 1 ? 's' : ''}!`
@@ -271,26 +281,43 @@ export function PortfolioDisplay() {
                 className="space-y-2"
               >
                 <h4 className="font-semibold text-white text-sm">Created GitHub Issues:</h4>
-                {createdIssues.map((issue: any, index: number) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="p-3 bg-emerald-900/20 rounded-lg border border-emerald-400/30"
-                  >
-                    <a
-                      href={issue.issueUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-emerald-300 hover:text-emerald-200 transition-colors"
+                {createdIssues.map((issue: any, index: number) => {
+                  const hasValidUrl = issue.issueUrl && issue.issueUrl !== '#';
+                  const displayNumber = issue.issueNumber || issue.number || '?';
+                  
+                  return (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="p-3 bg-emerald-900/20 rounded-lg border border-emerald-400/30"
                     >
-                      <GitPullRequest className="h-4 w-4" />
-                      <span className="text-sm font-medium">#{issue.issueNumber}: {issue.title}</span>
-                      <ArrowRight className="h-3 w-3" />
-                    </a>
-                  </motion.div>
-                ))}
+                      {hasValidUrl ? (
+                        <a
+                          href={issue.issueUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-emerald-300 hover:text-emerald-200 transition-colors group"
+                        >
+                          <GitPullRequest className="h-4 w-4 flex-shrink-0" />
+                          <span className="text-sm font-medium group-hover:underline">
+                            #{displayNumber}: {issue.title}
+                          </span>
+                          <ArrowRight className="h-3 w-3 flex-shrink-0 ml-auto" />
+                        </a>
+                      ) : (
+                        <div className="flex items-center gap-2 text-emerald-300">
+                          <GitPullRequest className="h-4 w-4 flex-shrink-0" />
+                          <span className="text-sm font-medium">
+                            #{displayNumber}: {issue.title}
+                          </span>
+                          <span className="text-xs text-emerald-400/60 ml-auto">(URL not available)</span>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
               </motion.div>
             )}
 
