@@ -1,4 +1,4 @@
-# DevBuilder · AI-Powered Developer Career Copilot
+# DevBuilder · Agentic AI for Developer Growth
 
 > 🎯 An agentic AI platform that analyzes your GitHub, identifies skill gaps, and creates personalized learning paths—automatically.
 
