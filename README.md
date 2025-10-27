@@ -12,7 +12,7 @@
 
 **Try DevBuilder without installing anything:**
 
-🔗 **[https://dev-builder.vercel.app](https://dev-builder.vercel.app)**
+🔗 **[https://v0-dev-builder-agents.vercel.app](https://v0-dev-builder-agents.vercel.app)**
 
 > ⏰ **Public Testing Period:** October 28 - November 6, 2025 (10 days)  
 > 📝 **No signup required** - just paste a GitHub repo URL and explore!
