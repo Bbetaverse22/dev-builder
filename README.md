@@ -2,6 +2,8 @@
 
 > 🎯 An agentic AI platform that analyzes your GitHub, identifies skill gaps, and creates personalized learning paths—automatically.
 
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=flat&logo=github)](https://github.com/Bbetaverse22/dev-builder)
+
 [![Demo Video](https://img.shields.io/badge/▶️_Watch_Demo-Tella-FF6B6B?style=for-the-badge&logo=play&logoColor=white)](https://www.tella.tv/video/betuls-dev-builder-demo-video-1oo2)
 
 ---
