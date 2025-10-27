@@ -1,0 +1,307 @@
+{
+  "skillgap_1760206271575_auxlct6az": {
+    "id": "skillgap_1760206271575_auxlct6az",
+    "userId": "user_123",
+    "githubAnalysis": {
+      "repository": "https://github.com/Bbetaverse22/skillbridge-agents",
+      "technologies": [
+        "TypeScript",
+        "CSS",
+        "JavaScript"
+      ],
+      "frameworks": [
+        "Node.js",
+        "TypeScript",
+        "Next.js"
+      ],
+      "languages": [
+        "TypeScript",
+        "CSS",
+        "JavaScript"
+      ],
+      "tools": [],
+      "skillLevel": "intermediate",
+      "recommendations": [
+        "Master modern ES6+ features and async programming",
+        "Learn a frontend framework like React, Vue, or Angular",
+        "Understand Node.js and server-side JavaScript"
+      ]
+    },
+    "skillAssessment": {
+      "overallScore": 83,
+      "skillGaps": [
+        {
+          "skill": {
+            "id": "tech-javascript",
+            "name": "JavaScript",
+            "currentLevel": 3.6,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 1.4,
+          "priority": 7,
+          "recommendations": [
+            "Set a focused improvement goal for JavaScript",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "frameworks",
+            "name": "Frameworks & Libraries",
+            "currentLevel": 4,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 1,
+          "priority": 5,
+          "recommendations": [
+            "Follow official documentation and tutorials",
+            "Build a complete project using the framework",
+            "Join community forums and attend meetups"
+          ]
+        },
+        {
+          "skill": {
+            "id": "framework-nodejs",
+            "name": "Node.js",
+            "currentLevel": 4.3,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 0.7000000000000002,
+          "priority": 3.500000000000001,
+          "recommendations": [
+            "Set a focused improvement goal for Node.js",
+            "Design a mini-project to exercise this skill in context",
+            "Review feedback or code reviews related to this area"
+          ]
+        },
+        {
+          "skill": {
+            "id": "tech-typescript",
+            "name": "TypeScript",
+            "currentLevel": 4.7,
+            "targetLevel": 5,
+            "importance": 5,
+            "category": "technical"
+          },
+          "gap": 0.2999999999999998,
+          "priority": 1.4999999999999991,
+          "recommendations": []
+        }
+      ],
+      "categories": [
+        {
+          "id": "technical",
+          "name": "Technical Skills",
+          "skills": [
+            {
+              "id": "programming",
+              "name": "Programming Languages",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "frameworks",
+              "name": "Frameworks & Libraries",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "technical"
+            },
+            {
+              "id": "databases",
+              "name": "Database Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "cloud",
+              "name": "Cloud Platforms",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "devops",
+              "name": "DevOps & CI/CD",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            },
+            {
+              "id": "testing",
+              "name": "Testing & QA",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "prompt-engineering",
+              "name": "Prompt Engineering",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "technical"
+            },
+            {
+              "id": "context-engineering",
+              "name": "Context & Retrieval Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "technical"
+            }
+          ]
+        },
+        {
+          "id": "soft",
+          "name": "Soft Skills",
+          "skills": [
+            {
+              "id": "communication",
+              "name": "Communication",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "leadership",
+              "name": "Leadership",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "problem-solving",
+              "name": "Problem Solving",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 5,
+              "category": "soft"
+            },
+            {
+              "id": "teamwork",
+              "name": "Teamwork",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            },
+            {
+              "id": "time-management",
+              "name": "Time Management",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "soft"
+            }
+          ]
+        },
+        {
+          "id": "domain",
+          "name": "Domain Knowledge",
+          "skills": [
+            {
+              "id": "industry",
+              "name": "Industry Knowledge",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "business",
+              "name": "Business Acumen",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 3,
+              "category": "domain"
+            },
+            {
+              "id": "architecture",
+              "name": "System Architecture",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            },
+            {
+              "id": "security",
+              "name": "Security Best Practices",
+              "currentLevel": 1,
+              "targetLevel": 5,
+              "importance": 4,
+              "category": "domain"
+            }
+          ]
+        }
+      ],
+      "recommendations": [
+        "Focus on your top 3 skill gaps: JavaScript, Frameworks & Libraries",
+        "Invest time in advanced technical training or certifications",
+        "Create a project roadmap to apply the targeted technologies",
+        "Set a focused learning plan with milestones for the identified gaps",
+        "Explore advanced features and patterns in your current technology stack",
+        "Consider contributing to open source projects to gain real-world experience"
+      ],
+      "learningPath": [
+        "Phase 1: Foundation (Weeks 1-4)",
+        "Phase 4: Application (Ongoing)",
+        "- Apply skills in real-world projects",
+        "- Seek feedback and continue learning"
+      ],
+      "githubAnalysis": {
+        "repository": "https://github.com/Bbetaverse22/skillbridge-agents",
+        "technologies": [
+          "TypeScript",
+          "CSS",
+          "JavaScript"
+        ],
+        "frameworks": [
+          "Node.js",
+          "TypeScript",
+          "Next.js"
+        ],
+        "languages": [
+          "TypeScript",
+          "CSS",
+          "JavaScript"
+        ],
+        "tools": [],
+        "skillLevel": "intermediate",
+        "recommendations": [
+          "Master modern ES6+ features and async programming",
+          "Learn a frontend framework like React, Vue, or Angular",
+          "Understand Node.js and server-side JavaScript"
+        ]
+      }
+    },
+    "context": {
+      "targetRole": "AI Engineer",
+      "targetIndustry": "Software",
+      "professionalGoals": "Ready to be a skilled AI engineer",
+      "domainKeywords": [
+        "AI",
+        "ML",
+        "Data"
+      ]
+    },
+    "createdAt": "2025-10-11T18:11:11.575Z",
+    "lastAccessed": "2025-10-11T18:11:11.575Z"
+  }
+}

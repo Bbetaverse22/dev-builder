@@ -1,0 +1,32 @@
+{
+  "name": "@skillbridge/template-creator-mcp",
+  "version": "1.0.0",
+  "description": "Custom MCP server for extracting clean templates from GitHub repositories",
+  "type": "module",
+  "main": "dist/server.js",
+  "bin": {
+    "template-creator-mcp": "./dist/server.js"
+  },
+  "scripts": {
+    "dev": "tsx watch server.ts",
+    "start": "node dist/server.js"
+  },
+  "keywords": [
+    "mcp",
+    "template",
+    "github",
+    "code-extraction",
+    "boilerplate"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@octokit/rest": "^22.0.0",
+    "@vercel/node": "^5.3.26",
+    "minimatch": "^10.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  }
+}

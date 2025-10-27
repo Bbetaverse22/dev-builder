@@ -1,0 +1,7 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "research_agent": "./lib/agents/langgraph/research-agent.ts:graph"
+  },
+  "env": ".env.local"
+}

@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(echo $DATABASE_URL)",
+      "Bash(pnpm tsc:*)",
+      "Bash(source:*)",
+      "Bash(pnpm tsx:*)",
+      "Bash(npm search:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(pnpm add:*)",
+      "Bash(cat:*)",
+      "Bash(pnpm prisma generate:*)",
+      "Bash(pnpm db:view:*)",
+      "Bash(vercel logs:*)",
+      "Bash(echo \"DATABASE_URL=$DATABASE_URL\")",
+      "Bash(chmod:*)",
+      "Bash(vercel:*)",
+      "Bash(curl https://template-creator-c7tn8bziu-betulbogrek-6515s-projects.vercel.app/api/health)",
+      "Bash(pkill:*)",
+      "Bash(curl https://template-creator-4wng46ii9-betulbogrek-6515s-projects.vercel.app/api/health)",
+      "Bash(curl -X POST https://template-creator-4wng46ii9-betulbogrek-6515s-projects.vercel.app/api/analyze -H \"Content-Type: application/json\" -d '{\"\"repoUrl\"\":\"\"https://github.com/vercel/next.js\"\",\"\"depth\"\":2}')",
+      "Bash(curl -X POST https://template-creator-lm4cabtsu-betulbogrek-6515s-projects.vercel.app/api/analyze -H \"Content-Type: application/json\" -d '{\"\"repoUrl\"\":\"\"https://github.com/vercel/next.js\"\",\"\"depth\"\":2}')",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(curl:*)",
+      "Bash(rm:*)",
+      "Bash(cd:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

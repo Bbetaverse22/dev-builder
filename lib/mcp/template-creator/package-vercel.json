@@ -1,0 +1,21 @@
+{
+  "name": "@skillbridge/template-creator-mcp-vercel",
+  "version": "1.0.0",
+  "description": "Template Creator MCP - Vercel Deployment",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel",
+    "deploy:prod": "vercel --prod"
+  },
+  "dependencies": {
+    "@vercel/node": "^3.0.0",
+    "@octokit/rest": "^21.0.2",
+    "minimatch": "^9.0.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}
